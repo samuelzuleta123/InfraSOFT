@@ -4,7 +4,7 @@ import { Check, FileText, Pencil, RefreshCw, Send, ShoppingCart, X } from 'lucid
 import { Alert, Badge, Button, Card, CardHeader, DL, EmptyState, Field, Input, Modal, NumberInput } from '@/components/ui'
 import { AdjuntoChip, EstadoCotBadge, FechaTexto, SubirArchivo, nombreEstadoCot } from '@/components/dominio'
 import { resumen, totalCotizadoOC, totalOC, versionVigente } from '@/lib/calc'
-import { itemsSinProveedor } from '@/lib/compras'
+import { generarOrdenes, itemsSinProveedor } from '@/lib/compras'
 import { cn } from '@/lib/cn'
 import { HOY, money, moneySigned } from '@/lib/format'
 import { nombreProveedor, useStore } from '@/store/useStore'
@@ -27,15 +27,33 @@ export function ComprasTab({ proyecto }: { proyecto: Proyecto }) {
 
 function EstadoCotizacionCard({ proyecto }: { proyecto: Proyecto }) {
   const cambiar = useStore((s) => s.cambiarEstadoCotizacion)
+  const editarProyecto = useStore((s) => s.editarProyecto)
   const notificar = useStore((s) => s.notificar)
   const [fechaCambio, setFechaCambio] = useState(HOY)
+  const [confirmar, setConfirmar] = useState<EstadoCotizacion | null>(null)
   const activa = proyecto.cotizacion.versiones.find((v) => v.id === proyecto.cotizacion.versionActivaId)!
+  const abierta = proyecto.etapa < 4 && (activa.estado === 'borrador' || activa.estado === 'enviada')
 
-  const acciones: { estado: EstadoCotizacion; label: string; icon: React.ReactNode; variant: 'primary' | 'secondary' | 'danger' }[] = [
-    { estado: 'enviada', label: 'Marcar enviada', icon: <Send />, variant: 'secondary' },
-    { estado: 'aprobada', label: 'Aprobada', icon: <Check />, variant: 'primary' },
-    { estado: 'rechazada', label: 'Rechazada', icon: <X />, variant: 'danger' },
-  ]
+  // Solo las respuestas que tienen sentido desde el estado actual.
+  const acciones: { estado: EstadoCotizacion; label: string; icon: React.ReactNode; variant: 'primary' | 'secondary' | 'danger' }[] =
+    activa.estado === 'borrador'
+      ? [{ estado: 'enviada', label: 'Marcar como enviada', icon: <Send />, variant: 'primary' }]
+      : [
+          { estado: 'aprobada', label: 'El cliente aprobó', icon: <Check />, variant: 'primary' },
+          { estado: 'rechazada', label: 'El cliente rechazó', icon: <X />, variant: 'danger' },
+        ]
+
+  const registrar = (estado: EstadoCotizacion) => {
+    const antes = { versiones: JSON.parse(JSON.stringify(proyecto.cotizacion.versiones)), etapa: proyecto.etapa }
+    cambiar(proyecto.id, activa.id, estado, fechaCambio)
+    notificar(`Cotización ${activa.nombre} marcada como ${nombreEstadoCot(estado).toLowerCase()}`, 'ok', () =>
+      editarProyecto(proyecto.id, (p) => {
+        p.cotizacion.versiones = antes.versiones
+        p.etapa = antes.etapa
+      }),
+    )
+    setConfirmar(null)
+  }
 
   return (
     <Card>
@@ -48,7 +66,7 @@ function EstadoCotizacionCard({ proyecto }: { proyecto: Proyecto }) {
                 <div className="flex items-center gap-2">
                   <span className="font-semibold text-slate-900">{v.nombre}</span>
                   <EstadoCotBadge estado={v.estado} />
-                  {v.id === activa.id && <span className="text-xs text-brand-700">versión en edición</span>}
+                  {v.id === activa.id && (v.estado === 'borrador' || v.estado === 'enviada') && <span className="text-xs text-slate-500">versión actual</span>}
                 </div>
                 <span className="num text-sm font-medium text-slate-900">{money(resumen(v).precioVigente)}</span>
               </div>
@@ -63,29 +81,54 @@ function EstadoCotizacionCard({ proyecto }: { proyecto: Proyecto }) {
             </li>
           ))}
         </ol>
-        <div className="mt-5 border-t border-slate-200 pt-4">
-          <div className="mb-2 text-[13px] font-medium text-slate-700">Registrar respuesta para {activa.nombre}</div>
-          <Field label="Fecha de la respuesta" htmlFor="fecha-estado" className="w-48">
-            <Input id="fecha-estado" type="date" value={fechaCambio} onChange={(e) => setFechaCambio(e.target.value)} />
-          </Field>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {acciones.map((a) => (
-              <Button
-                key={a.estado}
-                variant={a.variant}
-                icon={a.icon}
-                disabled={activa.estado === a.estado}
-                onClick={() => {
-                  cambiar(proyecto.id, activa.id, a.estado, fechaCambio)
-                  notificar(`Cotización ${activa.nombre} marcada como ${nombreEstadoCot(a.estado).toLowerCase()}`)
-                }}
-              >
-                {a.label}
-              </Button>
-            ))}
+        {abierta ? (
+          <div className="mt-5 border-t border-slate-200 pt-4">
+            <div className="mb-2 text-[13px] font-medium text-slate-700">
+              {activa.estado === 'borrador' ? `Enviar ${activa.nombre} al cliente` : `Registrar la respuesta del cliente a ${activa.nombre}`}
+            </div>
+            <Field label={activa.estado === 'borrador' ? 'Fecha de envío' : 'Fecha de la respuesta'} htmlFor="fecha-estado" className="w-48">
+              <Input id="fecha-estado" type="date" value={fechaCambio} onChange={(e) => setFechaCambio(e.target.value)} />
+            </Field>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {acciones.map((a) => (
+                <Button key={a.estado} variant={a.variant} icon={a.icon} onClick={() => (a.estado === 'enviada' ? registrar(a.estado) : setConfirmar(a.estado))}>
+                  {a.label}
+                </Button>
+              ))}
+            </div>
           </div>
-        </div>
+        ) : (
+          <p className="mt-5 border-t border-slate-200 pt-4 text-[13px] text-slate-500">
+            {activa.estado === 'aprobada'
+              ? `${activa.nombre} está aprobada. Si el cliente pide cambios, crea una nueva versión desde el cotizador.`
+              : activa.estado === 'rechazada'
+                ? `${activa.nombre} fue rechazada. Crea una nueva versión desde el cotizador para volver a enviarla.`
+                : 'El proyecto ya está en entrega o cierre.'}
+          </p>
+        )}
       </div>
+      <Modal
+        open={confirmar !== null}
+        onClose={() => setConfirmar(null)}
+        size="sm"
+        title={confirmar === 'aprobada' ? `¿El cliente aprobó la ${activa.nombre}?` : `¿El cliente rechazó la ${activa.nombre}?`}
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setConfirmar(null)}>
+              Cancelar
+            </Button>
+            <Button variant={confirmar === 'rechazada' ? 'danger' : 'primary'} onClick={() => confirmar && registrar(confirmar)}>
+              {confirmar === 'aprobada' ? 'Sí, registrar aprobación' : 'Sí, registrar rechazo'}
+            </Button>
+          </>
+        }
+      >
+        <p className="text-sm text-slate-600">
+          {confirmar === 'aprobada'
+            ? `La ${activa.nombre} por ${money(resumen(activa).precioVigente)} queda aprobada con fecha ${fechaCambio.split('-').reverse().join('/')}, el proyecto pasa a compras y la cotización queda en solo lectura.`
+            : `La ${activa.nombre} queda como rechazada con fecha ${fechaCambio.split('-').reverse().join('/')}. Para seguir negociando crea una nueva versión desde el cotizador.`}
+        </p>
+      </Modal>
     </Card>
   )
 }
@@ -152,7 +195,7 @@ function OCClienteCard({ proyecto }: { proyecto: Proyecto }) {
                 ['Número', <span className="font-semibold">{oc.numero}</span>],
                 ['Fecha', <FechaTexto iso={oc.fecha} />],
                 ['Valor', <span className="num font-semibold">{money(oc.valor)}</span>],
-                ['Adjunto', oc.adjunto ? <AdjuntoChip adjunto={oc.adjunto} /> : <span className="text-slate-400">Sin adjunto</span>],
+                ['Adjunto', oc.adjunto ? <AdjuntoChip adjunto={oc.adjunto} contexto={{ tipo: 'ocCliente', proyectoId: proyecto.id }} /> : <span className="text-slate-500">Sin adjunto</span>],
               ]}
             />
           )
@@ -196,11 +239,16 @@ function OrdenesProveedorCard({ proyecto }: { proyecto: Proyecto }) {
   const ordenes = todas.filter((o) => o.proyectoId === proyecto.id)
   const v = versionVigente(proyecto)
   const pendientes = itemsSinProveedor(v)
+  const aprobada = v.estado === 'aprobada'
+  // Vista previa de lo que se va a crear, sin guardar nada.
+  const previa = generarOrdenes(proyecto.id, v, () => '')
+  const mutar = useStore((s) => s.mutar)
 
   const generar = () => {
+    const antes = JSON.parse(JSON.stringify(todas)) as OrdenCompra[]
     const n = generarOCs(proyecto.id)
     setConfirmar(false)
-    notificar(n ? `Se generaron ${n} órdenes de compra, una por proveedor` : 'No hay ítems con proveedor asignado', n ? 'ok' : 'error')
+    notificar(n ? `Se generaron ${n} órdenes de compra, una por proveedor` : 'No hay ítems con proveedor asignado', n ? 'ok' : 'error', n ? () => mutar((s) => void (s.ordenes = antes)) : undefined)
   }
 
   return (
@@ -209,8 +257,14 @@ function OrdenesProveedorCard({ proyecto }: { proyecto: Proyecto }) {
         title="Órdenes de compra a proveedores"
         description={`Una orden por cada proveedor seleccionado en la cotización ${v.nombre}. Solo incluye el material.`}
         actions={
-          <Button variant="primary" icon={ordenes.length ? <RefreshCw /> : <ShoppingCart />} onClick={() => (ordenes.length ? setConfirmar(true) : generar())}>
-            Generar órdenes de compra
+          <Button
+            variant={ordenes.length ? 'secondary' : 'primary'}
+            icon={ordenes.length ? <RefreshCw /> : <ShoppingCart />}
+            onClick={() => setConfirmar(true)}
+            disabled={!aprobada || proyecto.etapa >= 4}
+            title={!aprobada ? 'Primero registra la aprobación de la cotización' : proyecto.etapa >= 4 ? 'El proyecto ya está en entrega o cierre' : undefined}
+          >
+            {ordenes.length ? 'Volver a generar' : 'Generar órdenes de compra'}
           </Button>
         }
       />
@@ -256,13 +310,13 @@ function OrdenesProveedorCard({ proyecto }: { proyecto: Proyecto }) {
                       <div className="mt-0.5 truncate font-semibold text-slate-900">{nombreProveedor(proveedores, oc.proveedorId)}</div>
                       {cambioProveedor && <div className="text-xs text-amber-700">Cotizado con {nombreProveedor(proveedores, oc.proveedorOriginalId)}</div>}
                     </div>
-                    {dif !== 0 ? <Badge tone="warn">Editada</Badge> : <Badge tone="ok">Según cotización</Badge>}
+                    {Math.abs(dif) >= 100 || cambioProveedor ? <Badge tone="warn">Editada</Badge> : <Badge tone="ok">Según cotización</Badge>}
                   </header>
                   <ul className="flex-1 divide-y divide-slate-100 px-4 text-[13px]">
                     {oc.lineas.map((l) => (
                       <li key={l.id} className="flex items-baseline justify-between gap-3 py-2">
                         <span className="min-w-0 text-slate-700">
-                          <span className="num mr-1 text-slate-400">
+                          <span className="num mr-1 text-slate-500">
                             {l.cantidad.toLocaleString('es-CO')} {l.unidad}
                           </span>
                           {l.descripcion}
@@ -276,7 +330,7 @@ function OrdenesProveedorCard({ proyecto }: { proyecto: Proyecto }) {
                       <span className="text-[13px] text-slate-500">Total</span>
                       <span className="num text-base font-semibold text-slate-900">{money(total)}</span>
                     </div>
-                    {dif !== 0 && (
+                    {Math.abs(dif) >= 100 && (
                       <div className={cn('num mt-0.5 text-right text-xs font-medium', dif > 0 ? 'text-red-700' : 'text-emerald-700')}>{moneySigned(dif)} frente a lo cotizado</div>
                     )}
                     <div className="mt-3 flex gap-2">
@@ -302,20 +356,48 @@ function OrdenesProveedorCard({ proyecto }: { proyecto: Proyecto }) {
       <Modal
         open={confirmar}
         onClose={() => setConfirmar(false)}
-        size="sm"
-        title="¿Volver a generar las órdenes?"
+        title={ordenes.length ? 'Volver a generar las órdenes de compra' : 'Generar órdenes de compra'}
+        description={`Desde la cotización ${proyecto.cotizacion.consecutivo} ${v.nombre}. Solo el material; la mano de obra es propia.`}
         footer={
           <>
             <Button variant="ghost" onClick={() => setConfirmar(false)}>
               Cancelar
             </Button>
-            <Button variant="primary" onClick={generar}>
-              Regenerar
+            <Button variant="primary" onClick={generar} disabled={!previa.length}>
+              {previa.length === 1 ? 'Generar 1 orden' : `Generar ${previa.length} órdenes`}
             </Button>
           </>
         }
       >
-        <p className="text-sm text-slate-600">Se reemplazarán las {ordenes.length} órdenes actuales de este proyecto, incluidas sus ediciones, por órdenes nuevas tomadas de la cotización.</p>
+        {previa.length ? (
+          <ul className="divide-y divide-slate-100 rounded-md border border-slate-200">
+            {previa.map((o) => (
+              <li key={o.proveedorId} className="flex items-baseline justify-between gap-4 px-4 py-3 text-sm">
+                <span>
+                  <span className="block font-medium text-slate-900">{nombreProveedor(proveedores, o.proveedorId)}</span>
+                  <span className="text-xs text-slate-500">
+                    {o.lineas.length} línea{o.lineas.length === 1 ? '' : 's'}
+                  </span>
+                </span>
+                <span className="num font-semibold text-slate-900">{money(totalOC(o))}</span>
+              </li>
+            ))}
+            <li className="flex items-baseline justify-between gap-4 bg-slate-50 px-4 py-2.5 text-sm">
+              <span className="font-medium text-slate-700">Total a comprar</span>
+              <span className="num font-semibold text-slate-900">{money(previa.reduce((a, o) => a + totalOC(o), 0))}</span>
+            </li>
+          </ul>
+        ) : (
+          <p className="text-sm text-slate-600">No hay ítems con material y proveedor asignado.</p>
+        )}
+        {pendientes.length > 0 && (
+          <Alert tone="warn" className="mt-3" title={`${pendientes.length} ítem${pendientes.length === 1 ? '' : 's'} sin proveedor quedan por fuera`} />
+        )}
+        {ordenes.length > 0 && (
+          <Alert tone="warn" className="mt-3" title={`Se reemplazarán las ${ordenes.length} órdenes actuales`}>
+            Incluidas sus ediciones. Tendrás unos segundos para deshacer.
+          </Alert>
+        )}
       </Modal>
       {editar && <EditarOCModal ocId={editar.id} onClose={() => setEditar(null)} />}
     </Card>

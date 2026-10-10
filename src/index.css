@@ -1,24 +1,42 @@
 @import "tailwindcss";
 
-/* Sistema visual Infrasoft: azul marino corporativo, neutros pizarra, acentos semánticos. */
+/* Sistema visual Infrasoft: verde del logo, neutros grises sin tinte, barra lateral carbón, acentos semánticos. */
 @theme {
   --font-sans: "Fira Sans", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "Fira Code", ui-monospace, SFMono-Regular, monospace;
 
-  --color-brand-50: #eff4ff;
-  --color-brand-100: #dbe6fe;
-  --color-brand-200: #bfd3fe;
-  --color-brand-300: #93b4fd;
-  --color-brand-400: #608bfa;
-  --color-brand-500: #3b65f5;
-  --color-brand-600: #2547d0;
-  --color-brand-700: #1e3a9e;
-  --color-brand-800: #1b3280;
-  --color-brand-900: #152659;
-  --color-brand-950: #0d1838;
+  /* Verde Infrasoft: 500 es el verde del logo (#82C11E); 700–800 para botones y texto sobre blanco. */
+  --color-brand-50: #f4f9ea;
+  --color-brand-100: #e5f2cd;
+  --color-brand-200: #cce59f;
+  --color-brand-300: #afd669;
+  --color-brand-400: #96c83c;
+  --color-brand-500: #82c11e;
+  --color-brand-600: #679d14;
+  --color-brand-700: #507b10;
+  --color-brand-800: #426311;
+  --color-brand-900: #384f13;
+  --color-brand-950: #1c2b06;
+
+  /* Neutros: el gris del logo (#808080), sin tinte azul. */
+  --color-slate-50: #f7f7f7;
+  --color-slate-100: #efefef;
+  --color-slate-200: #e2e2e2;
+  --color-slate-300: #cdcdcd;
+  --color-slate-400: #8c8c8c;
+  --color-slate-500: #6b6b6b;
+  --color-slate-600: #575757;
+  --color-slate-700: #434343;
+  --color-slate-800: #2d2d2d;
+  --color-slate-900: #1f1f1f;
+  --color-slate-950: #121212;
+
+  /* Carbón para la barra lateral. */
+  --color-carbon: #26292a;
+  --color-carbon-line: #3a3e3f;
 
   --color-surface: #ffffff;
-  --color-canvas: #f4f6f9;
+  --color-canvas: #f5f5f3;
 }
 
 @layer base {
@@ -30,7 +48,7 @@
     @apply bg-canvas text-slate-800 font-sans text-sm;
   }
   :focus-visible {
-    @apply outline-2 outline-offset-2 outline-brand-500;
+    @apply outline-2 outline-offset-2 outline-brand-700;
   }
   input[type="number"]::-webkit-inner-spin-button,
   input[type="number"]::-webkit-outer-spin-button {
@@ -110,4 +128,8 @@
   .overflow-auto {
     position: relative;
   }
+}
+@keyframes entrar {
+  from { transform: translateX(24px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
 }

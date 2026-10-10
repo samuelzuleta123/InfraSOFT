@@ -1,12 +1,16 @@
+import { useState } from 'react'
+import { cn } from '@/lib/cn'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, MapPin } from 'lucide-react'
 import { Button, Tabs } from '@/components/ui'
-import { ETAPAS, EtapaBadge, EstadoCotBadge, StepperEtapas, nombreEtapa } from '@/components/dominio'
-import { useCliente, useProyecto, useStore } from '@/store/useStore'
+import { ETAPAS, EtapaBadge, EstadoCotBadge, StepperEtapas } from '@/components/dominio'
+import { useCliente, useProyecto } from '@/store/useStore'
 import { versionVigente } from '@/lib/calc'
 import type { Etapa } from '@/types'
 import { LevantamientoTab } from './LevantamientoTab'
 import { DocumentosTab } from './DocumentosTab'
+import { HistorialTab } from './HistorialTab'
+import { AvanzarEtapaModal } from './AvanzarEtapaModal'
 import { CotizadorTab } from '@/modules/cotizaciones/CotizadorTab'
 import { ComprasTab } from '@/modules/compras/ComprasTab'
 import { BitacoraTab } from '@/modules/ejecucion/BitacoraTab'
@@ -21,6 +25,7 @@ const TABS = [
   { id: 'entrega', label: 'Entrega' },
   { id: 'cierre', label: 'Cierre' },
   { id: 'documentos', label: 'Documentos' },
+  { id: 'historial', label: 'Historial' },
 ] as const
 type TabId = (typeof TABS)[number]['id']
 
@@ -30,21 +35,15 @@ export function ProyectoDetalle() {
   const { id, tab } = useParams()
   const proyecto = useProyecto(id)
   const cliente = useCliente(proyecto?.clienteId)
-  const editarProyecto = useStore((s) => s.editarProyecto)
-  const notificar = useStore((s) => s.notificar)
   const nav = useNavigate()
+  const [avanzar, setAvanzar] = useState(false)
 
   if (!proyecto) return <Navigate to="/proyectos" replace />
   if (!TABS.some((t) => t.id === tab)) return <Navigate to={`/proyectos/${proyecto.id}/cotizacion`} replace />
 
   const v = versionVigente(proyecto)
   const cerrado = proyecto.etapa === 5 && !!proyecto.facturaCliente
-  const cambiarEtapa = (e: Etapa) => {
-    editarProyecto(proyecto.id, (p) => {
-      p.etapa = e
-    })
-    notificar(`Proyecto en etapa ${e}: ${nombreEtapa(e)}`)
-  }
+  const siguiente = (proyecto.etapa + 1) as Etapa
 
   return (
     <div>
@@ -62,37 +61,45 @@ export function ProyectoDetalle() {
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <EtapaBadge etapa={proyecto.etapa} cerrado={cerrado} />
-              <span className="text-xs text-slate-400">·</span>
+              <span className="text-xs text-slate-500">·</span>
               <span className="text-xs text-slate-500">
                 {proyecto.cotizacion.consecutivo} {v.nombre}
               </span>
               <EstadoCotBadge estado={v.estado} />
             </div>
-            <h1 className="mt-2 text-xl font-semibold text-balance text-slate-900">{proyecto.nombre}</h1>
+            <h1 className="mt-2 text-lg font-semibold text-balance text-slate-900 sm:text-xl">{proyecto.nombre}</h1>
             <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-500">
               <span className="font-medium text-slate-700">{cliente?.nombre}</span>
-              <span>NIT {cliente?.nit}</span>
-              <span className="inline-flex items-center gap-1">
+              <span className="hidden sm:inline">NIT {cliente?.nit}</span>
+              <span className="hidden items-center gap-1 sm:inline-flex">
                 <MapPin className="size-3.5" aria-hidden />
                 {proyecto.sede}
               </span>
             </div>
           </div>
           {proyecto.etapa < 5 && (
-            <Button
-              variant="primary"
-              icon={<ChevronRight />}
-              onClick={() => {
-                const sig = (proyecto.etapa + 1) as Etapa
-                cambiarEtapa(sig)
-                nav(`/proyectos/${proyecto.id}/${tabDeEtapa[sig]}`)
-              }}
-            >
+            <Button variant="primary" icon={<ChevronRight />} onClick={() => setAvanzar(true)} className="hidden sm:inline-flex">
               Avanzar a {ETAPAS[proyecto.etapa].corto.toLowerCase()}
             </Button>
           )}
         </div>
-        <div className="border-t border-slate-100 px-5 py-4">
+        {/* En celular: progreso compacto en una línea; el avance de etapa es secundario. */}
+        <div className="flex items-center gap-3 border-t border-slate-100 px-5 py-3 sm:hidden">
+          <div className="flex flex-1 gap-1" aria-hidden>
+            {ETAPAS.map((e) => (
+              <span key={e.n} className={cn('h-1.5 flex-1 rounded-full', e.n <= proyecto.etapa ? 'bg-brand-600' : 'bg-slate-200')} />
+            ))}
+          </div>
+          <span className="text-xs font-medium text-slate-600">
+            Etapa {proyecto.etapa} de 5
+          </span>
+          {proyecto.etapa < 5 && (
+            <button type="button" onClick={() => setAvanzar(true)} className="-my-2 px-1 py-2 text-xs font-medium text-brand-800 underline">
+              Avanzar
+            </button>
+          )}
+        </div>
+        <div className="hidden border-t border-slate-100 px-5 py-4 sm:block">
           <StepperEtapas
             etapa={proyecto.etapa}
             onSelect={(e) => {
@@ -111,7 +118,9 @@ export function ProyectoDetalle() {
         {tab === 'entrega' && <EntregaTab proyecto={proyecto} />}
         {tab === 'cierre' && <CierreTab proyecto={proyecto} />}
         {tab === 'documentos' && <DocumentosTab proyecto={proyecto} />}
+        {tab === 'historial' && <HistorialTab proyecto={proyecto} />}
       </div>
+      {avanzar && <AvanzarEtapaModal proyecto={proyecto} destino={siguiente} onClose={() => setAvanzar(false)} onAvanzado={() => nav(`/proyectos/${proyecto.id}/${tabDeEtapa[siguiente]}`)} />}
     </div>
   )
 }

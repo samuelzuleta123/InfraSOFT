@@ -31,7 +31,7 @@ export function ComparacionOC({ factura, oc }: { factura: FacturaProveedor; oc: 
 
   return (
     <div className="space-y-3">
-      {Math.round(difTotal) === 0 ? (
+      {Math.abs(difTotal) < 1 ? (
         <Alert tone="ok" title="El subtotal de la factura coincide con la OC">
           {money(factura.subtotal)} facturado frente a {money(totalOrden)} en la OC {oc.consecutivo}.
         </Alert>
@@ -46,7 +46,7 @@ export function ComparacionOC({ factura, oc }: { factura: FacturaProveedor; oc: 
       ) : (
         <div className="overflow-x-auto rounded-md border border-slate-200">
           <table className="w-full min-w-[640px] text-[13px]">
-            <thead className="border-b border-slate-200 bg-slate-50 text-[11px] font-semibold tracking-wide text-slate-500 uppercase">
+            <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold tracking-wide text-slate-500 uppercase">
               <tr>
                 <th className="px-3 py-2 text-left">Ítem</th>
                 <th className="px-2 py-2 text-right">Cant. OC</th>
@@ -73,7 +73,7 @@ export function ComparacionOC({ factura, oc }: { factura: FacturaProveedor; oc: 
                     <td className={cn('num px-2 py-2 text-right', cantMal && marca)}>{f.cantF.toLocaleString('es-CO')}</td>
                     <td className="num px-2 py-2 text-right">{f.precioOC === null ? '—' : money(f.precioOC)}</td>
                     <td className={cn('num px-2 py-2 text-right', precioMal && marca)}>{money(f.precioF)}</td>
-                    <td className={cn('num px-3 py-2 text-right font-medium', dif > 0.5 ? 'text-red-700' : dif < -0.5 ? 'text-emerald-700' : 'text-slate-300')}>
+                    <td className={cn('num px-3 py-2 text-right font-medium', dif > 0.5 ? 'text-red-700' : dif < -0.5 ? 'text-emerald-700' : 'text-slate-500')}>
                       {Math.abs(dif) <= 0.5 ? '—' : moneySigned(dif)}
                     </td>
                   </tr>

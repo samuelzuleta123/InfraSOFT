@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { Check, FileSignature, FileText, Printer } from 'lucide-react'
+import { Check, FileSignature, FileText, Printer, Truck } from 'lucide-react'
 import { Alert, Badge, Card, CardHeader, Field, Input } from '@/components/ui'
 import { AdjuntoChip, FotoPlaceholder, SubirArchivo } from '@/components/dominio'
 import { cn } from '@/lib/cn'
@@ -21,13 +21,22 @@ export function EntregaTab({ proyecto }: { proyecto: Proyecto }) {
           title="Informe de entrega"
           description="Selecciona las fotos que van en el informe y adjunta la certificación."
           actions={
-            <Link
-              to={`/proyectos/${proyecto.id}/entrega/informe`}
-              className="inline-flex h-9 items-center gap-2 rounded-md bg-brand-800 px-3.5 text-sm font-medium text-white shadow-sm hover:bg-brand-700"
-            >
-              <FileText className="size-4" aria-hidden />
-              Generar informe
-            </Link>
+            <>
+              <Link
+                to={`/proyectos/${proyecto.id}/entrega/remision`}
+                className="inline-flex h-9 items-center gap-2 rounded-md border border-slate-300 bg-white px-3.5 text-sm font-medium text-slate-700 shadow-xs hover:bg-slate-50"
+              >
+                <Truck className="size-4" aria-hidden />
+                Generar remisión
+              </Link>
+              <Link
+                to={`/proyectos/${proyecto.id}/entrega/informe`}
+                className="inline-flex h-9 items-center gap-2 rounded-md bg-brand-800 px-3.5 text-sm font-medium text-white shadow-sm hover:bg-brand-700"
+              >
+                <FileText className="size-4" aria-hidden />
+                Generar informe
+              </Link>
+            </>
           }
         />
         <div className="p-5">
@@ -68,7 +77,7 @@ export function EntregaTab({ proyecto }: { proyecto: Proyecto }) {
             <Field label="Certificación adjunta">
               <div className="flex min-h-9 flex-wrap items-center gap-2">
                 {e.certificacion ? (
-                  <AdjuntoChip adjunto={e.certificacion} onRemove={() => editar((en) => void (en.certificacion = null))} />
+                  <AdjuntoChip adjunto={e.certificacion} contexto={{ tipo: 'certificacion', proyectoId: proyecto.id }} onRemove={() => editar((en) => void (en.certificacion = null))} />
                 ) : (
                   <SubirArchivo accept=".pdf" label="Adjuntar certificación (PDF)" onFile={(a) => editar((en) => void (en.certificacion = a))} />
                 )}
@@ -77,9 +86,14 @@ export function EntregaTab({ proyecto }: { proyecto: Proyecto }) {
             <Field label="Fecha de entrega" htmlFor="fecha-entrega">
               <Input id="fecha-entrega" type="date" value={e.fechaEntrega ?? ''} onChange={(ev) => editar((en) => void (en.fechaEntrega = ev.target.value || null))} />
             </Field>
-            <Field label="Remisión N.°" htmlFor="remision">
-              <Input id="remision" value={e.remision} onChange={(ev) => editar((en) => void (en.remision = ev.target.value))} placeholder="Ej. 286" />
-            </Field>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Remisión N.°" htmlFor="remision">
+                <Input id="remision" value={e.remision} onChange={(ev) => editar((en) => void (en.remision = ev.target.value))} placeholder="Ej. 286" />
+              </Field>
+              <Field label="Fecha de remisión" htmlFor="fecha-remision">
+                <Input id="fecha-remision" type="date" value={e.fechaRemision ?? ''} onChange={(ev) => editar((en) => void (en.fechaRemision = ev.target.value || null))} />
+              </Field>
+            </div>
             <Field label="Garantía" htmlFor="garantia">
               <Input id="garantia" value={e.garantia} onChange={(ev) => editar((en) => void (en.garantia = ev.target.value))} placeholder="Ej. 1 año en la instalación" />
             </Field>
@@ -108,7 +122,7 @@ export function EntregaTab({ proyecto }: { proyecto: Proyecto }) {
             {e.actaFirmada ? (
               <div className="flex flex-wrap items-center gap-2">
                 <FileSignature className="size-4 text-emerald-600" aria-hidden />
-                <AdjuntoChip adjunto={e.actaFirmada} onRemove={() => editar((en) => void (en.actaFirmada = null))} />
+                <AdjuntoChip adjunto={e.actaFirmada} contexto={{ tipo: 'acta', proyectoId: proyecto.id }} onRemove={() => editar((en) => void (en.actaFirmada = null))} />
               </div>
             ) : (
               <SubirArchivo

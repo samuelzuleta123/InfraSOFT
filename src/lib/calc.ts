@@ -123,10 +123,11 @@ export function preciosCliente(v: VersionCotizacion) {
 export const precioNeto = (p: Pick<PrecioProveedor, 'precioLista' | 'descuentoPct'>) =>
   p.precioLista * (1 - (p.descuentoPct ?? 0) / 100)
 
-export const totalLineaOC = (l: LineaOC) => l.cantidad * l.precioUnitario
+// Cada línea se redondea al peso, como lo hacen las facturas de los proveedores.
+export const totalLineaOC = (l: LineaOC) => Math.round(l.cantidad * l.precioUnitario)
 export const totalOC = (oc: OrdenCompra) => oc.lineas.reduce((a, l) => a + totalLineaOC(l), 0)
-export const totalCotizadoOC = (oc: OrdenCompra) =>
-  oc.lineas.reduce((a, l) => a + (l.cantidadCotizada ?? 0) * (l.precioCotizado ?? 0), 0)
+export const totalCotizadoLineaOC = (l: LineaOC) => Math.round((l.cantidadCotizada ?? 0) * (l.precioCotizado ?? 0))
+export const totalCotizadoOC = (oc: OrdenCompra) => oc.lineas.reduce((a, l) => a + totalCotizadoLineaOC(l), 0)
 
 export const totalFactura = (f: FacturaProveedor) => f.subtotal + f.iva
 

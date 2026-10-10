@@ -127,6 +127,11 @@ function TablaFacturas({ facturas, onAbrir, onAsociar }: { facturas: FacturaProv
                 </td>
                 <td className={cn(td, 'text-slate-600')}>
                   <FechaTexto iso={f.vencimiento} />
+                  {f.pagada && (
+                    <Badge tone="ok" className="ml-2">
+                      Pagada
+                    </Badge>
+                  )}
                 </td>
                 <td className={cn(td, 'text-slate-600')}>{f.formaPago}</td>
                 <td className={cn(td, 'num text-right')}>{money(f.subtotal)}</td>
@@ -135,11 +140,11 @@ function TablaFacturas({ facturas, onAbrir, onAsociar }: { facturas: FacturaProv
                 <td className={td}>
                   <div className="flex flex-wrap gap-1">
                     {f.adjuntos.map((a) => (
-                      <AdjuntoChip key={a.nombre} adjunto={{ ...a, nombre: a.tipo.toUpperCase() }} />
+                      <AdjuntoChip key={a.nombre} adjunto={a} etiqueta={a.tipo.toUpperCase()} contexto={{ tipo: 'facturaProveedor', id: f.id }} />
                     ))}
                   </div>
                 </td>
-                <td className={td}>{oc ? <span className="num text-slate-700">{oc.consecutivo}</span> : <span className="text-slate-400">—</span>}</td>
+                <td className={td}>{oc ? <span className="num text-slate-700">{oc.consecutivo}</span> : <span className="text-slate-500">—</span>}</td>
                 <td className={cn(td, 'text-right')}>
                   <Button size="sm" variant={f.proyectoId ? 'ghost' : 'subtle'} icon={<Link2 />} onClick={() => onAsociar(f.id)}>
                     {f.proyectoId ? 'Cambiar' : 'Asociar a proyecto / OC'}
@@ -159,6 +164,7 @@ function DetalleFactura({ id, onClose, onAsociar }: { id: string; onClose: () =>
   const proveedores = useStore((s) => s.proveedores)
   const proyecto = useStore((s) => s.proyectos.find((p) => p.id === f?.proyectoId))
   const oc = useStore((s) => s.ordenes.find((o) => o.id === f?.ocId))
+  const mutar = useStore((s) => s.mutar)
   if (!f) return null
   return (
     <Modal
@@ -169,6 +175,18 @@ function DetalleFactura({ id, onClose, onAsociar }: { id: string; onClose: () =>
       description={nombreProveedor(proveedores, f.proveedorId)}
       footer={
         <>
+          <Button
+            variant="ghost"
+            className="mr-auto"
+            onClick={() =>
+              mutar((s) => {
+                const x = s.facturas.find((y) => y.id === f.id)
+                if (x) x.pagada = !x.pagada
+              })
+            }
+          >
+            {f.pagada ? 'Marcar como pendiente' : 'Marcar como pagada'}
+          </Button>
           <Button variant="ghost" onClick={onClose}>
             Cerrar
           </Button>
@@ -184,6 +202,7 @@ function DetalleFactura({ id, onClose, onAsociar }: { id: string; onClose: () =>
             ['Fecha', <FechaTexto iso={f.fecha} />],
             ['Vencimiento', <FechaTexto iso={f.vencimiento} />],
             ['Forma de pago', f.formaPago],
+            ['Estado de pago', f.pagada ? <Badge tone="ok">Pagada</Badge> : <Badge tone="warn">Pendiente</Badge>],
             ...(f.notas ? ([['Notas', f.notas]] as [string, string][]) : []),
           ]}
         />
@@ -197,7 +216,7 @@ function DetalleFactura({ id, onClose, onAsociar }: { id: string; onClose: () =>
       </div>
       <div className="mt-4 flex flex-wrap gap-2">
         {f.adjuntos.map((a) => (
-          <AdjuntoChip key={a.nombre} adjunto={a} />
+          <AdjuntoChip key={a.nombre} adjunto={a} contexto={{ tipo: 'facturaProveedor', id: f.id }} />
         ))}
       </div>
       <div className="mt-6 border-t border-slate-200 pt-5">

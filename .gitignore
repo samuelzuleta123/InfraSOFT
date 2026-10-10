@@ -22,3 +22,20 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Variables de entorno (secretos)
+.env
+.env.*
+!.env.example
+
+# Deploy / caché / tests
+.vercel
+*.tsbuildinfo
+coverage
+
+# Llaves y certificados
+*.pem
+*.key
+
+# Estado temporal de Impeccable (modo en vivo)
+.impeccable/live/

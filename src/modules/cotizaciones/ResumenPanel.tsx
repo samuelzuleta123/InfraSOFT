@@ -8,8 +8,8 @@ import { money, pct } from '@/lib/format'
 function Fila({ label, value, strong, muted, className }: { label: React.ReactNode; value: React.ReactNode; strong?: boolean; muted?: boolean; className?: string }) {
   return (
     <div className={cn('flex items-baseline justify-between gap-3 py-1', className)}>
-      <dt className={cn('text-[13px]', strong ? 'font-semibold text-slate-900' : muted ? 'text-slate-400' : 'text-slate-600')}>{label}</dt>
-      <dd className={cn('num text-right', strong ? 'text-[15px] font-semibold text-slate-900' : muted ? 'text-[13px] text-slate-400' : 'text-[13px] text-slate-800')}>{value}</dd>
+      <dt className={cn('text-[13px]', strong ? 'font-semibold text-slate-900' : muted ? 'text-slate-500' : 'text-slate-600')}>{label}</dt>
+      <dd className={cn('num text-right', strong ? 'text-[15px] font-semibold text-slate-900' : muted ? 'text-[13px] text-slate-500' : 'text-[13px] text-slate-800')}>{value}</dd>
     </div>
   )
 }
@@ -44,7 +44,7 @@ export function ResumenPanel({ r, onPrecioFinal, vistaCliente }: { r: Resumen; o
         <Fila label={`Utilidad (${pct(r.utilidadPct, 1)})`} value={money(r.utilidadSugerida)} muted={r.utilidadPct === 0} />
         <Fila label={`Otros ajustes (${pct(r.ajustesPct, 1)})`} value={money(r.ajustesSugeridos)} muted={r.ajustesPct === 0} />
         <Fila label="Precio sugerido" value={money(r.precioSugerido)} strong className="mt-1" />
-        <p className="text-[11px] leading-snug text-slate-400">Costo × (1 + % utilidad), más % de otros ajustes.</p>
+        <p className="text-xs leading-snug text-slate-500">Costo × (1 + % utilidad), más % de otros ajustes.</p>
       </dl>
 
       <div className="border-t border-slate-200 bg-brand-50/60 px-5 py-4">
@@ -77,10 +77,10 @@ export function ResumenPanel({ r, onPrecioFinal, vistaCliente }: { r: Resumen; o
       </div>
 
       <dl className="border-t border-slate-200 px-5 py-3">
-        <div className="mb-1 text-[11px] font-semibold tracking-wide text-slate-500 uppercase">Sobre el precio final</div>
+        <div className="mb-1 text-xs font-semibold tracking-wide text-slate-500 uppercase">Sobre el precio final</div>
         <Fila label={`Otros ajustes (${pct(r.ajustesPct, 1)})`} value={money(r.ajustesReales)} muted={r.ajustesPct === 0} />
         <Fila
-          label="Utilidad real"
+          label="Utilidad cotizada"
           value={<span className={cn(r.utilidadReal < 0 ? 'text-red-700' : 'text-emerald-700')}>{money(r.utilidadReal)}</span>}
           strong
         />
@@ -98,7 +98,7 @@ export function ResumenPanel({ r, onPrecioFinal, vistaCliente }: { r: Resumen; o
 export function ResumenBarra({ r, onPrecioFinal, vistaCliente }: { r: Resumen; onPrecioFinal: (n: number | null) => void; vistaCliente: boolean }) {
   const [detalle, setDetalle] = useState(false)
   return (
-    <div className="sticky bottom-0 z-10 -mx-4 mt-5 border-t border-slate-200 bg-white/95 px-4 py-3 shadow-[0_-4px_16px_-8px_rgb(15_23_42/0.18)] backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-5 lg:px-5 min-[1360px]:hidden">
+    <div className="sticky bottom-0 z-10 -mx-4 mt-5 border-t border-slate-200 bg-white/95 px-4 py-3 shadow-[0_-4px_16px_-8px_rgb(15_23_42/0.18)] backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 min-[1360px]:hidden">
       {vistaCliente ? (
         <div className="flex items-baseline justify-between gap-4">
           <span className="text-[13px] text-slate-600">Valor de la propuesta</span>
@@ -106,8 +106,12 @@ export function ResumenBarra({ r, onPrecioFinal, vistaCliente }: { r: Resumen; o
         </div>
       ) : (
         <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
-          <BarraDato label="Costo total" value={money(r.costo)} />
-          <BarraDato label="Precio sugerido" value={money(r.precioSugerido)} />
+          <span className="hidden sm:block">
+            <BarraDato label="Costo total" value={money(r.costo)} />
+          </span>
+          <span className="hidden sm:block">
+            <BarraDato label="Precio sugerido" value={money(r.precioSugerido)} />
+          </span>
           <div className="flex items-center gap-2">
             <label htmlFor="precio-final-barra" className="text-[13px] font-medium whitespace-nowrap text-brand-900">
               Precio final
@@ -125,7 +129,7 @@ export function ResumenBarra({ r, onPrecioFinal, vistaCliente }: { r: Resumen; o
             />
           </div>
           <BarraDato
-            label="Utilidad real"
+            label="Utilidad cotizada"
             value={
               <span className={cn(r.utilidadReal < 0 ? 'text-red-700' : 'text-emerald-700')}>
                 {money(r.utilidadReal)} <span className="text-xs font-normal text-slate-500">({pct(r.margenReal)})</span>

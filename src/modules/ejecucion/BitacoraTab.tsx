@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Camera, Cpu, Minus, Plus, Trash2, TriangleAlert } from 'lucide-react'
 import { Badge, Button, Card, CardHeader, EmptyState, Field, IconButton, Input, NumberInput, Select, Textarea } from '@/components/ui'
-import { AdjuntoChip, FechaTexto, SemaforoDot, SubirArchivo } from '@/components/dominio'
+import { AdjuntoChip, FechaTexto, FotoPlaceholder, SemaforoDot, SemaforoEtiqueta, SubirArchivo } from '@/components/dominio'
 import { avanceEjecucion, costoRealItem, itemSubtotal, semaforo, versionVigente } from '@/lib/calc'
 import { cn } from '@/lib/cn'
 import { HOY, money, num, pct, uid } from '@/lib/format'
@@ -17,11 +17,11 @@ export function BitacoraTab({ proyecto }: { proyecto: Proyecto }) {
     <div className="mx-auto max-w-6xl space-y-5">
       {/* Resumen del semáforo total */}
       <Card>
-        <div className="grid grid-cols-2 gap-4 p-4 sm:grid-cols-4 sm:p-5">
-          <div className="col-span-2 flex items-center gap-3 sm:col-span-1">
+        <div className="grid grid-cols-[auto_1fr_auto] items-center gap-3 p-3 sm:grid-cols-4 sm:gap-4 sm:p-5">
+          <div className="flex items-center gap-3">
             <span
               className={cn(
-                'flex size-11 shrink-0 items-center justify-center rounded-full ring-4',
+                'flex size-8 shrink-0 sm:size-11 items-center justify-center rounded-full ring-4',
                 a.semaforo === 'verde' && 'bg-emerald-500 ring-emerald-100',
                 a.semaforo === 'amarillo' && 'bg-amber-400 ring-amber-100',
                 a.semaforo === 'rojo' && 'bg-red-600 ring-red-100',
@@ -30,30 +30,30 @@ export function BitacoraTab({ proyecto }: { proyecto: Proyecto }) {
               aria-hidden
             />
             <div>
-              <div className="text-xs text-slate-500">Semáforo total</div>
+              <div className="hidden text-xs text-slate-500 sm:block">Semáforo total</div>
               <div className="font-semibold text-slate-900">
                 {a.semaforo === 'verde' ? 'En presupuesto' : a.semaforo === 'amarillo' ? 'Alerta' : a.semaforo === 'rojo' ? 'Sobrecosto' : 'Sin registros'}
               </div>
             </div>
           </div>
-          <div>
+          <div className="text-center sm:text-left">
             <div className="text-xs text-slate-500">Ítems registrados</div>
             <div className="num mt-0.5 font-semibold text-slate-900">
               {a.registrados} de {a.total}
             </div>
           </div>
-          <div>
+          <div className="hidden sm:block">
             <div className="text-xs text-slate-500">Presupuesto de lo registrado</div>
             <div className="num mt-0.5 font-semibold text-slate-900">{money(a.presupuestoRegistrado)}</div>
           </div>
-          <div>
+          <div className="text-right sm:text-left">
             <div className="text-xs text-slate-500">Real a la fecha</div>
             <div className={cn('num mt-0.5 font-semibold', a.semaforo === 'rojo' ? 'text-red-700' : a.semaforo === 'amarillo' ? 'text-amber-700' : 'text-slate-900')}>
-              {money(a.real)} <span className="text-xs font-normal text-slate-500">({pct(ratio, 0)})</span>
+              {money(a.real)} <span className="block text-xs font-normal text-slate-500 sm:inline">({pct(ratio, 0)} del presupuesto)</span>
             </div>
           </div>
         </div>
-        <div className="flex flex-wrap gap-x-4 gap-y-1 border-t border-slate-100 px-4 py-2.5 text-xs sm:px-5">
+        <div className="hidden flex-wrap gap-x-4 gap-y-1 border-t border-slate-100 px-4 py-2.5 text-xs sm:flex sm:px-5">
           <SemaforoDot estado="verde" conTexto />
           <SemaforoDot estado="amarillo" conTexto />
           <SemaforoDot estado="rojo" conTexto />
@@ -103,9 +103,11 @@ function ItemObra({ proyectoId, item }: { proyectoId: string; item: ItemCotizaci
       )}
     >
       <div className="flex items-start gap-2.5">
-        <SemaforoDot estado={estado} className="mt-1.5" />
         <div className="min-w-0 flex-1">
           <div className="text-sm leading-snug font-medium text-slate-900">{item.descripcion}</div>
+          <div className="mt-1">
+            <SemaforoEtiqueta estado={estado} />
+          </div>
           <div className="mt-0.5 text-xs text-slate-500">
             Cotizado <span className="num font-medium text-slate-700">{num(item.cantidad, 2)}</span> {item.unidad} · Presupuesto <span className="num">{money(presupuesto)}</span>
           </div>
@@ -142,7 +144,7 @@ function ItemObra({ proyectoId, item }: { proyectoId: string; item: ItemCotizaci
               )}
             </div>
           ) : (
-            <div className="text-slate-400">Sin registrar</div>
+            <div className="text-slate-500">Sin registrar</div>
           )}
         </div>
       </div>
@@ -152,6 +154,7 @@ function ItemObra({ proyectoId, item }: { proyectoId: string; item: ItemCotizaci
 
 function Imprevistos({ proyecto }: { proyecto: Proyecto }) {
   const editarProyecto = useStore((s) => s.editarProyecto)
+  const abrirVisor = useStore((s) => s.abrirVisor)
   const notificar = useStore((s) => s.notificar)
   const [texto, setTexto] = useState('')
   const [foto, setFoto] = useState<Adjunto | null>(null)
@@ -185,8 +188,17 @@ function Imprevistos({ proyecto }: { proyecto: Proyecto }) {
             <li key={i.id} className="flex gap-3 px-4 py-3 sm:px-5">
               {i.foto?.url ? (
                 <img src={i.foto.url} alt="" className="size-14 shrink-0 rounded-md object-cover" />
+              ) : i.foto ? (
+                <button
+                  type="button"
+                  onClick={() => abrirVisor({ adjunto: i.foto!, contexto: { tipo: 'foto', titulo: i.texto, tono: 25 } })}
+                  aria-label="Ver foto del imprevisto"
+                  className="shrink-0 overflow-hidden rounded-md hover:ring-2 hover:ring-brand-500/60"
+                >
+                  <FotoPlaceholder foto={{ titulo: '', tono: 25 }} className="size-14 aspect-auto rounded-md" />
+                </button>
               ) : (
-                <div className="flex size-14 shrink-0 items-center justify-center rounded-md bg-slate-100 text-slate-400" aria-hidden>
+                <div className="flex size-14 shrink-0 items-center justify-center rounded-md bg-slate-100 text-slate-500" aria-hidden>
                   <Camera className="size-5" />
                 </div>
               )}

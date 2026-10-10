@@ -14,16 +14,23 @@ npm run verificar    # comprueba que el cotizador del proyecto 1 cuadre con los 
 
 1. **Inicio** — proyectos por etapa, cotización pendiente de respuesta, facturas por vencer. Escribir `LOC-0081930` o `DRG-293076` en el buscador para mostrar que encuentra el proyecto por número de documento.
 2. **Proyecto 1** (“Instalación F.O. Subestación Eléctrica – Contenedor CCM”) → pestaña **Levantamiento** (medidas, ruta, racks, fotos).
-3. **Cotización** — la barra lateral se contrae sola para dar espacio.
-   - Elegir proveedores en vivo en la columna *Proveedor* (13 ítems están en “Sin asignar”). Al elegir, se carga el precio neto del catálogo. Ejemplo: Tubería EMT 1" con RG ($34.800) frente a Eléctricos del Valle ($36.000).
-   - Escribir el **% utilidad** y el **% otros ajustes** (arrancan vacíos) y ver el precio sugerido; el precio final cotizado ($7.200.000) es editable.
-   - Mostrar **Agregar ítem**, **Agregar kit → Punto de red**, **Agregar sección**, **Nueva versión** y el selector v1/v2.
+3. **Cotización** del proyecto 1: es un proyecto cerrado, así que su cotización aparece en solo lectura (registro de lo vendido, con proveedor en cada ítem). Para cotizar en vivo abre **PRY-2026-021 “Canalización y circuito regulado”** (borrador): elige proveedores en la columna *Proveedor* (se carga el precio neto del catálogo), escribe el **% utilidad** y el **% otros ajustes** y define el precio final. Muestra también **Agregar ítem**, **Agregar kit → Punto de red**, **Agregar sección** y **Nueva versión**.
 4. **Vista cliente** (interruptor arriba a la derecha): oculta proveedores, costos y utilidad.
 5. **Vista previa PDF** → cambiar el *Nivel de detalle* → **Descargar PDF** (usa la impresión del navegador).
-6. **Compras** — estados de la cotización con fecha, OC del cliente (cambiar el valor muestra la alerta) y **Generar órdenes de compra**: una tarjeta por proveedor con consecutivo, ítems, total y **Ver PDF**. **Editar** una OC resalta las diferencias contra lo cotizado.
-7. **Facturas de proveedores** (menú lateral) — `EPE28045` está en *Sin asignar*: **Asociar a proyecto / OC** → proyecto 2 → OC 2609-005. Abrir `DRG-293076` para ver la comparación contra la OC (el cable F-UTP se facturó a $2.772 frente a $2.650 ordenado).
+6. **Compras** — estados de la cotización con fecha (aprobar o rechazar pide confirmación y se puede deshacer), OC del cliente (cambiar el valor muestra la alerta) y **Generar órdenes de compra** en PRY-2026-018 (aprobado, sin OC): primero muestra la vista previa por proveedor; una tarjeta por proveedor con consecutivo, ítems, total y **Ver PDF**. **Editar** una OC resalta las diferencias contra lo cotizado.
+7. **Facturas de proveedores** (menú lateral) — `EPE28045` y `EPE28102` están en *Sin asignar*: **Asociar a proyecto / OC** → `EPE28045` va al proyecto 2 → OC 2609-005 (y `EPE28102` a la OC de Eléctricos del Valle del proyecto 7, 2609-012). Abrir `DRG-293076` para ver la comparación contra la OC (el cable F-UTP se facturó a $2.772 frente a $2.650 ordenado).
 8. **Proyecto 2 → Ejecución** — bitácora de obra (probar en celular o con el modo responsive del navegador): cantidades instaladas con +/−, semáforo por ítem y total, imprevistos con foto y seriales.
 9. **Proyecto 1 → Entrega** (fotos seleccionables, certificación, acta para firmar) y **Cierre**: factura FE 500, **Copiar texto de observaciones** para el POS y la **liquidación** (cotizado vs. instalado, mano de obra real, utilidad estimada vs. real).
+
+## Flujo completo: de un proyecto nuevo a uno archivado
+
+1. **Registrar.** Inicio o Proyectos → **Nuevo proyecto**: cliente (existente o nuevo), nombre y sede, y levantamiento (medidas, racks, ruta y fotos). Queda en etapa 1 con código `PRY-AAAA-NNN` y cotización `COT-AAAA-NNN` v1 en borrador.
+2. **Cotizar.** Secciones, ítems del catálogo (si el material no existe, se crea antes en **Catálogo → Nuevo material**), proveedor por ítem, otros costos, % utilidad y ajustes, y precio final. **Vista previa PDF** con el nivel de detalle que verá el cliente.
+3. **Aprobar y comprar.** En Compras se marca la cotización como enviada y luego aprobada, se registra la OC del cliente (con alerta si el valor no coincide) y se generan las OC por proveedor.
+4. **Ejecutar.** Llegan las facturas de proveedor: se registran y se asocian a la OC, con comparación automática. En obra, la bitácora registra cantidades instaladas, imprevistos con foto y seriales; el semáforo avisa sobrecostos.
+5. **Entregar.** Remisión (equipos y seriales), informe con las fotos elegidas y la certificación, y acta de conformidad para firmar. La copia firmada se carga.
+6. **Cerrar.** Se registra la factura emitida en el POS, se copia el texto de observaciones y la liquidación muestra la utilidad real.
+7. **Consultar después.** Desde el buscador (cualquier número: cotización, OC, factura, remisión o serial), desde **Clientes** (proyectos, equipos con garantía y documentos) o desde **Rentabilidad**. Dentro del proyecto, **Documentos** muestra el expediente con vista previa de cada archivo e **Historial** muestra la línea de tiempo completa.
 
 ## Reglas que respeta el mockup
 
@@ -53,8 +60,8 @@ src/
 
 ## Supuestos del mockup
 
-- En el texto recibido faltaban los ítems 13 y 14 del proyecto 1. Se completaron como **Unión EMT 1"** (12 × $3.500) y **Curva EMT 1"** (4 × $8.000), sin mano de obra, porque son los únicos valores que cuadran con los totales esperados (mano de obra $1.613.500 y materiales $3.099.500).
-- El IVA de la factura DRG-293076 venía truncado; se registró $252.971 (19 % del subtotal), que da un total de $1.584.395.
+- Los ítems del proyecto 1 y las facturas DRG-293076, EPE28045 y 1004401950 se tomaron de los documentos reales (cotización en Excel y facturas en PDF/XML), incluidos los ítems 13 (Unión EMT 1") y 14 (Terminal / adaptador EMT 1") y el precio de lista con % de descuento por línea de Eléctricos del Valle.
 - Los proyectos 2 y 3 se crearon para el mismo cliente (Papeles Nacionales). Sus ítems, precios de catálogo y números de OC del cliente son ilustrativos.
+- Los proyectos 4 a 13 (`src/data/demo.ts`) son de demostración para ver el sistema con volumen: 13 proyectos en las 5 etapas, 6 clientes **ficticios**, 52 materiales en 7 categorías, órdenes de compra y facturas de proveedor (algunas pagadas, otras vencidas o por vencer, y dos sin asignar). Sus números de documento y NIT son inventados.
 - Semáforo de ejecución: verde hasta 100 % del presupuesto, amarillo hasta 110 % y rojo por encima (`UMBRAL_AMARILLO` en `calc.ts`).
 - Al agregar un ítem o kit, si el material tiene un solo proveedor en el catálogo se asigna automáticamente; si tiene varios, queda en “Sin asignar”.

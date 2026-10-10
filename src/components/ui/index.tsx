@@ -148,14 +148,14 @@ export function EmptyState({ icon, title, description, action, className }: { ic
 // ── Formularios ────────────────────────────────────────────────────────
 
 const inputBase =
-  'h-9 w-full rounded-md border border-slate-300 bg-white px-2.5 text-sm text-slate-900 shadow-xs transition-colors placeholder:text-slate-400 hover:border-slate-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 focus:outline-none disabled:bg-slate-50 disabled:text-slate-500'
+  'h-9 w-full rounded-md border border-slate-300 bg-white px-2.5 text-sm text-slate-900 shadow-xs transition-colors placeholder:text-slate-500 hover:border-slate-400 focus:border-brand-700 focus:ring-2 focus:ring-brand-600/25 focus:outline-none disabled:bg-slate-50 disabled:text-slate-500'
 
 export function Field({ label, hint, error, children, className, htmlFor, optional }: { label: ReactNode; hint?: ReactNode; error?: ReactNode; children: ReactNode; className?: string; htmlFor?: string; optional?: boolean }) {
   return (
     <div className={cn('flex flex-col gap-1.5', className)}>
       <label htmlFor={htmlFor} className="text-[13px] font-medium text-slate-700">
         {label}
-        {optional && <span className="ml-1 font-normal text-slate-400">(opcional)</span>}
+        {optional && <span className="ml-1 font-normal text-slate-500">(opcional)</span>}
       </label>
       {children}
       {error ? <p className="text-xs text-red-700">{error}</p> : hint ? <p className="text-xs text-slate-500">{hint}</p> : null}
@@ -209,7 +209,7 @@ export function NumberInput({
   }, [value, decimals])
   return (
     <div className={cn('relative', className)}>
-      {prefix && <span className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-sm text-slate-400">{prefix}</span>}
+      {prefix && <span className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-sm text-slate-500">{prefix}</span>}
       <input
         inputMode="decimal"
         autoComplete="off"
@@ -231,7 +231,7 @@ export function NumberInput({
         }}
         {...props}
       />
-      {suffix && <span className="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 text-sm text-slate-400">{suffix}</span>}
+      {suffix && <span className="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 text-sm text-slate-500">{suffix}</span>}
     </div>
   )
 }
@@ -289,18 +289,32 @@ export function Tabs<T extends string>({ tabs, value, onChange, className }: { t
 
 // ── Modal ──────────────────────────────────────────────────────────────
 
-export function Modal({ open, onClose, title, description, children, footer, size = 'md' }: { open: boolean; onClose: () => void; title: ReactNode; description?: ReactNode; children: ReactNode; footer?: ReactNode; size?: 'sm' | 'md' | 'lg' | 'xl' }) {
-  const id = useId()
+/** Modales y paneles abiertos, del más antiguo al más reciente: Escape cierra solo el de encima. */
+const capasAbiertas: symbol[] = []
+
+function useCapaSuperpuesta(open: boolean, onClose: () => void) {
+  const cerrar = useRef(onClose)
+  useEffect(() => {
+    cerrar.current = onClose
+  })
   useEffect(() => {
     if (!open) return
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
+    const capa = Symbol()
+    capasAbiertas.push(capa)
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && capasAbiertas.at(-1) === capa && cerrar.current()
     document.addEventListener('keydown', onKey)
     document.body.style.overflow = 'hidden'
     return () => {
       document.removeEventListener('keydown', onKey)
-      document.body.style.overflow = ''
+      capasAbiertas.splice(capasAbiertas.indexOf(capa), 1)
+      if (!capasAbiertas.length) document.body.style.overflow = ''
     }
-  }, [open, onClose])
+  }, [open])
+}
+
+export function Modal({ open, onClose, title, description, children, footer, size = 'md' }: { open: boolean; onClose: () => void; title: ReactNode; description?: ReactNode; children: ReactNode; footer?: ReactNode; size?: 'sm' | 'md' | 'lg' | 'xl' }) {
+  const id = useId()
+  useCapaSuperpuesta(open, onClose)
   if (!open) return null
   const anchos = { sm: 'max-w-md', md: 'max-w-xl', lg: 'max-w-3xl', xl: 'max-w-5xl' }
   return (
@@ -352,3 +366,38 @@ export function DL({ items, className }: { items: [ReactNode, ReactNode][]; clas
 
 export const th = 'px-3 py-2.5 text-left text-xs font-semibold tracking-wide text-slate-500 uppercase whitespace-nowrap'
 export const td = 'px-3 py-2.5 align-middle'
+
+// ── Panel lateral ──────────────────────────────────────────────────────
+
+/** Panel que entra desde la derecha para ver o editar el detalle de una fila sin perder la lista. */
+export function Drawer({ open, onClose, title, eyebrow, description, children, footer }: { open: boolean; onClose: () => void; title: ReactNode; eyebrow?: ReactNode; description?: ReactNode; children: ReactNode; footer?: ReactNode }) {
+  const id = useId()
+  useCapaSuperpuesta(open, onClose)
+  if (!open) return null
+  return (
+    <div className="fixed inset-0 z-50">
+      <div className="absolute inset-0 bg-slate-950/40 animate-[fade_150ms_ease-out]" onClick={onClose} aria-hidden />
+      <aside
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={id}
+        className="absolute inset-y-0 right-0 flex w-full max-w-xl flex-col bg-white shadow-2xl animate-[entrar_220ms_cubic-bezier(0.16,1,0.3,1)]"
+      >
+        <header className="flex items-start gap-4 border-b border-slate-200 px-6 py-5">
+          <div className="min-w-0 flex-1">
+            {eyebrow && <div className="mb-1.5 flex flex-wrap items-center gap-2 text-xs text-slate-500">{eyebrow}</div>}
+            <h2 id={id} className="text-lg font-semibold text-balance text-slate-900">
+              {title}
+            </h2>
+            {description && <div className="mt-1 text-[13px] text-slate-500">{description}</div>}
+          </div>
+          <IconButton label="Cerrar panel" onClick={onClose} className="-mt-1 -mr-2">
+            <X />
+          </IconButton>
+        </header>
+        <div className="flex-1 overflow-y-auto">{children}</div>
+        {footer && <footer className="border-t border-slate-200 bg-slate-50 px-6 py-3">{footer}</footer>}
+      </aside>
+    </div>
+  )
+}

@@ -144,9 +144,15 @@ export type FormaPago = 'Contado' | 'Crédito 30 días' | 'Crédito 45 días' | 
 
 export interface LineaFactura {
   id: string
+  /** Código del producto en el sistema del proveedor. */
+  codigo?: string
   descripcion: string
   cantidad: number
+  /** Precio unitario neto (después del descuento de la línea). */
   precioUnitario: number
+  /** Precio de lista y % de descuento tal como vienen en la factura, cuando el proveedor los discrimina. */
+  precioLista?: number
+  descuentoPct?: number
 }
 
 export interface FacturaProveedor {
@@ -205,6 +211,7 @@ export interface Entrega {
   fechaEntrega: ISODate | null
   garantia: string
   remision: string
+  fechaRemision?: ISODate | null
 }
 
 export interface FacturaCliente {
@@ -251,3 +258,13 @@ export interface Kit {
   descripcion: string
   items: KitItem[]
 }
+
+/** Contexto con el que el visor dibuja un adjunto (vista previa sin descarga). */
+export type ContextoDoc =
+  | { tipo: 'facturaProveedor'; id: string }
+  | { tipo: 'ocCliente'; proyectoId: string }
+  | { tipo: 'facturaCliente'; proyectoId: string }
+  | { tipo: 'certificacion'; proyectoId: string }
+  | { tipo: 'acta'; proyectoId: string }
+  | { tipo: 'foto'; titulo: string; tono: number }
+  | { tipo: 'generico' }

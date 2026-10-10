@@ -18,12 +18,13 @@ interface Props {
   onAgregarItem: () => void
   onAgregarKit: () => void
   soloSeccion: boolean
+  bloqueada?: boolean
 }
 
 const celdaNum = 'px-2 py-1.5 text-right num whitespace-nowrap'
-const thBase = 'px-2 py-2 text-[11px] font-semibold tracking-wide text-slate-500 uppercase whitespace-nowrap'
+const thBase = 'px-2 py-2 text-xs font-semibold tracking-wide text-slate-500 uppercase whitespace-nowrap'
 
-export function TablaSeccion({ proyectoId, seccion, numeroInicial, vistaCliente, preciosCliente, totalCliente, onAgregarItem, onAgregarKit, soloSeccion }: Props) {
+export function TablaSeccion({ proyectoId, seccion, numeroInicial, vistaCliente, preciosCliente, totalCliente, onAgregarItem, onAgregarKit, soloSeccion, bloqueada }: Props) {
   const editarVersion = useStore((s) => s.editarVersion)
   const t = totalesSeccion(seccion)
   const [confirmar, setConfirmar] = useState(false)
@@ -49,13 +50,13 @@ export function TablaSeccion({ proyectoId, seccion, numeroInicial, vistaCliente,
             value={seccion.nombre}
             onChange={(e) => renombrar(e.target.value)}
             aria-label="Nombre de la sección"
-            className="-ml-1.5 min-w-0 flex-1 rounded px-1.5 py-1 text-sm font-semibold text-slate-900 hover:bg-white focus:bg-white focus:ring-2 focus:ring-brand-500/20 focus:outline-none"
+            className="-ml-1.5 min-w-0 flex-1 rounded px-1.5 py-1 text-sm font-semibold text-slate-900 hover:bg-white focus:bg-white focus:ring-2 focus:ring-brand-600/25 focus:outline-none"
           />
         )}
         <div className="flex items-center gap-3">
           <span className="text-xs text-slate-500">Subtotal sección</span>
           <span className="num text-sm font-semibold text-slate-900">{money(vistaCliente ? totalCliente : t.subtotal)}</span>
-          {!vistaCliente && !soloSeccion && (
+          {!vistaCliente && !soloSeccion && !bloqueada && (
             confirmar ? (
               <span className="flex items-center gap-1">
                 <Button size="sm" variant="danger" onClick={eliminarSeccion}>
@@ -74,7 +75,8 @@ export function TablaSeccion({ proyectoId, seccion, numeroInicial, vistaCliente,
         </div>
       </header>
 
-      <div className="overflow-x-auto">
+      {!vistaCliente && <TarjetasItems items={seccion.items} numeroInicial={numeroInicial} />}
+      <div className={cn('overflow-x-auto', !vistaCliente && 'hidden md:block')}>
         {vistaCliente ? (
           <TablaCliente items={preciosCliente ?? []} numeroInicial={numeroInicial} />
         ) : (
@@ -100,7 +102,7 @@ export function TablaSeccion({ proyectoId, seccion, numeroInicial, vistaCliente,
             </thead>
             <tbody className="divide-y divide-slate-100">
               {seccion.items.map((item, idx) => (
-                <FilaItem key={item.id} proyectoId={proyectoId} item={item} numero={numeroInicial + idx} />
+                <FilaItem key={item.id} proyectoId={proyectoId} item={item} numero={numeroInicial + idx} bloqueada={bloqueada} />
               ))}
               {seccion.items.length === 0 && (
                 <tr>
@@ -127,7 +129,7 @@ export function TablaSeccion({ proyectoId, seccion, numeroInicial, vistaCliente,
         )}
       </div>
 
-      {!vistaCliente && (
+      {!vistaCliente && !bloqueada && (
         <footer className="flex flex-wrap gap-2 border-t border-slate-200 px-3 py-2.5">
           <Button size="sm" variant="ghost" icon={<PackagePlus />} onClick={onAgregarItem} className="text-brand-800 hover:bg-brand-50 hover:text-brand-900">
             Agregar ítem
@@ -141,7 +143,7 @@ export function TablaSeccion({ proyectoId, seccion, numeroInicial, vistaCliente,
   )
 }
 
-function FilaItem({ proyectoId, item, numero }: { proyectoId: string; item: ItemCotizacion; numero: number }) {
+function FilaItem({ proyectoId, item, numero, bloqueada }: { proyectoId: string; item: ItemCotizacion; numero: number; bloqueada?: boolean }) {
   const editarVersion = useStore((s) => s.editarVersion)
   const asignarProveedor = useStore((s) => s.asignarProveedor)
   const proveedores = useStore((s) => s.proveedores)
@@ -163,18 +165,18 @@ function FilaItem({ proyectoId, item, numero }: { proyectoId: string; item: Item
   const conPrecio = item.materialId ? precios.filter((p) => p.materialId === item.materialId) : []
   const otros = proveedores.filter((p) => !conPrecio.some((c) => c.proveedorId === p.id))
   const sinProveedor = !item.proveedorId && item.vuMaterial > 0
-  const celdaInput = 'h-8 text-[13px] px-2 shadow-none border-transparent bg-transparent hover:border-slate-300 hover:bg-white focus:bg-white'
+  const celdaInput = 'h-8 text-[13px] px-2 shadow-none border-transparent bg-transparent hover:border-slate-300 hover:bg-white focus:bg-white disabled:border-transparent disabled:bg-transparent disabled:text-slate-800'
 
   return (
     <tr className="group hover:bg-slate-50/60">
-      <td className="num px-2 py-1.5 text-slate-400">{numero}</td>
+      <td className="num px-2 py-1.5 text-slate-500">{numero}</td>
       <td className="px-1 py-1">
         <input
           value={item.descripcion}
           onChange={(e) => editar((i) => (i.descripcion = e.target.value))}
           aria-label={`Descripción ítem ${numero}`}
           title={item.descripcion}
-          className="h-8 w-full min-w-0 truncate rounded-md border border-transparent px-1.5 text-[13px] text-slate-900 hover:border-slate-300 hover:bg-white focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-500/20 focus:outline-none"
+          className="h-8 w-full min-w-0 truncate rounded-md border border-transparent px-1.5 disabled:bg-transparent text-[13px] text-slate-900 hover:border-slate-300 hover:bg-white focus:border-brand-700 focus:bg-white focus:ring-2 focus:ring-brand-600/25 focus:outline-none"
         />
       </td>
       <td className="px-1 py-1">
@@ -194,20 +196,20 @@ function FilaItem({ proyectoId, item, numero }: { proyectoId: string; item: Item
       <td className="px-1 py-1">
         <NumberInput value={item.vuMO} onChange={(n) => editar((i) => (i.vuMO = n ?? 0))} aria-label={`Valor unitario mano de obra ítem ${numero}`} inputClassName={celdaInput} />
       </td>
-      <td className={cn(celdaNum, item.vuMO === 0 ? 'text-slate-300' : 'text-slate-700')}>{money(itemMO(item))}</td>
+      <td className={cn(celdaNum, item.vuMO === 0 ? 'text-slate-500' : 'text-slate-700')}>{money(itemMO(item))}</td>
       <td className="px-1 py-1">
         <NumberInput value={item.vuMaterial} onChange={(n) => editar((i) => (i.vuMaterial = n ?? 0))} aria-label={`Valor unitario material ítem ${numero}`} inputClassName={celdaInput} />
       </td>
-      <td className={cn(celdaNum, item.vuMaterial === 0 ? 'text-slate-300' : 'text-slate-700')}>{money(itemMaterial(item))}</td>
+      <td className={cn(celdaNum, item.vuMaterial === 0 ? 'text-slate-500' : 'text-slate-700')}>{money(itemMaterial(item))}</td>
       <td className="px-1 py-1">
         <Select
           value={item.proveedorId ?? ''}
           onChange={(e) => asignarProveedor(proyectoId, item.id, e.target.value || null)}
           aria-label={`Proveedor ítem ${numero}`}
           className={cn(
-            'h-8 text-[13px] shadow-none',
+            'h-8 text-[13px] shadow-none disabled:border-transparent disabled:bg-transparent disabled:text-slate-700',
             sinProveedor ? 'border-amber-300 bg-amber-50 text-amber-900 hover:border-amber-400' : 'border-slate-200',
-            !item.proveedorId && !sinProveedor && 'text-slate-400',
+            !item.proveedorId && !sinProveedor && 'text-slate-500',
           )}
         >
           <option value="">Sin asignar</option>
@@ -231,9 +233,9 @@ function FilaItem({ proyectoId, item, numero }: { proyectoId: string; item: Item
       </td>
       <td className={cn(celdaNum, 'font-medium text-slate-900')}>{money(itemSubtotal(item))}</td>
       <td className="px-1 py-1 text-right">
-        <IconButton label={`Eliminar ítem ${numero}`} onClick={eliminar} className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:text-red-700">
+        {!bloqueada && <IconButton label={`Eliminar ítem ${numero}`} onClick={eliminar} className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:text-red-700">
           <Trash2 />
-        </IconButton>
+        </IconButton>}
       </td>
     </tr>
   )
@@ -255,7 +257,7 @@ function TablaCliente({ items, numeroInicial }: { items: ItemCliente[]; numeroIn
       <tbody className="divide-y divide-slate-100">
         {items.map((ic, idx) => (
           <tr key={ic.item.id}>
-            <td className="num px-2 py-2 text-slate-400">{numeroInicial + idx}</td>
+            <td className="num px-2 py-2 text-slate-500">{numeroInicial + idx}</td>
             <td className="px-2 py-2 text-slate-900">{ic.item.descripcion}</td>
             <td className="px-2 py-2 text-slate-600">{ic.item.unidad}</td>
             <td className={celdaNum}>{ic.item.cantidad.toLocaleString('es-CO')}</td>
@@ -265,5 +267,37 @@ function TablaCliente({ items, numeroInicial }: { items: ItemCliente[]; numeroIn
         ))}
       </tbody>
     </table>
+  )
+}
+
+/** En celular la tabla de 10 columnas no cabe: cada ítem se lee como tarjeta. La edición se hace en escritorio. */
+function TarjetasItems({ items, numeroInicial }: { items: ItemCotizacion[]; numeroInicial: number }) {
+  const proveedores = useStore((s) => s.proveedores)
+  return (
+    <ul className="divide-y divide-slate-100 md:hidden">
+      {items.map((i, idx) => (
+        <li key={i.id} className="px-4 py-3">
+          <div className="flex items-start justify-between gap-3">
+            <span className="min-w-0 text-sm text-slate-900">
+              <span className="num mr-1.5 text-slate-500">{numeroInicial + idx}</span>
+              {i.descripcion}
+            </span>
+            <span className="num shrink-0 text-sm font-semibold text-slate-900">{money(itemSubtotal(i))}</span>
+          </div>
+          <div className="num mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-slate-500">
+            <span>
+              {i.cantidad.toLocaleString('es-CO')} {i.unidad}
+            </span>
+            {i.vuMO > 0 && <span>MO {money(itemMO(i))}</span>}
+            {i.vuMaterial > 0 && <span>Material {money(itemMaterial(i))}</span>}
+            {i.vuMaterial > 0 && (
+              <span className={cn(!i.proveedorId && 'font-medium text-amber-800')}>{proveedores.find((p) => p.id === i.proveedorId)?.nombre ?? 'Sin proveedor'}</span>
+            )}
+          </div>
+        </li>
+      ))}
+      {items.length === 0 && <li className="px-4 py-6 text-center text-sm text-slate-500">Sin ítems en esta sección.</li>}
+      <li className="bg-slate-50 px-4 py-2 text-xs text-slate-500">Para editar ítems usa un computador.</li>
+    </ul>
   )
 }

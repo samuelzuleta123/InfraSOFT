@@ -2,9 +2,11 @@ import { ArrowRight, ClipboardList, Server } from 'lucide-react'
 import { Card, CardHeader, DL, EmptyState } from '@/components/ui'
 import { FechaTexto, FotoPlaceholder } from '@/components/dominio'
 import type { Proyecto } from '@/types'
+import { useStore } from '@/store/useStore'
 
 export function LevantamientoTab({ proyecto }: { proyecto: Proyecto }) {
   const l = proyecto.levantamiento
+  const abrir = useStore((s) => s.abrirVisor)
   if (!l)
     return (
       <Card>
@@ -36,7 +38,7 @@ export function LevantamientoTab({ proyecto }: { proyecto: Proyecto }) {
           <div className="space-y-5 p-5">
             <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
               <RackBox titulo="Rack de origen" texto={l.rackOrigen} />
-              <ArrowRight className="mx-auto size-5 shrink-0 rotate-90 text-slate-400 sm:rotate-0" aria-hidden />
+              <ArrowRight className="mx-auto size-5 shrink-0 rotate-90 text-slate-500 sm:rotate-0" aria-hidden />
               <RackBox titulo="Rack de destino" texto={l.rackDestino} />
             </div>
             <div>
@@ -57,7 +59,15 @@ export function LevantamientoTab({ proyecto }: { proyecto: Proyecto }) {
         <CardHeader title="Fotos del levantamiento" description={`${fotos.length} fotos`} />
         <div className="grid grid-cols-2 gap-3 p-5">
           {fotos.map((f) => (
-            <FotoPlaceholder key={f.id} foto={f} />
+            <button
+              key={f.id}
+              type="button"
+              onClick={() => abrir({ adjunto: { nombre: `${f.titulo}.jpg`, tipo: 'img' }, contexto: { tipo: 'foto', titulo: f.titulo, tono: f.tono } })}
+              className="rounded-md transition-shadow hover:ring-2 hover:ring-brand-500/60"
+              aria-label={`Ver foto: ${f.titulo}`}
+            >
+              <FotoPlaceholder foto={f} />
+            </button>
           ))}
         </div>
       </Card>

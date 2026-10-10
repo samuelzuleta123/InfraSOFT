@@ -19,7 +19,7 @@ export function InformeEntregaPage() {
   const fechaEntrega = fecha(e.fechaEntrega ?? HOY)
 
   const Encabezado = ({ titulo }: { titulo: string }) => (
-    <header className="flex flex-wrap items-start justify-between gap-6 border-b-2 border-brand-900 pb-5">
+    <header className="flex flex-wrap items-start justify-between gap-6 border-b-2 border-brand-500 pb-5">
       <MembreteInfrasoft />
       <div className="text-right">
         <div className="text-[11px] font-semibold tracking-wider text-slate-500 uppercase">{titulo}</div>

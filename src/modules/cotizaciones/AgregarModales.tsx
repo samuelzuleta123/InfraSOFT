@@ -65,14 +65,14 @@ export function AgregarItemModal({ open, onClose, proyectoId, seccionId }: { ope
       }
     >
       <div className="relative">
-        <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-slate-400" aria-hidden />
+        <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-slate-500" aria-hidden />
         <input
           autoFocus
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Buscar por código o descripción…"
           aria-label="Buscar material"
-          className="h-10 w-full rounded-md border border-slate-300 pr-3 pl-9 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 focus:outline-none"
+          className="h-10 w-full rounded-md border border-slate-300 pr-3 pl-9 text-sm focus:border-brand-700 focus:ring-2 focus:ring-brand-600/25 focus:outline-none"
         />
       </div>
       <ul className="mt-3 divide-y divide-slate-100 rounded-md border border-slate-200">
@@ -172,7 +172,7 @@ export function AgregarKitModal({ open, onClose, proyectoId, seccionId }: { open
       </div>
       {kit && <p className="mt-3 text-[13px] text-slate-500">{kit.descripcion}</p>}
       <table className="mt-3 w-full text-[13px]">
-        <thead className="border-b border-slate-200 text-[11px] font-semibold tracking-wide text-slate-500 uppercase">
+        <thead className="border-b border-slate-200 text-xs font-semibold tracking-wide text-slate-500 uppercase">
           <tr>
             <th className="py-2 text-left">Ítem</th>
             <th className="py-2 text-right">Cant.</th>

@@ -1,6 +1,8 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowRight, Clock, FileClock, Inbox, ReceiptText } from 'lucide-react'
-import { Badge, Card, CardHeader, EmptyState, PageHeader, Stat } from '@/components/ui'
+import { ArrowRight, Clock, FileClock, Inbox, Plus, ReceiptText } from 'lucide-react'
+import { Badge, Button, Card, CardHeader, EmptyState, PageHeader, Stat } from '@/components/ui'
+import { NuevoProyectoModal } from '@/modules/proyectos/NuevoProyectoModal'
 import { ETAPAS, FechaTexto } from '@/components/dominio'
 import { ListaProyectos } from '@/modules/proyectos/ListaProyectos'
 import { VencimientosWidget } from '@/modules/facturas/VencimientosWidget'
@@ -12,6 +14,7 @@ export function InicioPage() {
   const proyectos = useStore((s) => s.proyectos)
   const facturas = useStore((s) => s.facturas)
   const clientes = useStore((s) => s.clientes)
+  const [nuevo, setNuevo] = useState(false)
 
   const porEtapa = ETAPAS.map((e) => ({ ...e, proyectos: proyectos.filter((p) => p.etapa === e.n) }))
   const max = Math.max(1, ...porEtapa.map((e) => e.proyectos.length))
@@ -21,13 +24,22 @@ export function InicioPage() {
       .filter((v) => v.estado === 'enviada')
       .map((v) => ({ p, v, enviada: [...v.historial].reverse().find((h) => h.estado === 'enviada')?.fecha ?? v.creada })),
   )
-  const porPagar = facturas.filter((f) => f.formaPago !== 'Contado')
+  const porPagar = facturas.filter((f) => f.formaPago !== 'Contado' && !f.pagada)
   const proximas = porPagar.filter((f) => diasEntre(HOY, f.vencimiento) <= 30)
   const sinAsignar = facturas.filter((f) => !f.proyectoId)
 
   return (
     <>
-      <PageHeader title="Inicio" description={`Corte al ${fecha(HOY)}: estado de los proyectos, cotizaciones por responder y obligaciones con proveedores.`} />
+      <PageHeader
+        title="Inicio"
+        description={`Corte al ${fecha(HOY)}: estado de los proyectos, cotizaciones por responder y obligaciones con proveedores.`}
+        actions={
+          <Button variant="primary" icon={<Plus />} onClick={() => setNuevo(true)}>
+            Nuevo proyecto
+          </Button>
+        }
+      />
+      {nuevo && <NuevoProyectoModal onClose={() => setNuevo(false)} />}
 
       <div className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-slate-200 bg-slate-200 shadow-xs lg:grid-cols-4">
         <div className="bg-white p-5">
@@ -57,7 +69,7 @@ export function InicioPage() {
               <li key={e.n}>
                 <div className="mb-1.5 flex items-baseline justify-between text-[13px]">
                   <span className="font-medium text-slate-700">
-                    <span className="num mr-1.5 text-slate-400">{e.n}.</span>
+                    <span className="num mr-1.5 text-slate-500">{e.n}.</span>
                     {e.nombre}
                   </span>
                   <span className="num font-semibold text-slate-900">{e.proyectos.length}</span>
@@ -124,12 +136,12 @@ export function InicioPage() {
               </Link>
             }
           />
-          {porPagar.length === 0 ? <EmptyState icon={<ReceiptText />} title="Sin facturas a crédito pendientes" /> : <VencimientosWidget compacto />}
+          {porPagar.length === 0 ? <EmptyState icon={<ReceiptText />} title="Sin facturas pendientes de pago" /> : <VencimientosWidget compacto />}
         </Card>
       </div>
 
       <div className="mt-5">
-        <ListaProyectos />
+        <ListaProyectos titulo="Proyectos recientes" limite={6} />
       </div>
     </>
   )

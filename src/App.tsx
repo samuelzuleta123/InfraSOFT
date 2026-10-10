@@ -6,8 +6,12 @@ import { ProyectoDetalle } from '@/modules/proyectos/ProyectoDetalle'
 import { CotizacionPdfPage } from '@/modules/cotizaciones/CotizacionPdfPage'
 import { OrdenCompraPdfPage } from '@/modules/compras/OrdenCompraPdfPage'
 import { InformeEntregaPage } from '@/modules/entrega/InformeEntregaPage'
+import { RemisionPage } from '@/modules/entrega/RemisionPage'
 import { FacturasPage } from '@/modules/facturas/FacturasPage'
 import { CatalogoPage } from '@/modules/catalogo/CatalogoPage'
+import { VisorDocumento } from '@/components/VisorDocumento'
+import { ClientesPage } from '@/modules/clientes/ClientesPage'
+import { RentabilidadPage } from '@/modules/rentabilidad/RentabilidadPage'
 
 export default function App() {
   return (
@@ -20,13 +24,17 @@ export default function App() {
           <Route path="proyectos/:id/:tab" element={<ProyectoDetalle />} />
           <Route path="facturas" element={<FacturasPage />} />
           <Route path="catalogo" element={<CatalogoPage />} />
+          <Route path="clientes" element={<ClientesPage />} />
+          <Route path="rentabilidad" element={<RentabilidadPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
         {/* Vistas de documento: sin barra lateral, listas para imprimir */}
         <Route path="proyectos/:id/cotizacion/pdf" element={<CotizacionPdfPage />} />
         <Route path="proyectos/:id/oc/:ocId" element={<OrdenCompraPdfPage />} />
         <Route path="proyectos/:id/entrega/informe" element={<InformeEntregaPage />} />
+        <Route path="proyectos/:id/entrega/remision" element={<RemisionPage />} />
       </Routes>
+      <VisorDocumento />
     </BrowserRouter>
   )
 }

@@ -5,7 +5,8 @@ import { Badge, type Tono } from '@/components/ui'
 import { cn } from '@/lib/cn'
 import { fecha } from '@/lib/format'
 import type { Semaforo } from '@/lib/calc'
-import type { Adjunto, EstadoCotizacion, Etapa, FotoObra } from '@/types'
+import type { Adjunto, ContextoDoc, EstadoCotizacion, Etapa, FotoObra } from '@/types'
+import { useStore } from '@/store/useStore'
 
 export const ETAPAS: { n: Etapa; nombre: string; corto: string }[] = [
   { n: 1, nombre: 'Cotización', corto: 'Cotización' },
@@ -62,13 +63,13 @@ export function StepperEtapas({ etapa, onSelect }: { etapa: Etapa; onSelect?: (e
                   'num flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold ring-2 transition-colors',
                   hecho && !actual && 'bg-brand-800 text-white ring-brand-800',
                   actual && (etapa === 5 ? 'bg-emerald-600 text-white ring-emerald-600' : 'bg-white text-brand-800 ring-brand-700'),
-                  !hecho && !actual && 'bg-white text-slate-400 ring-slate-300',
+                  !hecho && !actual && 'bg-white text-slate-500 ring-slate-300',
                 )}
               >
                 {hecho && !actual ? <Check className="size-3.5" strokeWidth={3} /> : actual && etapa === 5 ? <Check className="size-3.5" strokeWidth={3} /> : e.n}
               </span>
               <span className="hidden min-w-0 md:block">
-                <span className={cn('block text-[11px] font-medium tracking-wide uppercase', actual ? 'text-brand-700' : 'text-slate-400')}>Etapa {e.n}</span>
+                <span className={cn('block text-xs font-medium tracking-wide uppercase', actual ? 'text-brand-700' : 'text-slate-500')}>Etapa {e.n}</span>
                 <span className={cn('block text-[13px] font-medium whitespace-nowrap', actual || hecho ? 'text-slate-900' : 'text-slate-500', 'group-enabled:group-hover:text-brand-800')}>{e.nombre}</span>
               </span>
             </button>
@@ -80,11 +81,22 @@ export function StepperEtapas({ etapa, onSelect }: { etapa: Etapa; onSelect?: (e
   )
 }
 
-const coloresSemaforo: Record<Semaforo, { c: string; l: string }> = {
-  verde: { c: 'bg-emerald-500', l: 'Dentro del presupuesto' },
-  amarillo: { c: 'bg-amber-400', l: 'Hasta 10 % sobre el presupuesto' },
-  rojo: { c: 'bg-red-600', l: 'Más de 10 % sobre el presupuesto' },
-  gris: { c: 'bg-slate-300', l: 'Sin registro' },
+const coloresSemaforo: Record<Semaforo, { c: string; l: string; corto: string; texto: string }> = {
+  verde: { c: 'bg-emerald-500', l: 'Dentro del presupuesto', corto: 'En presupuesto', texto: 'text-emerald-800' },
+  amarillo: { c: 'bg-amber-400', l: 'Hasta 10 % sobre el presupuesto', corto: 'Alerta', texto: 'text-amber-800' },
+  rojo: { c: 'bg-red-600', l: 'Más de 10 % sobre el presupuesto', corto: 'Sobrecosto', texto: 'text-red-700' },
+  gris: { c: 'bg-slate-300', l: 'Sin registro', corto: 'Sin registro', texto: 'text-slate-500' },
+}
+
+/** Estado del semáforo con punto y texto corto, para que no dependa solo del color. */
+export function SemaforoEtiqueta({ estado }: { estado: Semaforo }) {
+  const s = coloresSemaforo[estado]
+  return (
+    <span className={cn('inline-flex items-center gap-1.5 text-xs font-medium', s.texto)} title={s.l}>
+      <span className={cn('size-2 rounded-full', s.c)} aria-hidden />
+      {s.corto}
+    </span>
+  )
 }
 
 export function SemaforoDot({ estado, conTexto, className }: { estado: Semaforo; conTexto?: boolean; className?: string }) {
@@ -117,20 +129,26 @@ export function FotoPlaceholder({ foto, className, children }: { foto: Pick<Foto
 
 const iconoAdjunto = { pdf: FileText, xml: FileCode2, img: ImageIcon, otro: Paperclip }
 
-export function AdjuntoChip({ adjunto, onRemove }: { adjunto: Adjunto; onRemove?: () => void }) {
+/** Archivo adjunto. Al hacer clic se abre la vista previa (no descarga). */
+export function AdjuntoChip({ adjunto, onRemove, contexto, etiqueta }: { adjunto: Adjunto; onRemove?: () => void; contexto?: ContextoDoc; etiqueta?: string }) {
   const Icono = iconoAdjunto[adjunto.tipo]
+  const abrirVisor = useStore((s) => s.abrirVisor)
   return (
-    <span className="inline-flex max-w-full items-center gap-1.5 rounded-md border border-slate-200 bg-slate-50 py-1 pr-1.5 pl-2 text-xs text-slate-700">
-      <Icono className={cn('size-3.5 shrink-0', adjunto.tipo === 'pdf' ? 'text-red-600' : adjunto.tipo === 'xml' ? 'text-emerald-700' : 'text-slate-500')} aria-hidden />
-      {adjunto.url ? (
-        <a href={adjunto.url} target="_blank" rel="noreferrer" className="truncate hover:underline">
-          {adjunto.nombre}
-        </a>
-      ) : (
-        <span className="truncate">{adjunto.nombre}</span>
-      )}
+    <span className="inline-flex max-w-full items-center gap-1.5 rounded-md border border-slate-200 bg-slate-50 py-1 pr-1.5 pl-2 text-xs text-slate-700 transition-colors hover:border-slate-300 hover:bg-white">
+      <Icono className={cn('size-3.5 shrink-0', adjunto.tipo === 'pdf' ? 'text-red-600' : adjunto.tipo === 'xml' ? 'text-brand-700' : 'text-slate-500')} aria-hidden />
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation()
+          abrirVisor({ adjunto, contexto: contexto ?? { tipo: 'generico' } })
+        }}
+        className="-my-1 min-h-6 min-w-6 truncate py-1 text-left hover:underline"
+        title={`Ver ${adjunto.nombre}`}
+      >
+        {etiqueta ?? adjunto.nombre}
+      </button>
       {onRemove && (
-        <button type="button" onClick={onRemove} aria-label={`Quitar ${adjunto.nombre}`} className="rounded p-0.5 text-slate-400 hover:bg-slate-200 hover:text-slate-700">
+        <button type="button" onClick={onRemove} aria-label={`Quitar ${adjunto.nombre}`} className="rounded p-0.5 text-slate-500 hover:bg-slate-200 hover:text-slate-700">
           <X className="size-3" />
         </button>
       )}

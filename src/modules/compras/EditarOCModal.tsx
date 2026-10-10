@@ -1,5 +1,5 @@
 import { Button, Field, Modal, NumberInput, Select } from '@/components/ui'
-import { totalCotizadoOC, totalLineaOC, totalOC } from '@/lib/calc'
+import { totalCotizadoLineaOC, totalCotizadoOC, totalLineaOC, totalOC } from '@/lib/calc'
 import { cn } from '@/lib/cn'
 import { money, moneySigned } from '@/lib/format'
 import { useStore } from '@/store/useStore'
@@ -52,7 +52,7 @@ export function EditarOCModal({ ocId, onClose }: { ocId: string; onClose: () => 
 
       <div className="mt-5 overflow-x-auto rounded-md border border-slate-200">
         <table className="w-full min-w-[720px] text-[13px]">
-          <thead className="border-b border-slate-200 bg-slate-50 text-[11px] font-semibold tracking-wide text-slate-500 uppercase">
+          <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold tracking-wide text-slate-500 uppercase">
             <tr>
               <th className="px-3 py-2 text-left">Descripción</th>
               <th className="w-28 px-2 py-2 text-right">Cantidad</th>
@@ -65,11 +65,11 @@ export function EditarOCModal({ ocId, onClose }: { ocId: string; onClose: () => 
             {oc.lineas.map((l, i) => {
               const cantDif = l.cantidadCotizada !== null && l.cantidad !== l.cantidadCotizada
               const precioDif = l.precioCotizado !== null && l.precioUnitario !== l.precioCotizado
-              const d = totalLineaOC(l) - (l.cantidadCotizada ?? 0) * (l.precioCotizado ?? 0)
+              const d = totalLineaOC(l) - totalCotizadoLineaOC(l)
               return (
                 <tr key={l.id}>
                   <td className="px-3 py-2 text-slate-900">
-                    {l.descripcion} <span className="text-slate-400">({l.unidad})</span>
+                    {l.descripcion} <span className="text-slate-500">({l.unidad})</span>
                   </td>
                   <td className="px-2 py-1.5">
                     <NumberInput
@@ -78,7 +78,7 @@ export function EditarOCModal({ ocId, onClose }: { ocId: string; onClose: () => 
                       aria-label={`Cantidad ${l.descripcion}`}
                       inputClassName={cn('h-8', cantDif && 'border-amber-400 bg-amber-50')}
                     />
-                    {cantDif && <div className="num mt-0.5 text-right text-[11px] text-amber-700">Cotizado: {l.cantidadCotizada?.toLocaleString('es-CO')}</div>}
+                    {cantDif && <div className="num mt-0.5 text-right text-xs text-amber-700">Cotizado: {l.cantidadCotizada?.toLocaleString('es-CO')}</div>}
                   </td>
                   <td className="px-2 py-1.5">
                     <NumberInput
@@ -88,10 +88,10 @@ export function EditarOCModal({ ocId, onClose }: { ocId: string; onClose: () => 
                       aria-label={`Precio ${l.descripcion}`}
                       inputClassName={cn('h-8', precioDif && 'border-amber-400 bg-amber-50')}
                     />
-                    {precioDif && <div className="num mt-0.5 text-right text-[11px] text-amber-700">Cotizado: {money(l.precioCotizado)}</div>}
+                    {precioDif && <div className="num mt-0.5 text-right text-xs text-amber-700">Cotizado: {money(l.precioCotizado)}</div>}
                   </td>
                   <td className="num px-3 py-2 text-right font-medium text-slate-900">{money(totalLineaOC(l))}</td>
-                  <td className={cn('num px-3 py-2 text-right font-medium', d > 0 ? 'text-red-700' : d < 0 ? 'text-emerald-700' : 'text-slate-300')}>{d === 0 ? '—' : moneySigned(d)}</td>
+                  <td className={cn('num px-3 py-2 text-right font-medium', d > 0 ? 'text-red-700' : d < 0 ? 'text-emerald-700' : 'text-slate-500')}>{d === 0 ? '—' : moneySigned(d)}</td>
                 </tr>
               )
             })}
@@ -102,7 +102,7 @@ export function EditarOCModal({ ocId, onClose }: { ocId: string; onClose: () => 
                 Total OC · cotizado {money(cotizado)}
               </td>
               <td className="num px-3 py-2 text-right text-slate-900">{money(total)}</td>
-              <td className={cn('num px-3 py-2 text-right', dif > 0 ? 'text-red-700' : dif < 0 ? 'text-emerald-700' : 'text-slate-400')}>{dif === 0 ? '—' : moneySigned(dif)}</td>
+              <td className={cn('num px-3 py-2 text-right', dif > 0 ? 'text-red-700' : dif < 0 ? 'text-emerald-700' : 'text-slate-500')}>{dif === 0 ? '—' : moneySigned(dif)}</td>
             </tr>
           </tfoot>
         </table>

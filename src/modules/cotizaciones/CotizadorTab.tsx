@@ -32,6 +32,9 @@ export function CotizadorTab({ proyecto }: { proyecto: Proyecto }) {
   const r = resumen(v)
   const cliente = preciosCliente(v)
   const pendientes = itemsSinProveedor(v)
+  // Una versión aprobada o rechazada es un registro: para cambiarla se crea una versión nueva.
+  const cerrado = proyecto.etapa >= 4
+  const bloqueada = cerrado || v.estado === 'aprobada' || v.estado === 'rechazada'
   const fijarPrecioFinal = (n: number | null) => editarVersion(proyecto.id, (ver) => void (ver.precioFinal = n))
   let contador = 1
 
@@ -63,6 +66,8 @@ export function CotizadorTab({ proyecto }: { proyecto: Proyecto }) {
           <Button
             size="md"
             icon={<CopyPlus />}
+            disabled={cerrado}
+            title={cerrado ? 'El proyecto ya está en entrega o cierre' : undefined}
             onClick={() => {
               nuevaVersion(proyecto.id)
               notificar(`Se creó la versión v${proyecto.cotizacion.versiones.length + 1} a partir de ${v.nombre}`)
@@ -88,14 +93,21 @@ export function CotizadorTab({ proyecto }: { proyecto: Proyecto }) {
           Se ocultan proveedores, costos internos, otros costos y utilidad. Así se presenta la propuesta al cliente.
         </Alert>
       )}
-      {!vistaCliente && pendientes.length > 0 && (
+      {!vistaCliente && bloqueada && (
+        <Alert tone="info" className="mb-4" title={cerrado ? 'Proyecto en entrega o cierre: la cotización es de solo lectura' : `Versión ${v.nombre} ${v.estado}: solo lectura`}>
+          {cerrado
+            ? 'La cotización queda como registro de lo vendido. Las cantidades reales se registran en Ejecución y se comparan en la liquidación.'
+            : 'Para cambiar precios, cantidades o proveedores crea una nueva versión; la anterior se conserva tal como se envió.'}
+        </Alert>
+      )}
+      {!vistaCliente && !bloqueada && pendientes.length > 0 && (
         <Alert tone="warn" className="mb-4" title={`${pendientes.length} ítem${pendientes.length === 1 ? '' : 's'} con material sin proveedor`}>
           Elige el proveedor en la columna “Proveedor” para cargar su precio neto del catálogo. Los ítems sin proveedor no generan orden de compra.
         </Alert>
       )}
 
       <div className="grid items-start gap-5 min-[1360px]:grid-cols-[minmax(0,1fr)_288px] min-[1360px]:gap-4">
-        <div className="min-w-0 space-y-4">
+        <fieldset disabled={bloqueada} className="m-0 min-w-0 space-y-4 border-0 p-0">
           {v.secciones.map((s, idx) => {
             const inicio = contador
             contador += s.items.length
@@ -111,11 +123,12 @@ export function CotizadorTab({ proyecto }: { proyecto: Proyecto }) {
                 onAgregarItem={() => setModal({ tipo: 'item', seccionId: s.id })}
                 onAgregarKit={() => setModal({ tipo: 'kit', seccionId: s.id })}
                 soloSeccion={v.secciones.length === 1}
+                bloqueada={bloqueada}
               />
             )
           })}
 
-          {!vistaCliente && (
+          {!vistaCliente && !bloqueada && (
             <button
               type="button"
               onClick={() =>
@@ -135,7 +148,7 @@ export function CotizadorTab({ proyecto }: { proyecto: Proyecto }) {
               <Card>
                 <CardHeader title="Otros costos" description="Cantidad × valor unitario. Valores digitados por el usuario." />
                 <table className="w-full text-[13px]">
-                  <thead className="border-b border-slate-200 text-[11px] font-semibold tracking-wide text-slate-500 uppercase">
+                  <thead className="border-b border-slate-200 text-xs font-semibold tracking-wide text-slate-500 uppercase">
                     <tr>
                       <th className="px-4 py-2 text-left">Concepto</th>
                       <th className="w-24 px-2 py-2 text-right">Cantidad</th>
@@ -208,7 +221,7 @@ export function CotizadorTab({ proyecto }: { proyecto: Proyecto }) {
           )}
 
           <Card>
-            <CardHeader title="Datos de la propuesta" description="Se imprimen en el PDF que recibe el cliente." actions={<Eye className="size-4 text-slate-400" aria-hidden />} />
+            <CardHeader title="Datos de la propuesta" description="Se imprimen en el PDF que recibe el cliente." actions={<Eye className="size-4 text-slate-500" aria-hidden />} />
             <div className="grid gap-4 p-5 md:grid-cols-2">
               <Field label="Descripción del alcance" htmlFor="alcance" className="md:col-span-2">
                 <Textarea
@@ -238,13 +251,17 @@ export function CotizadorTab({ proyecto }: { proyecto: Proyecto }) {
               </Field>
             </div>
           </Card>
-        </div>
+        </fieldset>
 
         <div className="hidden min-[1360px]:sticky min-[1360px]:top-20 min-[1360px]:block">
-          <ResumenPanel r={r} vistaCliente={vistaCliente} onPrecioFinal={fijarPrecioFinal} />
+          <fieldset disabled={bloqueada} className="m-0 border-0 p-0">
+            <ResumenPanel r={r} vistaCliente={vistaCliente} onPrecioFinal={fijarPrecioFinal} />
+          </fieldset>
         </div>
       </div>
-      <ResumenBarra r={r} vistaCliente={vistaCliente} onPrecioFinal={fijarPrecioFinal} />
+      <fieldset disabled={bloqueada} className="m-0 contents border-0 p-0">
+        <ResumenBarra r={r} vistaCliente={vistaCliente} onPrecioFinal={fijarPrecioFinal} />
+      </fieldset>
 
       <AgregarItemModal open={modal?.tipo === 'item'} onClose={() => setModal(null)} proyectoId={proyecto.id} seccionId={modal?.seccionId ?? null} />
       {modal?.tipo === 'kit' && <AgregarKitModal open onClose={() => setModal(null)} proyectoId={proyecto.id} seccionId={modal.seccionId} />}

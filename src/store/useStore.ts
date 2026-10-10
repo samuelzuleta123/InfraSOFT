@@ -3,11 +3,15 @@ import { immer } from 'zustand/middleware/immer'
 import { clientes, historialPrecios, kits, materiales, precios, proveedores } from '@/data/catalogo'
 import { facturasProveedor, ordenesCompra } from '@/data/compras'
 import { proyectos } from '@/data/proyectos'
+import { clientesDemo, facturasDemo, ordenesDemo, proyectosDemo } from '@/data/demo'
 import { precioNeto, versionActiva, versionVigente } from '@/lib/calc'
 import { formatoConsecutivoOC, generarOrdenes } from '@/lib/compras'
 import { HOY, uid } from '@/lib/format'
 import type {
+  Adjunto,
   Cliente,
+  ContextoDoc,
+  Levantamiento,
   EstadoCotizacion,
   FacturaProveedor,
   HistorialPrecio,
@@ -21,10 +25,26 @@ import type {
   VersionCotizacion,
 } from '@/types'
 
+export interface DocVisor {
+  adjunto: Adjunto
+  contexto: ContextoDoc
+}
+
+export interface NuevoProyecto {
+  clienteId: string
+  nombre: string
+  sede: string
+  responsable: string
+  levantamiento: Levantamiento | null
+  fotos: string[]
+}
+
 export interface Toast {
   id: string
   texto: string
   tono: 'ok' | 'info' | 'error'
+  /** Texto del botón de deshacer; la función vive fuera del estado. */
+  deshacer?: string
 }
 
 interface State {
@@ -41,6 +61,14 @@ interface State {
   contadorOC: number
   toasts: Toast[]
   sidebarCompacta: boolean
+  visor: DocVisor | null
+
+  abrirVisor: (doc: DocVisor) => void
+  cerrarVisor: () => void
+  crearProyecto: (datos: NuevoProyecto) => string
+  crearCliente: (c: Omit<Cliente, 'id'>) => string
+  crearProveedor: (p: Omit<Proveedor, 'id'>) => string
+  crearMaterial: (m: Omit<Material, 'id'>, precio?: { proveedorId: string; precioLista: number; descuentoPct: number | null }) => string
 
   setSidebarCompacta: (v: boolean) => void
   /** Modifica cualquier parte del estado (immer). */
@@ -53,25 +81,125 @@ interface State {
   cambiarEstadoCotizacion: (proyectoId: string, versionId: string, estado: EstadoCotizacion, fecha?: string) => void
   generarOCs: (proyectoId: string) => number
   actualizarPrecio: (precioId: string, cambios: Partial<Pick<PrecioProveedor, 'precioLista' | 'descuentoPct'>>) => void
-  notificar: (texto: string, tono?: Toast['tono']) => void
+  notificar: (texto: string, tono?: Toast['tono'], deshacer?: () => void) => void
+  ejecutarDeshacer: (toastId: string) => void
 }
 
 const clonar = <T,>(x: T): T => JSON.parse(JSON.stringify(x))
 
+/** Funciones de deshacer de los avisos activos (no se guardan en el estado). */
+const deshaceres = new Map<string, () => void>()
+
 export const useStore = create<State>()(
   immer((set, get) => ({
-    proyectos: clonar(proyectos),
-    clientes: clonar(clientes),
+    proyectos: clonar([...proyectos, ...proyectosDemo]),
+    clientes: clonar([...clientes, ...clientesDemo]),
     proveedores: clonar(proveedores),
     materiales: clonar(materiales),
     precios: clonar(precios),
     historial: clonar(historialPrecios),
     kits: clonar(kits),
-    ordenes: clonar(ordenesCompra),
-    facturas: clonar(facturasProveedor),
+    ordenes: clonar([...ordenesCompra, ...ordenesDemo]),
+    facturas: clonar([...facturasProveedor, ...facturasDemo]),
     contadorOC: 0,
     toasts: [],
     sidebarCompacta: false,
+    visor: null,
+
+    abrirVisor: (doc) =>
+      set((s) => {
+        s.visor = doc
+      }),
+    cerrarVisor: () =>
+      set((s) => {
+        s.visor = null
+      }),
+
+    crearProyecto: (d) => {
+      const anio = HOY.slice(0, 4)
+      const siguiente = (prefijo: string, usados: string[]) => {
+        const n = Math.max(0, ...usados.filter((x) => x.startsWith(prefijo)).map((x) => parseInt(x.slice(prefijo.length), 10) || 0)) + 1
+        return `${prefijo}${String(n).padStart(3, '0')}`
+      }
+      const id = uid('p')
+      set((s) => {
+        const codigo = siguiente(`PRY-${anio}-`, s.proyectos.map((p) => p.codigo))
+        const consecutivo = siguiente(`COT-${anio}-`, s.proyectos.map((p) => p.cotizacion.consecutivo))
+        const vid = uid('ver')
+        s.proyectos.unshift({
+          id,
+          codigo,
+          nombre: d.nombre,
+          clienteId: d.clienteId,
+          sede: d.sede,
+          responsable: d.responsable,
+          etapa: 1,
+          creado: HOY,
+          levantamiento: d.levantamiento,
+          fotos: d.fotos.map((titulo, i) => ({ id: uid('f'), titulo, etapa: 'levantamiento', tono: [210, 30, 160, 200][i % 4] })),
+          cotizacion: {
+            consecutivo,
+            alcance: '',
+            tiempoEntrega: '',
+            condiciones: '',
+            versionActivaId: vid,
+            versiones: [
+              {
+                id: vid,
+                nombre: 'v1',
+                creada: HOY,
+                secciones: [{ id: uid('sec'), nombre: 'Sección 1', items: [] }],
+                otrosCostos: [
+                  { clave: 'siso', nombre: 'SISO', cantidad: 0, valorUnitario: 0 },
+                  { clave: 'polizas', nombre: 'Pólizas', cantidad: 0, valorUnitario: 0 },
+                  { clave: 'viaticos', nombre: 'Viáticos', cantidad: 0, valorUnitario: 0 },
+                  { clave: 'transporte', nombre: 'Transporte / Flete', cantidad: 0, valorUnitario: 0 },
+                ],
+                utilidadPct: null,
+                ajustesPct: null,
+                precioFinal: null,
+                estado: 'borrador',
+                historial: [{ estado: 'borrador', fecha: HOY }],
+              },
+            ],
+          },
+          ocCliente: null,
+          imprevistos: [],
+          seriales: [],
+          entrega: { fotosSeleccionadas: [], certificacion: null, actaFirmada: null, fechaEntrega: null, garantia: '', remision: '' },
+          facturaCliente: null,
+        })
+      })
+      return id
+    },
+
+    crearCliente: (c) => {
+      const id = uid('cli')
+      set((s) => {
+        s.clientes.push({ ...c, id, nombre: c.nombre.trim(), nit: c.nit.trim(), direccion: c.direccion.trim(), ciudad: c.ciudad.trim() })
+      })
+      return id
+    },
+
+    crearProveedor: (p) => {
+      const id = uid('prv')
+      set((s) => {
+        s.proveedores.push({ ...p, id, nombre: p.nombre.trim(), nit: p.nit.trim(), ciudad: p.ciudad.trim() })
+      })
+      return id
+    },
+
+    crearMaterial: (m, precio) => {
+      const id = uid('m')
+      set((s) => {
+        s.materiales.push({ ...m, id })
+        if (precio) {
+          s.precios.push({ id: uid('pp'), materialId: id, ...precio, fecha: HOY })
+          s.historial.push({ id: uid('hp'), materialId: id, ...precio, fecha: HOY })
+        }
+      })
+      return id
+    },
 
     setSidebarCompacta: (v) =>
       set((s) => {
@@ -193,18 +321,29 @@ export const useStore = create<State>()(
         }
       }),
 
-    notificar: (texto, tono = 'ok') => {
+    notificar: (texto, tono = 'ok', deshacer) => {
       const id = uid('t')
+      if (deshacer) deshaceres.set(id, deshacer)
       set((s) => {
-        s.toasts.push({ id, texto, tono })
+        s.toasts.push({ id, texto, tono, deshacer: deshacer ? 'Deshacer' : undefined })
       })
       setTimeout(
-        () =>
+        () => {
+          deshaceres.delete(id)
           set((s) => {
             s.toasts = s.toasts.filter((t) => t.id !== id)
-          }),
-        3800,
+          })
+        },
+        deshacer ? 7000 : 3800,
       )
+    },
+
+    ejecutarDeshacer: (toastId) => {
+      deshaceres.get(toastId)?.()
+      deshaceres.delete(toastId)
+      set((s) => {
+        s.toasts = s.toasts.filter((t) => t.id !== toastId)
+      })
     },
   })),
 )

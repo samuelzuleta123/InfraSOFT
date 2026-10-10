@@ -1,27 +1,22 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Check, ClipboardCopy, Pencil } from 'lucide-react'
 import { Alert, Button, Card, CardHeader, DL, Field, Input, NumberInput, Select, Textarea } from '@/components/ui'
 import { FechaTexto } from '@/components/dominio'
 import { liquidacion, resumen, versionVigente } from '@/lib/calc'
 import { cn } from '@/lib/cn'
+import { textoObservaciones } from '@/lib/observaciones'
 import { HOY, money, moneySigned, num, pct, sumarDias } from '@/lib/format'
 import { useStore } from '@/store/useStore'
+import { ResultadoProyecto } from './ResultadoProyecto'
 import type { FacturaCliente, FormaPago, Proyecto } from '@/types'
 
 const FORMAS: FormaPago[] = ['Contado', 'Crédito 30 días', 'Crédito 45 días', 'Crédito 60 días']
 
-export function textoObservaciones(p: Proyecto) {
-  const partes: string[] = []
-  if (p.ocCliente) partes.push(`OC ${p.ocCliente.numero}.`)
-  if (p.seriales.length) partes.push(`Seriales: ${p.seriales.map((s) => `${s.equipo} ${s.referencia} S/N ${s.serial}`).join('; ')}.`)
-  if (p.entrega.garantia) partes.push(p.entrega.garantia.endsWith('.') ? p.entrega.garantia : `${p.entrega.garantia}.`)
-  if (p.entrega.remision) partes.push(`Remisión No. ${p.entrega.remision}.`)
-  return partes.join(' ')
-}
-
 export function CierreTab({ proyecto }: { proyecto: Proyecto }) {
   return (
     <div className="space-y-5">
+      {proyecto.facturaCliente && <ResultadoProyecto proyecto={proyecto} />}
       <div className="grid items-start gap-5 lg:grid-cols-2">
         <FacturaClienteCard proyecto={proyecto} />
         <ObservacionesCard proyecto={proyecto} />
@@ -48,6 +43,7 @@ function FacturaClienteCard({ proyecto }: { proyecto: Proyecto }) {
     })
     setEditando(false)
     notificar(`Factura ${f.numero} registrada. Proyecto cerrado.`)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   return (
@@ -118,6 +114,19 @@ function FacturaClienteCard({ proyecto }: { proyecto: Proyecto }) {
             Cotizado {money(precio)} · diferencia {moneySigned(actual.valorBruto - precio)}.
           </Alert>
         )}
+        {editando && !proyecto.entrega.actaFirmada && (
+          <Alert
+            tone="warn"
+            title="Falta el acta de conformidad firmada"
+            action={
+              <Link to={`/proyectos/${proyecto.id}/entrega`} className="shrink-0 self-center text-[13px] font-medium text-amber-900 underline">
+                Ir a Entrega
+              </Link>
+            }
+          >
+            Para cerrar el proyecto carga primero la copia firmada del acta.
+          </Alert>
+        )}
         {editando && (
           <div className="flex justify-end gap-2">
             {fc && (
@@ -125,7 +134,7 @@ function FacturaClienteCard({ proyecto }: { proyecto: Proyecto }) {
                 Cancelar
               </Button>
             )}
-            <Button variant="primary" onClick={guardar} disabled={!f.numero.trim() || !f.valorBruto}>
+            <Button variant="primary" onClick={guardar} disabled={!f.numero.trim() || !f.valorBruto || !proyecto.entrega.actaFirmada}>
               Registrar factura y cerrar
             </Button>
           </div>
@@ -153,7 +162,7 @@ function ObservacionesCard({ proyecto }: { proyecto: Proyecto }) {
     <Card>
       <CardHeader title="Observaciones para el POS" description="OC del cliente, seriales, garantía y remisión, listos para pegar en la factura." />
       <div className="space-y-3 p-5">
-        <Textarea readOnly value={texto || 'Completa la OC del cliente, los seriales, la garantía y la remisión para generar el texto.'} rows={5} className="bg-slate-50 text-[13px]" onFocus={(e) => e.currentTarget.select()} aria-label="Texto de observaciones" />
+        <Textarea readOnly value={texto || 'Completa la OC del cliente, los seriales, la garantía y la remisión para generar el texto.'} rows={7} className="bg-slate-50 text-[13px]" onFocus={(e) => e.currentTarget.select()} aria-label="Texto de observaciones" />
         <Button variant="primary" icon={copiado ? <Check /> : <ClipboardCopy />} onClick={copiar} disabled={!texto}>
           {copiado ? 'Copiado' : 'Copiar texto de observaciones'}
         </Button>
@@ -182,21 +191,21 @@ function Liquidacion({ proyecto }: { proyecto: Proyecto }) {
           <div className="num mt-0.5 text-xs text-slate-500">Material {money(l.materialReal)} + otros costos</div>
         </div>
         <div className="bg-white p-5">
-          <div className="text-[13px] text-slate-500">Utilidad estimada</div>
+          <div className="text-[13px] text-slate-500">Utilidad cotizada</div>
           <div className="num mt-1 text-xl font-semibold text-slate-900">{money(l.utilidadEstimada)}</div>
-          <div className="num mt-0.5 text-xs text-slate-500">{pct(l.margenEstimado)} del precio</div>
+          <div className="num mt-0.5 text-xs text-slate-500">{pct(l.margenEstimado)} del precio, con lo cotizado</div>
         </div>
         <div className="bg-white p-5">
           <div className="text-[13px] text-slate-500">Utilidad real</div>
           <div className={cn('num mt-1 text-xl font-semibold', l.utilidadRealObra < l.utilidadEstimada ? 'text-amber-700' : 'text-emerald-700')}>{money(l.utilidadRealObra)}</div>
           <div className="num mt-0.5 text-xs text-slate-500">
-            {pct(l.margenRealObra)} del precio · <span className={cn(difUtilidad < 0 ? 'text-red-700' : 'text-emerald-700')}>{moneySigned(difUtilidad)}</span>
+            {pct(l.margenRealObra)} del precio · <span className={cn(difUtilidad < 0 ? 'text-red-700' : 'text-emerald-700')}>{moneySigned(difUtilidad)}</span> frente a lo cotizado
           </div>
         </div>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[760px] text-[13px]">
-          <thead className="border-b border-slate-200 text-[11px] font-semibold tracking-wide text-slate-500 uppercase">
+          <thead className="border-b border-slate-200 text-xs font-semibold tracking-wide text-slate-500 uppercase">
             <tr>
               <th className="px-4 py-2.5 text-left">Ítem</th>
               <th className="px-3 py-2.5 text-right">Cant. cotizada</th>
@@ -210,14 +219,14 @@ function Liquidacion({ proyecto }: { proyecto: Proyecto }) {
             {l.filas.map((f) => (
               <tr key={f.item.id} className={cn(f.diferencia !== 0 && 'bg-amber-50/40')}>
                 <td className="px-4 py-2 text-slate-900">
-                  {f.item.descripcion} <span className="text-slate-400">({f.item.unidad})</span>
+                  {f.item.descripcion} <span className="text-slate-500">({f.item.unidad})</span>
                 </td>
                 <td className="num px-3 py-2 text-right">{num(f.cotizada, 2)}</td>
                 <td className="num px-3 py-2 text-right">
                   {num(f.instalada, 2)}
-                  {f.item.cantInstalada === null && <span className="ml-1 text-[11px] text-slate-400">(cot.)</span>}
+                  {f.item.cantInstalada === null && <span className="ml-1 text-xs text-slate-500">(cot.)</span>}
                 </td>
-                <td className={cn('num px-3 py-2 text-right font-medium', f.diferencia > 0 ? 'text-red-700' : f.diferencia < 0 ? 'text-emerald-700' : 'text-slate-300')}>
+                <td className={cn('num px-3 py-2 text-right font-medium', f.diferencia > 0 ? 'text-red-700' : f.diferencia < 0 ? 'text-emerald-700' : 'text-slate-500')}>
                   {f.diferencia === 0 ? '—' : `${f.diferencia > 0 ? '+' : ''}${num(f.diferencia, 2)}`}
                 </td>
                 <td className="num px-3 py-2 text-right text-slate-600">{money(f.item.vuMO)}</td>

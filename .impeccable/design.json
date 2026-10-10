@@ -1,0 +1,158 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-10T00:00:00Z",
+  "title": "Design System: Infrasoft · Gestión de proyectos",
+  "extensions": {
+    "colorMeta": {
+      "verde-infrasoft": { "role": "primary", "displayName": "Verde Infrasoft", "canonical": "#82c11e", "tonalRamp": ["#1c2b06", "#384f13", "#426311", "#507b10", "#679d14", "#82c11e", "#cce59f", "#f4f9ea"] },
+      "verde-obra": { "role": "primary", "displayName": "Verde Obra", "canonical": "#426311", "tonalRamp": ["#1c2b06", "#384f13", "#426311", "#507b10", "#679d14", "#96c83c", "#e5f2cd", "#f4f9ea"] },
+      "verde-brote": { "role": "primary", "displayName": "Verde Brote", "canonical": "#f4f9ea" },
+      "carbon": { "role": "neutral", "displayName": "Carbón", "canonical": "#26292a", "tonalRamp": ["#121314", "#1d1f20", "#26292a", "#3a3e3f", "#55595a", "#7a7e7f", "#b3b6b7", "#e9eaea"] },
+      "lienzo": { "role": "neutral", "displayName": "Lienzo", "canonical": "#f5f5f3" },
+      "superficie": { "role": "neutral", "displayName": "Superficie", "canonical": "#ffffff" },
+      "gris-texto": { "role": "neutral", "displayName": "Gris Texto", "canonical": "#2d2d2d", "tonalRamp": ["#121212", "#1f1f1f", "#2d2d2d", "#434343", "#575757", "#737373", "#cdcdcd", "#f7f7f7"] },
+      "gris-secundario": { "role": "neutral", "displayName": "Gris Secundario", "canonical": "#737373" },
+      "gris-linea": { "role": "neutral", "displayName": "Gris Línea", "canonical": "#e2e2e2" },
+      "ok": { "role": "semantic", "displayName": "Ok", "canonical": "oklch(50.8% 0.118 165.612)" },
+      "alerta": { "role": "semantic", "displayName": "Alerta", "canonical": "oklch(55.5% 0.163 48.998)" },
+      "peligro": { "role": "semantic", "displayName": "Peligro", "canonical": "oklch(50.5% 0.213 27.518)" },
+      "info": { "role": "semantic", "displayName": "Info", "canonical": "oklch(44.3% 0.11 240.79)" }
+    },
+    "typographyMeta": {
+      "headline": { "displayName": "Headline", "purpose": "Título de página, uno por vista; 20 px en móvil, 24 px desde sm." },
+      "title": { "displayName": "Title", "purpose": "Títulos de tarjeta (15 px), modal (16 px) y panel lateral (18 px)." },
+      "body": { "displayName": "Body", "purpose": "Texto base, celdas de tabla y campos." },
+      "body-compact": { "displayName": "Body compacto", "purpose": "Descripciones, etiquetas de formulario, botones pequeños y cuerpo de documentos carta." },
+      "label": { "displayName": "Label", "purpose": "Encabezados de tabla y antetítulos, en mayúsculas." },
+      "number": { "displayName": "Number", "purpose": "Valores de indicadores con cifras tabulares." },
+      "mono": { "displayName": "Mono", "purpose": "Códigos y seriales." }
+    },
+    "shadows": [
+      { "name": "contacto", "value": "0 1px 2px 0 rgb(0 0 0 / 0.05)", "purpose": "Tarjetas, campos y botón secundario." },
+      { "name": "apoyo", "value": "0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)", "purpose": "Botón primario y segmento activo del toggle." },
+      { "name": "flotante", "value": "0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)", "purpose": "Toasts, tooltips y hoja carta en pantalla." },
+      { "name": "menu", "value": "0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)", "purpose": "Resultados del buscador global." },
+      { "name": "capa", "value": "0 25px 50px -12px rgb(0 0 0 / 0.25)", "purpose": "Modal y panel lateral." }
+    ],
+    "motion": [
+      { "name": "color-150", "value": "150ms ease", "purpose": "Transiciones de color en botones, campos, pestañas y navegación." },
+      { "name": "fade-150", "value": "150ms ease-out", "purpose": "Velo de modales, panel y menú móvil." },
+      { "name": "rise-200", "value": "200ms ease-out, translateY(6px) a 0", "purpose": "Entrada de toasts." },
+      { "name": "entrar-220", "value": "220ms cubic-bezier(0.16, 1, 0.3, 1), translateX(24px) a 0", "purpose": "Entrada del panel lateral desde la derecha." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Botón primario",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Acción principal de una zona de decisión; uno por zona.",
+      "html": "<button class=\"ds-btn ds-btn-primary\"><svg viewBox=\"0 0 24 24\" width=\"16\" height=\"16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M12 15V3\"/><path d=\"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4\"/><path d=\"m7 10 5 5 5-5\"/></svg>Descargar PDF</button>",
+      "css": ".ds-btn { display:inline-flex; align-items:center; gap:8px; height:36px; padding:0 14px; border-radius:6px; font:500 14px/1 'Fira Sans', system-ui, sans-serif; border:1px solid transparent; cursor:pointer; transition:background-color 150ms, border-color 150ms, color 150ms; } .ds-btn:focus-visible { outline:2px solid #82c11e; outline-offset:2px; } .ds-btn-primary { background:#426311; color:#fff; box-shadow:0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1); } .ds-btn-primary:hover { background:#507b10; } .ds-btn-primary:active { background:#384f13; }"
+    },
+    {
+      "name": "Botón secundario",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Variante por defecto para acciones no principales.",
+      "html": "<button class=\"ds-btn2\">Agregar ítem</button>",
+      "css": ".ds-btn2 { display:inline-flex; align-items:center; height:36px; padding:0 14px; border-radius:6px; font:500 14px/1 'Fira Sans', system-ui, sans-serif; background:#fff; color:#434343; border:1px solid #cdcdcd; box-shadow:0 1px 2px 0 rgb(0 0 0 / 0.05); cursor:pointer; transition:background-color 150ms, border-color 150ms; } .ds-btn2:hover { background:#f7f7f7; border-color:#a3a3a3; } .ds-btn2:active { background:#efefef; } .ds-btn2:focus-visible { outline:2px solid #82c11e; outline-offset:2px; }"
+    },
+    {
+      "name": "Botón peligro",
+      "kind": "button",
+      "refersTo": "button-danger",
+      "description": "Acción destructiva: borde y texto rojo, nunca relleno sólido.",
+      "html": "<button class=\"ds-btn-danger\">Rechazar cotización</button>",
+      "css": ".ds-btn-danger { display:inline-flex; align-items:center; height:36px; padding:0 14px; border-radius:6px; font:500 14px/1 'Fira Sans', system-ui, sans-serif; background:#fff; color:#b91c1c; border:1px solid #fecaca; cursor:pointer; transition:background-color 150ms, border-color 150ms; } .ds-btn-danger:hover { background:#fef2f2; border-color:#fca5a5; } .ds-btn-danger:focus-visible { outline:2px solid #82c11e; outline-offset:2px; }"
+    },
+    {
+      "name": "Campo numérico",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Campo con etiqueta, formato colombiano, cifras tabulares a la derecha.",
+      "html": "<div class=\"ds-field\"><label class=\"ds-label\" for=\"ds-precio\">Precio unitario</label><div class=\"ds-wrap\"><span class=\"ds-prefix\">$</span><input id=\"ds-precio\" class=\"ds-input\" value=\"1.234.567\" inputmode=\"decimal\"></div><p class=\"ds-hint\">Precio neto del catálogo, sin IVA.</p></div>",
+      "css": ".ds-field { display:flex; flex-direction:column; gap:6px; width:260px; font-family:'Fira Sans', system-ui, sans-serif; } .ds-label { font-size:13px; font-weight:500; color:#434343; } .ds-wrap { position:relative; } .ds-prefix { position:absolute; left:10px; top:50%; transform:translateY(-50%); font-size:14px; color:#a3a3a3; pointer-events:none; } .ds-input { width:100%; height:36px; padding:0 10px 0 24px; border:1px solid #cdcdcd; border-radius:6px; background:#fff; color:#1f1f1f; font:400 14px 'Fira Sans', system-ui, sans-serif; font-variant-numeric:tabular-nums; text-align:right; box-shadow:0 1px 2px 0 rgb(0 0 0 / 0.05); transition:border-color 150ms, box-shadow 150ms; box-sizing:border-box; } .ds-input:hover { border-color:#a3a3a3; } .ds-input:focus { outline:none; border-color:#82c11e; box-shadow:0 0 0 2px rgb(130 193 30 / 0.2); } .ds-hint { margin:0; font-size:12px; color:#737373; }"
+    },
+    {
+      "name": "Insignias de etapa",
+      "kind": "chip",
+      "refersTo": "badge-brand",
+      "description": "Píldoras de estado con punto; un tono por significado.",
+      "html": "<div class=\"ds-badges\"><span class=\"ds-badge ds-info\"><i></i>Cotización</span><span class=\"ds-badge ds-brand\"><i></i>Compras</span><span class=\"ds-badge ds-warn\"><i></i>Ejecución</span><span class=\"ds-badge ds-ok\"><i></i>Cerrado</span><span class=\"ds-badge ds-danger\"><i></i>Vencida</span></div>",
+      "css": ".ds-badges { display:flex; flex-wrap:wrap; gap:8px; } .ds-badge { display:inline-flex; align-items:center; gap:6px; padding:2px 8px; border-radius:9999px; font:500 12px/1.33 'Fira Sans', system-ui, sans-serif; white-space:nowrap; } .ds-badge i { width:6px; height:6px; border-radius:9999px; background:currentColor; } .ds-info { background:#f0f9ff; color:#075985; box-shadow:inset 0 0 0 1px #bae6fd; } .ds-brand { background:#f4f9ea; color:#426311; box-shadow:inset 0 0 0 1px #cce59f; } .ds-warn { background:#fffbeb; color:#92400e; box-shadow:inset 0 0 0 1px #fde68a; } .ds-ok { background:#ecfdf5; color:#065f46; box-shadow:inset 0 0 0 1px #a7f3d0; } .ds-danger { background:#fef2f2; color:#b91c1c; box-shadow:inset 0 0 0 1px #fecaca; }"
+    },
+    {
+      "name": "Tarjeta con tabla",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Contenedor plano con borde, encabezado y tabla de cifras tabulares.",
+      "html": "<section class=\"ds-card\"><header class=\"ds-card-h\"><h2>Sección 1 · Fibra óptica</h2><p>Material y mano de obra</p></header><table class=\"ds-t\"><thead><tr><th>Ítem</th><th class=\"r\">Cant.</th><th class=\"r\">Total</th></tr></thead><tbody><tr><td>Cable F.O. 12 hilos</td><td class=\"r\">320</td><td class=\"r\">$ 4.160.000</td></tr><tr><td>Fusión por hilo</td><td class=\"r\">24</td><td class=\"r\">$ 960.000</td></tr></tbody></table></section>",
+      "css": ".ds-card { width:420px; background:#fff; border:1px solid #e2e2e2; border-radius:8px; box-shadow:0 1px 2px 0 rgb(0 0 0 / 0.05); font-family:'Fira Sans', system-ui, sans-serif; overflow:hidden; } .ds-card-h { padding:14px 20px; border-bottom:1px solid #e2e2e2; } .ds-card-h h2 { margin:0; font-size:15px; font-weight:600; color:#1f1f1f; } .ds-card-h p { margin:2px 0 0; font-size:13px; color:#737373; } .ds-t { width:100%; border-collapse:collapse; font-size:14px; color:#2d2d2d; } .ds-t th { padding:10px 12px; text-align:left; font-size:12px; font-weight:600; letter-spacing:0.025em; text-transform:uppercase; color:#737373; background:#f7f7f7; } .ds-t td { padding:10px 12px; border-top:1px solid #efefef; } .ds-t .r { text-align:right; font-variant-numeric:tabular-nums; } .ds-t tbody tr:hover { background:#f7f7f7; }"
+    },
+    {
+      "name": "Barra lateral",
+      "kind": "nav",
+      "refersTo": "nav-sidebar",
+      "description": "Navegación principal sobre carbón, ítem activo con velo blanco e icono verde.",
+      "html": "<nav class=\"ds-nav\"><div class=\"ds-logo\"><span class=\"g\">Infr</span><span class=\"s\">as</span><span class=\"g\">oft</span></div><a class=\"ds-item\" href=\"#\"><svg viewBox=\"0 0 24 24\" width=\"16\" height=\"16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><rect x=\"3\" y=\"3\" width=\"7\" height=\"9\" rx=\"1\"/><rect x=\"14\" y=\"3\" width=\"7\" height=\"5\" rx=\"1\"/><rect x=\"14\" y=\"12\" width=\"7\" height=\"9\" rx=\"1\"/><rect x=\"3\" y=\"16\" width=\"7\" height=\"5\" rx=\"1\"/></svg>Inicio</a><a class=\"ds-item ds-active\" href=\"#\" aria-current=\"page\"><svg viewBox=\"0 0 24 24\" width=\"16\" height=\"16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.7-.9L9.6 3.9A2 2 0 0 0 7.9 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z\"/></svg>Proyectos</a><a class=\"ds-item\" href=\"#\"><svg viewBox=\"0 0 24 24\" width=\"16\" height=\"16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z\"/></svg><span class=\"f\">Facturas de proveedores</span><span class=\"ds-count\">2</span></a></nav>",
+      "css": ".ds-nav { width:256px; background:#26292a; padding:0 12px 16px; border-radius:8px; font-family:'Fira Sans', system-ui, sans-serif; } .ds-logo { height:64px; display:flex; align-items:center; justify-content:center; font-size:22px; font-weight:300; letter-spacing:-0.02em; border-bottom:1px solid #3a3e3f; margin:0 -12px 16px; } .ds-logo .g { color:#82c11e; } .ds-logo .s { color:#cdcdcd; } .ds-item { display:flex; align-items:center; gap:12px; padding:8px 12px; border-radius:6px; font-size:14px; font-weight:500; color:#cdcdcd; text-decoration:none; transition:background-color 150ms, color 150ms; } .ds-item .f { flex:1; } .ds-item:hover { background:rgb(255 255 255 / 0.06); color:#fff; } .ds-item:focus-visible { outline:2px solid #82c11e; outline-offset:2px; } .ds-active { background:rgb(255 255 255 / 0.1); color:#fff; } .ds-active svg { color:#96c83c; } .ds-count { min-width:20px; padding:0 6px; border-radius:9999px; background:#fbbf24; color:#451a03; font-size:11px; font-weight:600; text-align:center; font-variant-numeric:tabular-nums; }"
+    },
+    {
+      "name": "Pestañas",
+      "kind": "nav",
+      "refersTo": "nav-item-active",
+      "description": "Pestañas con subrayado de 2 px y contador; la activa en Verde Obra.",
+      "html": "<div class=\"ds-tabs\" role=\"tablist\"><button role=\"tab\" aria-selected=\"true\" class=\"ds-tab on\">Cotización<span>14</span></button><button role=\"tab\" aria-selected=\"false\" class=\"ds-tab\">Compras<span>3</span></button><button role=\"tab\" aria-selected=\"false\" class=\"ds-tab\">Bitácora</button></div>",
+      "css": ".ds-tabs { display:flex; gap:4px; border-bottom:1px solid #e2e2e2; font-family:'Fira Sans', system-ui, sans-serif; } .ds-tab { margin-bottom:-1px; display:inline-flex; align-items:center; gap:8px; padding:10px 12px; background:none; border:0; border-bottom:2px solid transparent; font-size:14px; font-weight:500; color:#737373; cursor:pointer; transition:color 150ms, border-color 150ms; } .ds-tab span { padding:0 6px; border-radius:9999px; font-size:12px; background:#efefef; color:#575757; font-variant-numeric:tabular-nums; } .ds-tab:hover { color:#2d2d2d; border-bottom-color:#cdcdcd; } .ds-tab:focus-visible { outline:2px solid #82c11e; outline-offset:2px; } .ds-tab.on { color:#426311; border-bottom-color:#507b10; } .ds-tab.on span { background:#e5f2cd; color:#426311; }"
+    },
+    {
+      "name": "Stepper de etapas",
+      "kind": "custom",
+      "refersTo": "button-primary",
+      "description": "Las cinco etapas del proyecto: completadas en Verde Obra, actual con anillo, pendientes en gris.",
+      "html": "<ol class=\"ds-step\"><li class=\"done\"><b>✓</b><span>Cotización</span></li><i class=\"done\"></i><li class=\"done\"><b>✓</b><span>Compras</span></li><i></i><li class=\"now\"><b>3</b><span><small>ETAPA 3</small>Ejecución</span></li><i></i><li><b>4</b><span>Entrega</span></li><i></i><li><b>5</b><span>Cierre</span></li></ol>",
+      "css": ".ds-step { display:flex; align-items:center; gap:8px; list-style:none; margin:0; padding:0; width:640px; font-family:'Fira Sans', system-ui, sans-serif; } .ds-step li { display:flex; align-items:center; gap:10px; } .ds-step b { width:28px; height:28px; flex-shrink:0; display:flex; align-items:center; justify-content:center; border-radius:9999px; font-size:12px; font-weight:600; background:#fff; color:#a3a3a3; box-shadow:0 0 0 2px #cdcdcd; font-variant-numeric:tabular-nums; } .ds-step span { font-size:13px; font-weight:500; color:#737373; white-space:nowrap; } .ds-step small { display:block; font-size:11px; letter-spacing:0.025em; color:#507b10; } .ds-step .done b { background:#426311; color:#fff; box-shadow:0 0 0 2px #426311; } .ds-step .done span, .ds-step .now span { color:#1f1f1f; } .ds-step .now b { color:#426311; box-shadow:0 0 0 2px #507b10; } .ds-step i { flex:1; height:2px; border-radius:9999px; background:#e2e2e2; } .ds-step i.done { background:#426311; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "El Tablero de Obra",
+    "overview": "El sistema es el tablero donde gerencia ve el estado real de cada proyecto: qué se cotizó, qué se compró, qué se instaló y cuánto queda. Es una herramienta de trabajo, sobria pero cálida. El lienzo es un blanco hueso apenas tibio (no un gris frío), las superficies son blancas y planas, y el carbón de la barra lateral ancla la pantalla como el tablero físico ancla el cuarto técnico. El verde Infrasoft, tomado del logo, aparece solo donde algo avanza o se decide.\n\nLa densidad es alta y deliberada: tablas con cifras alineadas, tipografía de 13–14 px, controles de 32–36 px de alto. La jerarquía se construye con peso y gris, no con tamaño. Los números mandan: toda cifra usa dígitos tabulares y se alinea a la derecha para poder leerse en columna y rastrearse hasta sus ítems.\n\nLos documentos imprimibles (cotización, orden de compra, remisión, informe de entrega) son la segunda cara del sistema: hojas tamaño carta con membrete, tipografía de 13 px y la misma paleta en versión sobria. El azul marino provisional de las primeras versiones quedó descartado; la marca es verde y gris.",
+    "keyCharacteristics": [
+      "Lienzo cálido (#f5f5f3) con superficies blancas planas separadas por bordes de 1 px.",
+      "Barra lateral carbón como único bloque oscuro de la interfaz.",
+      "Verde Obra para la acción principal; Verde Infrasoft brillante solo como marca y señal sobre fondo oscuro.",
+      "Neutros grises puros, sin tinte azul.",
+      "Fira Sans para todo; cifras tabulares siempre.",
+      "Colores semánticos (verde esmeralda, ámbar, rojo, celeste) reservados para estado."
+    ],
+    "rules": [
+      { "name": "The Verde Que Avanza Rule", "body": "El verde marca lo que avanza o lo que se decide: la acción principal, la pestaña activa, el paso cumplido. Nunca es decoración ni relleno de áreas grandes.", "section": "colors" },
+      { "name": "The Gris Puro Rule", "body": "Los neutros son grises sin tinte. No introducir grises azulados (slate de Tailwind por defecto) ni azul marino; el único tinte permitido es el calor leve del lienzo.", "section": "colors" },
+      { "name": "The Semáforo Rule", "body": "Esmeralda, ámbar, rojo y celeste existen solo para estado. Un elemento coloreado con ellos debe significar algo que el usuario pueda nombrar.", "section": "colors" },
+      { "name": "The Cifra Tabular Rule", "body": "Toda cifra (dinero, cantidades, porcentajes, contadores) lleva dígitos tabulares y, en columnas, alineación a la derecha. Un número que baila no se puede auditar.", "section": "typography" },
+      { "name": "The Peso Antes Que Tamaño Rule", "body": "La jerarquía se gana con peso y gris, no subiendo tamaños. Nada en la aplicación supera los 24 px salvo el logotipo.", "section": "typography" },
+      { "name": "The Plano En Reposo Rule", "body": "Lo que está en la página es plano y se separa con bordes. Solo lo que flota encima tiene sombra.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do usar Verde Obra (#426311) para el botón primario y el texto de acción; Verde Infrasoft (#82c11e) solo para marca, foco y señales sobre carbón.",
+      "Do aplicar cifras tabulares a todo número y alinear a la derecha las columnas de dinero y cantidades.",
+      "Do separar superficies con bordes de 1 px y reservar la sombra para capas flotantes.",
+      "Do mantener un solo botón primario por zona de decisión; el resto, secundario o ghost.",
+      "Do usar los tonos semánticos solo cuando expresen un estado que el usuario pueda nombrar.",
+      "Do verificar que la bitácora de obra y los modales funcionen a 375 px de ancho."
+    ],
+    "donts": [
+      "Don't usar azul marino ni grises azulados; el azul provisional quedó fuera de la marca.",
+      "Don't usar Verde Infrasoft como color de texto o fondo de botón sobre blanco: no alcanza contraste.",
+      "Don't mostrar costos, proveedores ni utilidad en la vista cliente ni en documentos dirigidos al cliente; esas columnas y bloques no existen en su versión.",
+      "Don't usar botones rojos sólidos; el peligro es borde y texto rojo sobre blanco.",
+      "Don't subir títulos por encima de 24 px dentro de la aplicación."
+    ]
+  }
+}

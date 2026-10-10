@@ -18,7 +18,7 @@ export const proveedores: Proveedor[] = [
 
 export const materiales: Material[] = [
   { id: 'm01', codigo: 'PC-UTP6-3', descripcion: 'Patch cord UTP Cat 6 x 3 mts', unidad: 'Un', categoria: 'Cableado' },
-  { id: 'm02', codigo: 'SW-JL680A', descripcion: 'Switch Aruba JL680A', unidad: 'Un', categoria: 'Equipos activos' },
+  { id: 'm02', codigo: 'SW-JL680A', descripcion: 'Switch Aruba Instant On 1930 8G 2SFP JL680A', unidad: 'Un', categoria: 'Equipos activos' },
   { id: 'm03', codigo: 'TR-R9D16A', descripcion: 'Transceiver Aruba R9D16A', unidad: 'Un', categoria: 'Equipos activos' },
   { id: 'm04', codigo: 'ODF-RACK', descripcion: 'ODF para rack', unidad: 'Un', categoria: 'Fibra óptica' },
   { id: 'm05', codigo: 'PL-12H', descripcion: 'Placa para 12 hilos para caja industrial', unidad: 'Un', categoria: 'Fibra óptica' },
@@ -35,11 +35,10 @@ export const materiales: Material[] = [
   { id: 'm21', codigo: 'UN-IMC-1', descripcion: 'Unión galv. IMC 1"', unidad: 'Un', categoria: 'Canalización' },
   { id: 'm22', codigo: 'CB-FUTP6A', descripcion: 'Cable F-UTP Cat 6A LSZH', unidad: 'Mts', categoria: 'Cableado' },
   { id: 'm23', codigo: 'UN-IMC-112', descripcion: 'Unión galv. IMC 1-1/2"', unidad: 'Un', categoria: 'Canalización' },
-  { id: 'm24', codigo: 'SW-JL682A', descripcion: 'Switch Aruba Instant On 1930 24G 4SFP+ JL682A', unidad: 'Un', categoria: 'Equipos activos' },
   { id: 'm25', codigo: 'BJ-MALLA-54', descripcion: 'Bandeja portacable tipo malla 54x300 mm', unidad: 'Un', categoria: 'Canalización' },
   { id: 'm26', codigo: 'CJ-PASO-2020', descripcion: 'Caja de paso metálica 20x20', unidad: 'Un', categoria: 'Canalización' },
   { id: 'm27', codigo: 'CU-IMC-1', descripcion: 'Curva galv. IMC 1"', unidad: 'Un', categoria: 'Canalización' },
-  { id: 'm28', codigo: 'CZ-AM-1', descripcion: 'Coraza americana 1"', unidad: 'Mts', categoria: 'Canalización' },
+  { id: 'm28', codigo: 'CZ-AM-1', descripcion: 'Coraza 1" LT americana', unidad: 'Mts', categoria: 'Canalización' },
   { id: 'm30', codigo: 'CB-UTP6', descripcion: 'Cable UTP Cat 6', unidad: 'Mts', categoria: 'Cableado' },
   { id: 'm31', codigo: 'JK-C6', descripcion: 'Jack Cat 6', unidad: 'Un', categoria: 'Cableado' },
   { id: 'm32', codigo: 'FP-2', descripcion: 'Face plate doble', unidad: 'Un', categoria: 'Cableado' },
@@ -68,6 +67,13 @@ export const materiales: Material[] = [
   { id: 'm61', codigo: 'BRK-1X20', descripcion: 'Breaker 1x20 A para riel', unidad: 'Un', categoria: 'Energía' },
   { id: 'm62', codigo: 'TAB-4C', descripcion: 'Tablero de distribución de 4 circuitos', unidad: 'Un', categoria: 'Energía' },
   { id: 'm63', codigo: 'BJ-MALLA-150', descripcion: 'Bandeja portacable tipo malla 54x150 mm', unidad: 'Un', categoria: 'Canalización' },
+  { id: 'm65', codigo: 'TA-EMT-1', descripcion: 'Terminal / adaptador EMT 1"', unidad: 'Un', categoria: 'Canalización' },
+  { id: 'm66', codigo: 'RD-IMC-112-1', descripcion: 'Reducción 1 1/2" - 1" macho-hembra galvanizada', unidad: 'Un', categoria: 'Canalización' },
+  { id: 'm68', codigo: 'CR-CZ-112', descripcion: 'Conector recto 1 1/2" LT para coraza', unidad: 'Un', categoria: 'Canalización' },
+  { id: 'm69', codigo: 'CR-CZ-1', descripcion: 'Conector recto 1" LT para coraza', unidad: 'Un', categoria: 'Canalización' },
+  { id: 'm70', codigo: 'TB-IMC-1-IMP', descripcion: 'Tubo 1" IMC galvanizado 3 mts (importado)', unidad: 'Un', categoria: 'Canalización' },
+  { id: 'm71', codigo: 'TB-IMC-112-IMP', descripcion: 'Tubo 1 1/2" IMC galvanizado 3 mts (importado)', unidad: 'Un', categoria: 'Canalización' },
+  { id: 'm72', codigo: 'TB-IMC-112-IMD', descripcion: 'Tubo 1 1/2" IMC galvanizado 3 mts (Impordecol)', unidad: 'Un', categoria: 'Canalización' },
   { id: 'm64', codigo: 'TR-SFP10-LR', descripcion: 'Transceiver SFP+ 10G LR monomodo', unidad: 'Un', categoria: 'Equipos activos' },
 ]
 
@@ -82,9 +88,8 @@ const p = (id: string, materialId: string, proveedorId: string, precioLista: num
 })
 
 export const precios: PrecioProveedor[] = [
-  p('pp01', 'm02', 'prv-ingram', 420_000, '2026-09-15'),
+  p('pp01', 'm02', 'prv-ingram', 367_099, '2026-09-03'),
   p('pp02', 'm03', 'prv-ingram', 140_000, '2026-09-15'),
-  p('pp03', 'm24', 'prv-ingram', 1_101_297, '2026-09-03'),
   p('pp04', 'm40', 'prv-ingram', 520_000, '2026-09-22'),
 
   p('pp10', 'm01', 'prv-rg', 22_000, '2026-08-20'),
@@ -106,14 +111,21 @@ export const precios: PrecioProveedor[] = [
   p('pp26', 'm34', 'prv-rg', 3_200, '2026-09-10'),
 
   p('pp30', 'm12', 'prv-edv', 36_000, '2026-09-05'),
-  p('pp31', 'm13', 'prv-edv', 3_500, '2026-09-05'),
+  p('pp31', 'm13', 'prv-edv', 2_500, '2026-09-05'),
   p('pp32', 'm14', 'prv-edv', 8_000, '2026-09-05'),
   p('pp33', 'm15', 'prv-edv', 7_500, '2026-09-05'),
   p('pp34', 'm16', 'prv-edv', 400_000, '2026-09-05'),
   p('pp35', 'm25', 'prv-edv', 118_500, '2026-08-25'),
   p('pp36', 'm26', 'prv-edv', 38_900, '2026-08-25'),
   p('pp37', 'm27', 'prv-edv', 12_300, '2026-08-25'),
-  p('pp38', 'm28', 'prv-edv', 6_754.1, '2026-08-25'),
+  { ...p('pp38', 'm28', 'prv-edv', 9_802, '2026-10-06'), descuentoPct: 23 },
+  { ...p('pp69', 'm66', 'prv-edv', 12_837, '2026-10-06'), descuentoPct: 22 },
+  { ...p('pp70', 'm68', 'prv-edv', 10_114, '2026-10-06'), descuentoPct: 25 },
+  { ...p('pp71', 'm69', 'prv-edv', 5_640, '2026-10-06'), descuentoPct: 25 },
+  { ...p('pp72', 'm70', 'prv-edv', 38_106, '2026-10-06'), descuentoPct: 22 },
+  { ...p('pp73', 'm71', 'prv-edv', 53_036, '2026-10-06'), descuentoPct: 22 },
+  { ...p('pp74', 'm72', 'prv-edv', 107_361, '2026-10-06'), descuentoPct: 23 },
+  p('pp75', 'm65', 'prv-edv', 3_000, '2026-09-05'),
 
   p('pp40', 'm41', 'prv-rg', 1_250_000, '2026-07-14'),
   p('pp41', 'm42', 'prv-rg', 420_000, '2026-07-14'),
@@ -169,7 +181,7 @@ export const historialPrecios: HistorialPrecio[] = [
   h('hp11', 'm22', 'prv-rg', 2_590, '2026-03-18'),
   h('hp12', 'm22', 'prv-rg', 2_650, '2026-08-20'),
   h('hp13', 'm22', 'prv-rg', 2_772, '2026-10-06'),
-  h('hp14', 'm24', 'prv-ingram', 1_101_297, '2026-09-03'),
+  h('hp14', 'm02', 'prv-ingram', 367_099, '2026-09-03'),
   h('hp15', 'm16', 'prv-edv', 372_000, '2024-04-22'),
   h('hp16', 'm16', 'prv-edv', 400_000, '2024-11-10'),
   h('hp17', 'm30', 'prv-rg', 1_780, '2025-03-11'),

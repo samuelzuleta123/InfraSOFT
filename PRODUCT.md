@@ -45,7 +45,7 @@ Está hecho a la medida del ciclo real de esta empresa: cotización por seccione
 ## Brand Commitments
 
 - Nombre: Infrasoft Services S.A.S.
-- La empresa tiene logo y colores corporativos definidos que el diseño debe usar. Aún no están en el repositorio: el mockup usa un logo provisional "INFRASOFT" y una paleta azul marino provisional hasta recibirlos.
+- La empresa tiene logo y colores corporativos definidos que el diseño debe usar: verde (#82C11E) y gris (#808080), tomados del logo de la FE 500. El mockup usa un logotipo reconstruido a partir de ese logo (`src/components/Marca.tsx`) hasta recibir el archivo oficial. El azul marino de las primeras versiones era provisional y quedó descartado.
 - Tono pedido: sobrio y corporativo, apropiado para una empresa de telecomunicaciones.
 
 ## Evidence on Hand
