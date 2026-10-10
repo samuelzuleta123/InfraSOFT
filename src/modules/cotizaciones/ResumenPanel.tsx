@@ -33,21 +33,8 @@ export function ResumenPanel({ r, onPrecioFinal, vistaCliente }: { r: Resumen; o
       <div className="border-b border-slate-200 px-5 py-3.5">
         <h2 className="text-[15px] font-semibold text-slate-900">Resumen</h2>
       </div>
-      <dl className="px-5 py-3">
-        <Fila label="Mano de obra" value={money(r.mo)} />
-        <Fila label="Materiales" value={money(r.material)} />
-        <Fila label="Otros costos" value={money(r.otros)} />
-        <Fila label="Costo total" value={money(r.costo)} strong className="mt-1 border-t border-slate-200 pt-2" />
-      </dl>
-
-      <dl className="border-t border-dashed border-slate-200 px-5 py-3">
-        <Fila label={`Utilidad (${pct(r.utilidadPct, 1)})`} value={money(r.utilidadSugerida)} muted={r.utilidadPct === 0} />
-        <Fila label={`Otros ajustes (${pct(r.ajustesPct, 1)})`} value={money(r.ajustesSugeridos)} muted={r.ajustesPct === 0} />
-        <Fila label="Precio sugerido" value={money(r.precioSugerido)} strong className="mt-1" />
-        <p className="text-xs leading-snug text-slate-500">Costo × (1 + % utilidad), más % de otros ajustes.</p>
-      </dl>
-
-      <div className="border-t border-slate-200 bg-brand-50/60 px-5 py-4">
+      {/* Lo primero: cuánto se cobra y cuánto se gana con ese precio. */}
+      <div className="bg-brand-50/60 px-5 py-4">
         <label htmlFor="precio-final" className="text-xs font-semibold tracking-wide text-brand-900 uppercase">
           Precio final cotizado
         </label>
@@ -63,8 +50,8 @@ export function ResumenPanel({ r, onPrecioFinal, vistaCliente }: { r: Resumen; o
           inputClassName="h-11 text-lg font-semibold border-brand-300"
         />
         <div className="mt-1.5 flex items-center justify-between text-xs">
-          <span className="text-slate-500">{r.precioFinal === null ? 'Vacío: se usa el precio sugerido.' : 'Editado manualmente.'}</span>
-          <button type="button" onClick={() => onPrecioFinal(Math.round(r.precioSugerido))} className="font-medium text-brand-700 hover:text-brand-900 hover:underline">
+          <span className="text-slate-500">{r.precioFinal === null ? 'Vacío: se usa el precio sugerido.' : 'Digitado por el usuario.'}</span>
+          <button type="button" onClick={() => onPrecioFinal(Math.round(r.precioSugerido))} className="-my-1 py-1 font-medium text-brand-700 hover:text-brand-900 hover:underline">
             Usar sugerido
           </button>
         </div>
@@ -74,31 +61,49 @@ export function ResumenPanel({ r, onPrecioFinal, vistaCliente }: { r: Resumen; o
             El precio final está por debajo del costo total.
           </p>
         )}
+        <div className="mt-4 border-t border-brand-200/70 pt-3">
+          <div className="text-[13px] text-slate-600">Utilidad cotizada</div>
+          <div className={cn('num text-2xl font-semibold tracking-tight', r.utilidadReal < 0 ? 'text-red-700' : 'text-slate-900')}>{money(r.utilidadReal)}</div>
+          <div className="num mt-0.5 text-xs text-slate-600">
+            {pct(r.margenReal)} del precio · {pct(r.utilidadSobreCosto)} sobre el costo
+          </div>
+          {r.ajustesPct > 0 && (
+            <div className="num mt-1 text-xs text-slate-600">
+              Descontando otros ajustes ({pct(r.ajustesPct, 1)}): {money(r.ajustesReales)}
+            </div>
+          )}
+        </div>
       </div>
 
       <dl className="border-t border-slate-200 px-5 py-3">
-        <div className="mb-1 text-xs font-semibold tracking-wide text-slate-500 uppercase">Sobre el precio final</div>
-        <Fila label={`Otros ajustes (${pct(r.ajustesPct, 1)})`} value={money(r.ajustesReales)} muted={r.ajustesPct === 0} />
-        <Fila
-          label="Utilidad cotizada"
-          value={<span className={cn(r.utilidadReal < 0 ? 'text-red-700' : 'text-emerald-700')}>{money(r.utilidadReal)}</span>}
-          strong
-        />
-        <Fila label="Margen sobre el precio" value={pct(r.margenReal)} />
-        <Fila label="Utilidad sobre el costo" value={pct(r.utilidadSobreCosto)} />
+        <Fila label="Mano de obra" value={money(r.mo)} />
+        <Fila label="Materiales" value={money(r.material)} />
+        <Fila label="Otros costos" value={money(r.otros)} />
+        <Fila label="Costo total" value={money(r.costo)} strong className="mt-1 border-t border-slate-200 pt-2" />
+      </dl>
+
+      <dl className="border-t border-dashed border-slate-200 px-5 py-3">
+        {r.utilidadPct > 0 && <Fila label={`Utilidad (${pct(r.utilidadPct, 1)})`} value={money(r.utilidadSugerida)} />}
+        {r.ajustesPct > 0 && <Fila label={`Otros ajustes (${pct(r.ajustesPct, 1)})`} value={money(r.ajustesSugeridos)} />}
+        <Fila label="Precio sugerido" value={money(r.precioSugerido)} />
+        <p className="text-xs leading-snug text-slate-500">
+          {r.utilidadPct === 0 && r.ajustesPct === 0
+            ? 'Sin % de utilidad ni de ajustes digitados: el sugerido es igual al costo.'
+            : 'Costo × (1 + % utilidad), más % de otros ajustes.'}
+        </p>
       </dl>
     </aside>
   )
 }
 
 /**
- * En pantallas de menos de 1360 px el panel lateral no deja espacio a la tabla:
+ * En pantallas de menos de 1600 px el panel lateral no deja espacio a la tabla:
  * el resumen pasa a una barra fija inferior con lo esencial y el detalle en un diálogo.
  */
 export function ResumenBarra({ r, onPrecioFinal, vistaCliente }: { r: Resumen; onPrecioFinal: (n: number | null) => void; vistaCliente: boolean }) {
   const [detalle, setDetalle] = useState(false)
   return (
-    <div className="sticky bottom-0 z-10 -mx-4 mt-5 border-t border-slate-200 bg-white/95 px-4 py-3 shadow-[0_-4px_16px_-8px_rgb(15_23_42/0.18)] backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 min-[1360px]:hidden">
+    <div className="sticky bottom-0 z-10 -mx-4 mt-5 border-t border-slate-200 bg-white/95 px-4 py-3 shadow-[0_-4px_16px_-8px_rgb(15_23_42/0.18)] backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 min-[1600px]:hidden">
       {vistaCliente ? (
         <div className="flex items-baseline justify-between gap-4">
           <span className="text-[13px] text-slate-600">Valor de la propuesta</span>

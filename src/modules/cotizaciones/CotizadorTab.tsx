@@ -106,7 +106,7 @@ export function CotizadorTab({ proyecto }: { proyecto: Proyecto }) {
         </Alert>
       )}
 
-      <div className="grid items-start gap-5 min-[1360px]:grid-cols-[minmax(0,1fr)_288px] min-[1360px]:gap-4">
+      <div className="grid items-start gap-5 min-[1600px]:grid-cols-[minmax(0,1fr)_288px] min-[1600px]:gap-4">
         <fieldset disabled={bloqueada} className="m-0 min-w-0 space-y-4 border-0 p-0">
           {v.secciones.map((s, idx) => {
             const inicio = contador
@@ -253,7 +253,7 @@ export function CotizadorTab({ proyecto }: { proyecto: Proyecto }) {
           </Card>
         </fieldset>
 
-        <div className="hidden min-[1360px]:sticky min-[1360px]:top-20 min-[1360px]:block">
+        <div className="hidden min-[1600px]:sticky min-[1600px]:top-20 min-[1600px]:block">
           <fieldset disabled={bloqueada} className="m-0 border-0 p-0">
             <ResumenPanel r={r} vistaCliente={vistaCliente} onPrecioFinal={fijarPrecioFinal} />
           </fieldset>

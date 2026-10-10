@@ -4,13 +4,13 @@ import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, MapPin } from 'lucide-react'
 import { Button, Tabs } from '@/components/ui'
 import { ETAPAS, EtapaBadge, EstadoCotBadge, StepperEtapas } from '@/components/dominio'
-import { useCliente, useProyecto } from '@/store/useStore'
+import { useCliente, useProyecto, useStore } from '@/store/useStore'
 import { versionVigente } from '@/lib/calc'
 import type { Etapa } from '@/types'
 import { LevantamientoTab } from './LevantamientoTab'
 import { DocumentosTab } from './DocumentosTab'
 import { HistorialTab } from './HistorialTab'
-import { AvanzarEtapaModal } from './AvanzarEtapaModal'
+import { AvanzarEtapaModal, chequeosEtapa } from './AvanzarEtapaModal'
 import { CotizadorTab } from '@/modules/cotizaciones/CotizadorTab'
 import { ComprasTab } from '@/modules/compras/ComprasTab'
 import { BitacoraTab } from '@/modules/ejecucion/BitacoraTab'
@@ -37,6 +37,7 @@ export function ProyectoDetalle() {
   const cliente = useCliente(proyecto?.clienteId)
   const nav = useNavigate()
   const [avanzar, setAvanzar] = useState(false)
+  const ordenes = useStore((s) => s.ordenes)
 
   if (!proyecto) return <Navigate to="/proyectos" replace />
   if (!TABS.some((t) => t.id === tab)) return <Navigate to={`/proyectos/${proyecto.id}/cotizacion`} replace />
@@ -44,6 +45,8 @@ export function ProyectoDetalle() {
   const v = versionVigente(proyecto)
   const cerrado = proyecto.etapa === 5 && !!proyecto.facturaCliente
   const siguiente = (proyecto.etapa + 1) as Etapa
+  // Si falta un requisito obligatorio, avanzar deja de ser la acción principal y lo dice.
+  const bloqueos = proyecto.etapa < 5 ? chequeosEtapa(proyecto, siguiente, ordenes.filter((o) => o.proyectoId === proyecto.id).length).filter((c) => c.bloquea && !c.ok).length : 0
 
   return (
     <div>
@@ -78,8 +81,19 @@ export function ProyectoDetalle() {
             </div>
           </div>
           {proyecto.etapa < 5 && (
-            <Button variant="primary" icon={<ChevronRight />} onClick={() => setAvanzar(true)} className="hidden sm:inline-flex">
+            <Button
+              variant={bloqueos ? 'secondary' : 'primary'}
+              icon={<ChevronRight />}
+              onClick={() => setAvanzar(true)}
+              className="hidden sm:inline-flex"
+              title={bloqueos ? 'Hay requisitos obligatorios pendientes para pasar de etapa' : undefined}
+            >
               Avanzar a {ETAPAS[proyecto.etapa].corto.toLowerCase()}
+              {bloqueos > 0 && (
+                <span className="num rounded-full bg-amber-100 px-1.5 text-xs font-semibold text-amber-900">
+                  {bloqueos} pendiente{bloqueos === 1 ? '' : 's'}
+                </span>
+              )}
             </Button>
           )}
         </div>
@@ -95,7 +109,7 @@ export function ProyectoDetalle() {
           </span>
           {proyecto.etapa < 5 && (
             <button type="button" onClick={() => setAvanzar(true)} className="-my-2 px-1 py-2 text-xs font-medium text-brand-800 underline">
-              Avanzar
+              Avanzar{bloqueos > 0 && ` · ${bloqueos} pendiente${bloqueos === 1 ? '' : 's'}`}
             </button>
           )}
         </div>

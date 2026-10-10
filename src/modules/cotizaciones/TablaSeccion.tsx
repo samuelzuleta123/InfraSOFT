@@ -21,7 +21,7 @@ interface Props {
   bloqueada?: boolean
 }
 
-const celdaNum = 'px-2 py-1.5 text-right num whitespace-nowrap'
+const celdaNum = 'px-2 py-2.5 text-right num whitespace-nowrap'
 const thBase = 'px-2 py-2 text-xs font-semibold tracking-wide text-slate-500 uppercase whitespace-nowrap'
 
 export function TablaSeccion({ proyectoId, seccion, numeroInicial, vistaCliente, preciosCliente, totalCliente, onAgregarItem, onAgregarKit, soloSeccion, bloqueada }: Props) {
@@ -95,7 +95,7 @@ export function TablaSeccion({ proyectoId, seccion, numeroInicial, vistaCliente,
                 </th>
                 <th className={cn(thBase, 'w-[92px] text-right')}>V. unit. mat.</th>
                 <th className={cn(thBase, 'w-[96px] text-right')}>V. total mat.</th>
-                <th className={cn(thBase, 'w-[184px] text-left')}>Proveedor</th>
+                <th className={cn(thBase, 'w-[236px] text-left')}>Proveedor</th>
                 <th className={cn(thBase, 'w-[100px] text-right')}>Subtotal</th>
                 <th className="w-8" />
               </tr>
@@ -168,15 +168,16 @@ function FilaItem({ proyectoId, item, numero, bloqueada }: { proyectoId: string;
   const celdaInput = 'h-8 text-[13px] px-2 shadow-none border-transparent bg-transparent hover:border-slate-300 hover:bg-white focus:bg-white disabled:border-transparent disabled:bg-transparent disabled:text-slate-800'
 
   return (
-    <tr className="group hover:bg-slate-50/60">
-      <td className="num px-2 py-1.5 text-slate-500">{numero}</td>
+    <tr className="group align-top hover:bg-slate-50/60">
+      <td className="num px-2 py-2 text-slate-500">{numero}</td>
       <td className="px-1 py-1">
-        <input
+        {/* La descripción se ajusta en varias líneas en vez de cortarse: hay que poder leer qué ítem es cada fila. */}
+        <textarea
+          rows={1}
           value={item.descripcion}
           onChange={(e) => editar((i) => (i.descripcion = e.target.value))}
           aria-label={`Descripción ítem ${numero}`}
-          title={item.descripcion}
-          className="h-8 w-full min-w-0 truncate rounded-md border border-transparent px-1.5 disabled:bg-transparent text-[13px] text-slate-900 hover:border-slate-300 hover:bg-white focus:border-brand-700 focus:bg-white focus:ring-2 focus:ring-brand-600/25 focus:outline-none"
+          className="block min-h-8 w-full min-w-0 resize-none rounded-md border border-transparent px-1.5 py-[7px] text-[13px] leading-snug text-slate-900 [field-sizing:content] hover:border-slate-300 hover:bg-white focus:border-brand-700 focus:bg-white focus:ring-2 focus:ring-brand-600/25 focus:outline-none disabled:bg-transparent"
         />
       </td>
       <td className="px-1 py-1">
@@ -225,7 +226,7 @@ function FilaItem({ proyectoId, item, numero, bloqueada }: { proyectoId: string;
           <optgroup label={conPrecio.length ? 'Otros proveedores' : 'Proveedores'}>
             {otros.map((p) => (
               <option key={p.id} value={p.id}>
-                {p.nombre}
+                {p.nombre.replace(/ S\.A\.S?\.?$/, '')}
               </option>
             ))}
           </optgroup>

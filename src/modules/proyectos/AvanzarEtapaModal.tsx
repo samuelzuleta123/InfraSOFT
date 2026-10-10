@@ -21,7 +21,7 @@ export function chequeosEtapa(p: Proyecto, destino: Etapa, ocsProyecto: number):
   const registrados = items.filter((i) => i.cantInstalada !== null).length
   switch (destino) {
     case 2:
-      return [{ texto: 'Cotización enviada al cliente', ok: p.cotizacion.versiones.some((x) => x.estado !== 'borrador') }]
+      return [{ texto: 'Cotización enviada al cliente', ok: p.cotizacion.versiones.some((x) => x.estado !== 'borrador'), bloquea: true }]
     case 3:
       return [
         { texto: 'Cotización aprobada por el cliente', ok: aprobada, bloquea: true },
