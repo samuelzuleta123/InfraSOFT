@@ -1,0 +1,113 @@
+@import "tailwindcss";
+
+/* Sistema visual Infrasoft: azul marino corporativo, neutros pizarra, acentos semánticos. */
+@theme {
+  --font-sans: "Fira Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Fira Code", ui-monospace, SFMono-Regular, monospace;
+
+  --color-brand-50: #eff4ff;
+  --color-brand-100: #dbe6fe;
+  --color-brand-200: #bfd3fe;
+  --color-brand-300: #93b4fd;
+  --color-brand-400: #608bfa;
+  --color-brand-500: #3b65f5;
+  --color-brand-600: #2547d0;
+  --color-brand-700: #1e3a9e;
+  --color-brand-800: #1b3280;
+  --color-brand-900: #152659;
+  --color-brand-950: #0d1838;
+
+  --color-surface: #ffffff;
+  --color-canvas: #f4f6f9;
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  body {
+    @apply bg-canvas text-slate-800 font-sans text-sm;
+  }
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-brand-500;
+  }
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  button:not(:disabled),
+  [role="button"],
+  select,
+  label[for] {
+    cursor: pointer;
+  }
+}
+
+@utility num {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
+
+@media print {
+  @page {
+    size: letter;
+    margin: 14mm;
+  }
+  body {
+    background: #fff;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .print-sheet {
+    box-shadow: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: auto !important;
+    border: 0 !important;
+  }
+}
+
+@keyframes fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes rise {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Superficies del navegador con la paleta del sistema */
+@layer base {
+  ::selection {
+    background: var(--color-brand-100);
+    color: var(--color-brand-950);
+  }
+  html {
+    accent-color: var(--color-brand-700);
+    caret-color: var(--color-brand-700);
+    scrollbar-color: var(--color-slate-300) transparent;
+  }
+  * {
+    scrollbar-width: thin;
+  }
+  a {
+    text-underline-offset: 3px;
+  }
+  /* Los elementos absolutos (p. ej. sr-only) dentro de tablas con scroll no deben ensanchar la página. */
+  .overflow-x-auto,
+  .overflow-y-auto,
+  .overflow-auto {
+    position: relative;
+  }
+}
