@@ -67,16 +67,20 @@ export function CotizacionInternaPage() {
 
         <table className="mt-5 w-full border-collapse text-[10.5px] leading-snug">
           <thead>
+            <tr className="text-[9px] tracking-wider text-slate-500 uppercase">
+              <th rowSpan={2} className={`${th} pl-0 text-left align-bottom`}>#</th>
+              <th rowSpan={2} className={`${th} text-left align-bottom`}>Descripción</th>
+              <th rowSpan={2} className={`${th} text-right align-bottom`}>Cant.</th>
+              <th colSpan={2} scope="colgroup" className={`${th} border-b border-slate-200 text-center`}>Mano de obra</th>
+              <th colSpan={2} scope="colgroup" className={`${th} border-b border-slate-200 text-center`}>Material (costo)</th>
+              <th rowSpan={2} className={`${th} text-left align-bottom`}>Proveedor</th>
+              <th rowSpan={2} className={`${th} pr-0 text-right align-bottom`}>Subtotal</th>
+            </tr>
             <tr className="border-b border-slate-300 text-[9px] tracking-wider text-slate-500 uppercase">
-              <th className={`${th} pl-0 text-left`}>#</th>
-              <th className={`${th} text-left`}>Descripción</th>
-              <th className={`${th} text-right`}>Cant.</th>
-              <th className={`${th} text-right`}>V. unit. MO</th>
-              <th className={`${th} text-right`}>V. total MO</th>
-              <th className={`${th} text-right`}>V. unit. mat.</th>
-              <th className={`${th} text-right`}>V. total mat.</th>
-              <th className={`${th} text-left`}>Proveedor</th>
-              <th className={`${th} pr-0 text-right`}>Subtotal</th>
+              <th className={`${th} text-right`}>Unitario</th>
+              <th className={`${th} text-right`}>Total</th>
+              <th className={`${th} text-right`}>Unitario</th>
+              <th className={`${th} text-right`}>Total</th>
             </tr>
           </thead>
           {v.secciones.map((s) => {

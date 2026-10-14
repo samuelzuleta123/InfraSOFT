@@ -87,23 +87,44 @@ export function TablaSeccion({ proyectoId, seccion, numeroInicial, vistaCliente,
           <TablaCliente items={preciosCliente ?? []} numeroInicial={numeroInicial} />
         ) : (
           <table className="w-full min-w-[1000px] table-fixed text-[13px]">
+            {/* Con table-fixed los anchos salen de aquí: el encabezado agrupado no los puede dar. */}
+            <colgroup>
+              <col className="w-8" />
+              <col />
+              <col className="w-[60px]" />
+              <col className="w-[64px]" />
+              <col className="w-[92px]" />
+              <col className="w-[92px]" />
+              <col className="w-[92px]" />
+              <col className="w-[96px]" />
+              <col className="w-[236px]" />
+              <col className="w-[100px]" />
+              <col className="w-8" />
+            </colgroup>
             <thead className="border-b border-slate-200">
+              {/* Encabezado en dos niveles: qué se cobra (mano de obra) y qué se compra (material), cada uno por unidad y en total. */}
               <tr>
-                <th className={cn(thBase, 'w-8 text-left')}>#</th>
-                <th className={cn(thBase, 'text-left')}>Descripción</th>
-                <th className={cn(thBase, 'w-[60px] text-left')}>Unidad</th>
-                <th className={cn(thBase, 'w-[64px] text-right')}>Cant.</th>
-                <th className={cn(thBase, 'w-[92px] text-right')}>
-                  V. unit. <abbr title="mano de obra">MO</abbr>
+                <th rowSpan={2} className={cn(thBase, 'text-left align-bottom')}>#</th>
+                <th rowSpan={2} className={cn(thBase, 'text-left align-bottom')}>Descripción</th>
+                <th rowSpan={2} className={cn(thBase, 'text-left align-bottom')}>Unidad</th>
+                <th rowSpan={2} className={cn(thBase, 'text-right align-bottom')}>Cant.</th>
+                <th colSpan={2} scope="colgroup" className={cn(thBase, 'border-b border-slate-200 pb-1 text-center')} title="Lo que cobra Infrasoft por instalar">
+                  Mano de obra
                 </th>
-                <th className={cn(thBase, 'w-[92px] text-right')}>
-                  V. total <abbr title="mano de obra">MO</abbr>
+                <th colSpan={2} scope="colgroup" className={cn(thBase, 'border-b border-slate-200 pb-1 text-center')} title="Lo que cuesta comprar el material al proveedor">
+                  Material (costo)
                 </th>
-                <th className={cn(thBase, 'w-[92px] text-right')}>V. unit. mat.</th>
-                <th className={cn(thBase, 'w-[96px] text-right')}>V. total mat.</th>
-                <th className={cn(thBase, 'w-[236px] text-left')}>Proveedor</th>
-                <th className={cn(thBase, 'w-[100px] text-right')}>Subtotal</th>
-                <th className="w-8" />
+                <th rowSpan={2} className={cn(thBase, 'text-left align-bottom')}>Proveedor</th>
+                <th rowSpan={2} className={cn(thBase, 'text-right align-bottom')} title="Mano de obra + material, sin utilidad ni otros costos">
+                  Subtotal
+                </th>
+                <th rowSpan={2} />
+              </tr>
+              <tr>
+                <th className={cn(thBase, 'pt-1 text-right')} title="Mano de obra por cada unidad">Unitario</th>
+                <th className={cn(thBase, 'pt-1 text-right')} title="Mano de obra × cantidad">Total</th>
+                <th className={cn(thBase, 'pt-1 text-right')} title="Precio de compra por unidad, según el proveedor elegido">Unitario</th>
+                <th className={cn(thBase, 'pt-1 text-right')} title="Precio de compra × cantidad">Total</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -348,7 +369,7 @@ function TarjetasItems({ items, numeroInicial }: { items: ItemCotizacion[]; nume
             <span>
               {i.cantidad.toLocaleString('es-CO')} {i.unidad}
             </span>
-            {i.vuMO > 0 && <span>MO {money(itemMO(i))}</span>}
+            {i.vuMO > 0 && <span>Mano de obra {money(itemMO(i))}</span>}
             {i.vuMaterial > 0 && <span>Material {money(itemMaterial(i))}</span>}
             {i.vuMaterial > 0 && (
               <span className={cn(!i.proveedorId && 'font-medium text-amber-800')}>{proveedores.find((p) => p.id === i.proveedorId)?.nombre ?? 'Sin proveedor'}</span>
