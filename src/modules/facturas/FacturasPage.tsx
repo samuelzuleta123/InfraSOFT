@@ -84,7 +84,7 @@ export function FacturasPage() {
 
       {detalleId && <DetalleFactura id={detalleId} onClose={() => abrir(null)} onAsociar={(id) => setAsociar(id)} />}
       {asociar && <AsociarModal facturaId={asociar} onClose={() => setAsociar(null)} onDone={() => setTab('proyecto')} />}
-      {registrar && <RegistrarFacturaModal onClose={() => setRegistrar(false)} onCreada={() => setTab('sin')} />}
+      {registrar && <RegistrarFacturaModal onClose={() => setRegistrar(false)} onCreada={(asociada) => setTab(asociada ? 'proyecto' : 'sin')} />}
     </>
   )
 }

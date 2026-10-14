@@ -93,12 +93,26 @@ export function AsociarModal({ facturaId, onClose, onDone }: { facturaId: string
 
 const FORMAS: FormaPago[] = ['Contado', 'Crédito 30 días', 'Crédito 45 días', 'Crédito 60 días']
 const diasForma = (fp: FormaPago) => (fp === 'Contado' ? 0 : parseInt(fp.replace(/\D/g, ''), 10))
+/** Tarifas de IVA en Colombia: general, reducida y exento/excluido. */
+const TARIFAS_IVA = [19, 5, 0] as const
+const calcularIva = (subtotal: number, tarifa: number) => Math.round((subtotal * tarifa) / 100)
 
-export function RegistrarFacturaModal({ onClose, onCreada }: { onClose: () => void; onCreada: () => void }) {
+export function RegistrarFacturaModal({ onClose, onCreada }: { onClose: () => void; onCreada: (asociada: boolean) => void }) {
   const proveedores = useStore((s) => s.proveedores)
+  const proyectos = useStore((s) => s.proyectos)
+  const ordenes = useStore((s) => s.ordenes)
+  const facturas = useStore((s) => s.facturas)
   const mutar = useStore((s) => s.mutar)
   const notificar = useStore((s) => s.notificar)
-  const [f, setF] = useState<FacturaProveedor>({
+  // OC del proveedor que aún no tienen factura: elegir una deja la factura asociada a su proyecto sin pasar por "Sin asignar".
+  const ocsPendientes = (proveedorId: string) => ordenes.filter((o) => o.proveedorId === proveedorId && !facturas.some((x) => x.ocId === o.id))
+  // Si el proveedor tiene una sola OC pendiente, se propone de entrada.
+  const conOC = (proveedorId: string) => {
+    const ocs = ocsPendientes(proveedorId)
+    const unica = ocs.length === 1 ? ocs[0] : null
+    return { ocId: unica?.id ?? null, proyectoId: unica?.proyectoId ?? null }
+  }
+  const [f, setF] = useState<FacturaProveedor>(() => ({
     id: uid('fp'),
     proveedorId: proveedores[0].id,
     numero: '',
@@ -109,17 +123,22 @@ export function RegistrarFacturaModal({ onClose, onCreada }: { onClose: () => vo
     iva: 0,
     lineas: [],
     adjuntos: [],
-    proyectoId: null,
-    ocId: null,
-  })
+    ...conOC(proveedores[0].id),
+  }))
   const set = (cambios: Partial<FacturaProveedor>) => setF((x) => ({ ...x, ...cambios }))
+  // El IVA se calcula solo con la tarifa; si la factura trae otro valor (líneas con tarifas mixtas), se ajusta a mano.
+  const [tarifa, setTarifa] = useState<number>(19)
+
+  const pendientes = ocsPendientes(f.proveedorId)
+  const ocElegida = ordenes.find((o) => o.id === f.ocId)
 
   const guardar = () => {
     mutar((s) => {
       s.facturas.unshift(f)
     })
-    notificar(`Factura ${f.numero} registrada en “Sin asignar”`)
-    onCreada()
+    const proyecto = proyectos.find((p) => p.id === f.proyectoId)
+    notificar(ocElegida && proyecto ? `Factura ${f.numero} asociada a la OC ${ocElegida.consecutivo} (${proyecto.codigo})` : `Factura ${f.numero} registrada en “Sin asignar”`)
+    onCreada(!!f.proyectoId)
     onClose()
   }
 
@@ -143,10 +162,32 @@ export function RegistrarFacturaModal({ onClose, onCreada }: { onClose: () => vo
     >
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Proveedor" htmlFor="rf-prov">
-          <Select id="rf-prov" value={f.proveedorId} onChange={(e) => set({ proveedorId: e.target.value })}>
+          <Select id="rf-prov" value={f.proveedorId} onChange={(e) => set({ proveedorId: e.target.value, ...conOC(e.target.value) })}>
             {proveedores.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.nombre}
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <Field
+          label="Orden de compra"
+          htmlFor="rf-oc"
+          hint={pendientes.length === 0 ? 'Este proveedor no tiene OC pendientes de factura: quedará en “Sin asignar”.' : 'Al elegirla, la factura queda asociada a su proyecto.'}
+        >
+          <Select
+            id="rf-oc"
+            value={f.ocId ?? ''}
+            disabled={pendientes.length === 0}
+            onChange={(e) => {
+              const oc = ordenes.find((o) => o.id === e.target.value)
+              set({ ocId: oc?.id ?? null, proyectoId: oc?.proyectoId ?? null })
+            }}
+          >
+            <option value="">Sin OC · asociar después</option>
+            {pendientes.map((o) => (
+              <option key={o.id} value={o.id}>
+                OC {o.consecutivo} · {proyectos.find((p) => p.id === o.proyectoId)?.codigo} · {money(totalOC(o))}
               </option>
             ))}
           </Select>
@@ -171,16 +212,38 @@ export function RegistrarFacturaModal({ onClose, onCreada }: { onClose: () => vo
           <Input id="rf-notas" value={f.notas ?? ''} onChange={(e) => set({ notas: e.target.value })} placeholder="Remisiones, OC de referencia…" />
         </Field>
         <Field label="Subtotal" htmlFor="rf-sub">
-          <NumberInput id="rf-sub" value={f.subtotal || null} allowEmpty prefix="$" onChange={(n) => set({ subtotal: n ?? 0 })} />
+          <NumberInput id="rf-sub" value={f.subtotal || null} allowEmpty prefix="$" onChange={(n) => set({ subtotal: n ?? 0, iva: calcularIva(n ?? 0, tarifa) })} />
         </Field>
-        <Field label="IVA (valor de la factura)" htmlFor="rf-iva">
-          <NumberInput id="rf-iva" value={f.iva || null} allowEmpty prefix="$" onChange={(n) => set({ iva: n ?? 0 })} />
+        <Field label="Tarifa de IVA" htmlFor="rf-tarifa">
+          <Select
+            id="rf-tarifa"
+            value={tarifa}
+            onChange={(e) => {
+              const t = Number(e.target.value)
+              setTarifa(t)
+              set({ iva: calcularIva(f.subtotal, t) })
+            }}
+          >
+            {TARIFAS_IVA.map((t) => (
+              <option key={t} value={t}>
+                {t === 0 ? '0 % (exento o excluido)' : `${t} %`}
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <Field label="IVA" htmlFor="rf-iva" hint={`Se calcula con el ${tarifa} % del subtotal. Ajústalo si la factura trae otro valor.`}>
+          <NumberInput id="rf-iva" value={f.iva || null} allowEmpty prefix="$" placeholder="0" onChange={(n) => set({ iva: n ?? 0 })} />
         </Field>
       </div>
       <div className="mt-4 flex items-baseline justify-between rounded-md bg-slate-50 px-4 py-3">
         <span className="text-sm text-slate-600">Total</span>
         <span className="num text-lg font-semibold text-slate-900">{money(f.subtotal + f.iva)}</span>
       </div>
+      {ocElegida && f.subtotal > 0 && (
+        <div className="mt-4">
+          <ComparacionOC factura={f} oc={ocElegida} />
+        </div>
+      )}
       <Field label="Adjuntos (PDF y XML)" className="mt-4">
         <div className="flex flex-wrap items-center gap-2">
           {f.adjuntos.map((a, i) => (
