@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Navigate, useParams, useSearchParams } from 'react-router-dom'
 import { BarraDocumento, HojaCarta, MembreteInfrasoft, PieInfrasoft } from '@/components/Documento'
-import { Select } from '@/components/ui'
+import { Alert, Select } from '@/components/ui'
 import { preciosCliente, versionActiva } from '@/lib/calc'
 import { HOY, fecha, money, moneyUnit } from '@/lib/format'
 import { useCliente, useProyecto } from '@/store/useStore'
@@ -45,6 +45,13 @@ export function CotizacionPdfPage() {
         </Select>
       </BarraDocumento>
 
+      {!pc.cuadra && (
+        <div className="no-print mx-auto mt-4 max-w-[8.5in] px-4">
+          <Alert tone="danger" title="Este documento no cuadra al peso">
+            La suma de los ítems no da exactamente {money(pc.total)}. Vuelve al cotizador y usa el precio final sugerido antes de enviarlo.
+          </Alert>
+        </div>
+      )}
       <HojaCarta>
         <header className="flex flex-wrap items-start justify-between gap-6 border-b-2 border-brand-500 pb-5">
           <MembreteInfrasoft />

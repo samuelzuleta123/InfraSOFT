@@ -202,10 +202,10 @@ export function NumberInput({
   allowEmpty?: boolean
   decimals?: number
 }) {
-  const [texto, setTexto] = useState(() => numeroEditable(value))
+  const [texto, setTexto] = useState(() => numeroEditable(value, decimals))
   const enfocado = useRef(false)
   useEffect(() => {
-    if (!enfocado.current) setTexto(value === null ? '' : value.toLocaleString('es-CO', { maximumFractionDigits: decimals }))
+    if (!enfocado.current) setTexto(numeroEditable(value, decimals))
   }, [value, decimals])
   return (
     <div className={cn('relative', className)}>
@@ -221,7 +221,7 @@ export function NumberInput({
         }}
         onBlur={() => {
           enfocado.current = false
-          setTexto(value === null ? '' : value.toLocaleString('es-CO', { maximumFractionDigits: decimals }))
+          setTexto(numeroEditable(value, decimals))
         }}
         onChange={(e) => {
           const limpio = e.target.value.replace(/[^\d.,-]/g, '')

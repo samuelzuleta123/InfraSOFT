@@ -55,18 +55,25 @@ export function sumarDias(iso: ISODate, dias: number): ISODate {
   return d.toISOString().slice(0, 10)
 }
 
-/** Interpreta texto colombiano: "1.234.567,50" → 1234567.5 ; "" → null */
+/**
+ * Interpreta texto colombiano: "1.234.567,50" → 1234567.5 ; "" → null.
+ * Sin coma, el punto es separador de miles solo si tiene esa forma exacta ("1.234", "12.345.678");
+ * si no, es el decimal ("2650.5" → 2650.5, "7547.54" → 7547.54), como lo escribe un teclado numérico.
+ * Caso ambiguo: "35.136" se lee como 35136 (miles), que es la convención es-CO.
+ */
 export function parseNumero(s: string): number | null {
-  const t = s.replace(/\$/g, '').replace(/\s/g, '').replace(/\./g, '').replace(',', '.')
+  const limpio = s.replace(/\$/g, '').replace(/\s/g, '')
+  const miles = limpio.includes(',') || /^-?\d{1,3}(\.\d{3})+$/.test(limpio)
+  const t = miles ? limpio.replace(/\./g, '').replace(',', '.') : limpio
   if (t === '' || t === '-') return null
   const n = Number(t)
   return isFinite(n) ? n : null
 }
 
 /** Para mostrar en un input mientras se edita: 65743.2 → "65.743,2" */
-export function numeroEditable(n: number | null | undefined): string {
+export function numeroEditable(n: number | null | undefined, decimals = 2): string {
   if (n === null || n === undefined) return ''
-  return n.toLocaleString('es-CO', { maximumFractionDigits: 2 })
+  return n.toLocaleString('es-CO', { maximumFractionDigits: decimals })
 }
 
 export function uid(prefijo = 'id'): string {

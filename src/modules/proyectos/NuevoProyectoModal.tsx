@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Check, Plus, Trash2 } from 'lucide-react'
-import { Button, Field, IconButton, Input, Modal, Select, Textarea } from '@/components/ui'
-import { SubirArchivo } from '@/components/dominio'
+import { Check } from 'lucide-react'
+import { Button, Field, Input, Modal, Select } from '@/components/ui'
 import { cn } from '@/lib/cn'
 import { HOY } from '@/lib/format'
 import { useStore } from '@/store/useStore'
+import { aLevantamiento, FormLevantamiento, levantamientoVacio } from './FormLevantamiento'
 
 const PASOS = ['Cliente', 'Proyecto', 'Levantamiento'] as const
 
@@ -22,9 +22,7 @@ export function NuevoProyectoModal({ onClose, clienteInicial }: { onClose: () =>
   const [clienteId, setClienteId] = useState(clienteInicial ?? '')
   const [nuevoCliente, setNuevoCliente] = useState({ nombre: '', nit: '', direccion: '', ciudad: '' })
   const [datos, setDatos] = useState({ nombre: '', sede: '', responsable: 'Coordinación técnica Infrasoft' })
-  const [lev, setLev] = useState({ fecha: HOY, rutaTuberia: '', rackOrigen: '', rackDestino: '', observaciones: '' })
-  const [medidas, setMedidas] = useState([{ etiqueta: '', valor: '' }])
-  const [fotos, setFotos] = useState<string[]>([])
+  const [lev, setLev] = useState(() => levantamientoVacio(HOY))
 
   const clienteValido = modoCliente === 'existente' ? !!clienteId : !!nuevoCliente.nombre.trim() && !!nuevoCliente.nit.trim()
   const proyectoValido = !!datos.nombre.trim() && !!datos.sede.trim()
@@ -32,12 +30,11 @@ export function NuevoProyectoModal({ onClose, clienteInicial }: { onClose: () =>
 
   const crear = (conLevantamiento: boolean) => {
     const cid = modoCliente === 'nuevo' ? crearCliente(nuevoCliente) : clienteId
-    const medidasOk = medidas.filter((m) => m.etiqueta.trim() || m.valor.trim())
     const id = crearProyecto({
       clienteId: cid,
       ...datos,
-      levantamiento: conLevantamiento ? { ...lev, responsable: datos.responsable, medidas: medidasOk } : null,
-      fotos: conLevantamiento ? fotos : [],
+      levantamiento: conLevantamiento ? aLevantamiento(lev, datos.responsable) : null,
+      fotos: conLevantamiento ? lev.fotosNuevas : [],
     })
     notificar(`Proyecto “${datos.nombre}” creado. Sigue con la cotización.`)
     onClose()
@@ -138,51 +135,7 @@ export function NuevoProyectoModal({ onClose, clienteInicial }: { onClose: () =>
         </div>
       )}
 
-      {paso === 2 && (
-        <div className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-3">
-            <Field label="Fecha de la visita" htmlFor="lv-fecha">
-              <Input id="lv-fecha" type="date" value={lev.fecha} onChange={(e) => setLev({ ...lev, fecha: e.target.value })} />
-            </Field>
-            <Field label="Rack de origen" htmlFor="lv-orig">
-              <Input id="lv-orig" value={lev.rackOrigen} onChange={(e) => setLev({ ...lev, rackOrigen: e.target.value })} />
-            </Field>
-            <Field label="Rack de destino" htmlFor="lv-dest">
-              <Input id="lv-dest" value={lev.rackDestino} onChange={(e) => setLev({ ...lev, rackDestino: e.target.value })} />
-            </Field>
-          </div>
-          <fieldset>
-            <legend className="mb-1.5 text-[13px] font-medium text-slate-700">Medidas</legend>
-            <div className="space-y-2">
-              {medidas.map((m, i) => (
-                <div key={i} className="flex gap-2">
-                  <Input aria-label={`Medida ${i + 1}`} placeholder="Ej. Distancia entre racks" value={m.etiqueta} onChange={(e) => setMedidas(medidas.map((x, j) => (j === i ? { ...x, etiqueta: e.target.value } : x)))} />
-                  <Input aria-label={`Valor ${i + 1}`} placeholder="Ej. 48 m" className="w-40" value={m.valor} onChange={(e) => setMedidas(medidas.map((x, j) => (j === i ? { ...x, valor: e.target.value } : x)))} />
-                  <IconButton label="Quitar medida" onClick={() => setMedidas(medidas.filter((_, j) => j !== i))} disabled={medidas.length === 1} className="size-9">
-                    <Trash2 />
-                  </IconButton>
-                </div>
-              ))}
-            </div>
-            <Button size="sm" variant="ghost" icon={<Plus />} className="mt-2" onClick={() => setMedidas([...medidas, { etiqueta: '', valor: '' }])}>
-              Agregar medida
-            </Button>
-          </fieldset>
-          <Field label="Ruta de tubería" htmlFor="lv-ruta">
-            <Textarea id="lv-ruta" rows={2} value={lev.rutaTuberia} onChange={(e) => setLev({ ...lev, rutaTuberia: e.target.value })} />
-          </Field>
-          <Field label="Fotos del sitio">
-            <div className="flex flex-wrap items-center gap-2">
-              {fotos.map((f, i) => (
-                <span key={i} className="rounded-md bg-slate-100 px-2 py-1 text-xs text-slate-700">
-                  {f}
-                </span>
-              ))}
-              <SubirArchivo accept="image/*" multiple label="Agregar fotos" onFile={(a) => setFotos((x) => [...x, a.nombre.replace(/\.[^.]+$/, '')])} />
-            </div>
-          </Field>
-        </div>
-      )}
+      {paso === 2 && <FormLevantamiento datos={lev} onChange={setLev} />}
     </Modal>
   )
 }

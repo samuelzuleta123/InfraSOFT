@@ -1,6 +1,7 @@
 import { Navigate, useParams } from 'react-router-dom'
 import { BarraDocumento, HojaCarta, MembreteInfrasoft, PieInfrasoft } from '@/components/Documento'
-import { itemMaterial, itemMO, itemSubtotal, resumen, totalesSeccion, versionActiva } from '@/lib/calc'
+import { nombreEstadoCot } from '@/components/dominio'
+import { itemMaterial, itemMO, itemSubtotal, resumen, totalesSeccion, totalOtroCosto, versionActiva } from '@/lib/calc'
 import { fecha, HOY, money, moneyUnit, pct } from '@/lib/format'
 import { nombreProveedor, useCliente, useProyecto, useStore } from '@/store/useStore'
 
@@ -32,7 +33,7 @@ export function CotizacionInternaPage() {
               {proyecto.cotizacion.consecutivo}-{v.nombre.toUpperCase()}
             </div>
             <div className="num text-xs text-slate-500">
-              Estado: {v.estado} · Impreso {fecha(HOY)}
+              Estado: {nombreEstadoCot(v.estado).toLowerCase()} · Impreso {fecha(HOY)}
             </div>
           </div>
         </header>
@@ -116,7 +117,7 @@ export function CotizacionInternaPage() {
                     <td className="num py-1 text-right text-slate-500">
                       {o.cantidad} × {moneyUnit(o.valorUnitario)}
                     </td>
-                    <td className="num py-1 text-right">{money(o.cantidad * o.valorUnitario)}</td>
+                    <td className="num py-1 text-right">{money(totalOtroCosto(o))}</td>
                   </tr>
                 ))}
               </tbody>

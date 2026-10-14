@@ -5,8 +5,9 @@ import { NuevoProveedorModal } from '@/modules/catalogo/NuevosModales'
 import { itemMaterial, itemMO, itemSubtotal, totalesSeccion, type ItemCliente } from '@/lib/calc'
 import { precioNeto } from '@/lib/calc'
 import { cn } from '@/lib/cn'
-import { money, moneyUnit, r3 } from '@/lib/format'
-import { useStore } from '@/store/useStore'
+import { compararConUltimaCompra, type ComparacionPrecio, type CompraMaterial } from '@/lib/historico'
+import { fecha, money, moneyUnit, pct, r3 } from '@/lib/format'
+import { nombreProveedor, useStore } from '@/store/useStore'
 import type { ItemCotizacion, Seccion, Unidad } from '@/types'
 
 interface Props {
@@ -20,13 +21,15 @@ interface Props {
   onAgregarKit: () => void
   soloSeccion: boolean
   bloqueada?: boolean
+  /** Compras reales de otros proyectos; se calcula una vez en el cotizador. */
+  historico: CompraMaterial[]
 }
 
 const celdaNum = 'px-2 py-2.5 text-right num whitespace-nowrap'
 const thBase = 'px-2 py-2 text-xs font-semibold tracking-wide text-slate-500 uppercase whitespace-nowrap'
 const NUEVO_PROVEEDOR = '__nuevo_proveedor__'
 
-export function TablaSeccion({ proyectoId, seccion, numeroInicial, vistaCliente, preciosCliente, totalCliente, onAgregarItem, onAgregarKit, soloSeccion, bloqueada }: Props) {
+export function TablaSeccion({ proyectoId, seccion, numeroInicial, vistaCliente, preciosCliente, totalCliente, onAgregarItem, onAgregarKit, soloSeccion, bloqueada, historico }: Props) {
   const editarVersion = useStore((s) => s.editarVersion)
   const t = totalesSeccion(seccion)
   const [confirmar, setConfirmar] = useState(false)
@@ -111,6 +114,8 @@ export function TablaSeccion({ proyectoId, seccion, numeroInicial, vistaCliente,
                   item={item}
                   numero={numeroInicial + idx}
                   bloqueada={bloqueada}
+                  // En una versión bloqueada no aplica: compararía lo ya vendido con compras posteriores.
+                  comparacion={bloqueada ? undefined : compararConUltimaCompra(historico, item, proyectoId)}
                   onNuevoProveedor={() => setItemParaNuevoProveedor(item.id)}
                 />
               ))}
@@ -167,12 +172,14 @@ function FilaItem({
   item,
   numero,
   bloqueada,
+  comparacion,
   onNuevoProveedor,
 }: {
   proyectoId: string
   item: ItemCotizacion
   numero: number
   bloqueada?: boolean
+  comparacion?: ComparacionPrecio
   onNuevoProveedor: () => void
 }) {
   const editarVersion = useStore((s) => s.editarVersion)
@@ -269,6 +276,7 @@ function FilaItem({
             ))}
           </optgroup>
         </Select>
+        {comparacion && <UltimaCompra c={comparacion} />}
       </td>
       <td className={cn(celdaNum, 'font-medium text-slate-900')}>{money(itemSubtotal(item))}</td>
       <td className="px-1 py-1 text-right">
@@ -277,6 +285,19 @@ function FilaItem({
         </IconButton>}
       </td>
     </tr>
+  )
+}
+
+/** Último precio real de compra del material; se resalta si el precio cotizado se aleja del umbral. */
+function UltimaCompra({ c }: { c: ComparacionPrecio }) {
+  const proveedores = useStore((s) => s.proveedores)
+  const proyecto = useStore((s) => s.proyectos.find((p) => p.id === c.compra.proyectoId))
+  const detalle = `${c.compra.factura ? `Factura ${c.compra.factura}` : `OC ${c.compra.ocConsecutivo} (sin factura)`} · ${nombreProveedor(proveedores, c.compra.proveedorId)} · ${proyecto?.codigo ?? ''} · ${fecha(c.compra.fecha)}`
+  return (
+    <div title={detalle} className={cn('num mt-0.5 truncate px-1 text-[11px]', c.fuera ? 'font-medium text-amber-800' : 'text-slate-500')}>
+      Última compra {moneyUnit(c.compra.precio)}
+      {c.fuera && ` · ${c.variacion > 0 ? '+' : ''}${pct(c.variacion * 100, 0)}`}
+    </div>
   )
 }
 

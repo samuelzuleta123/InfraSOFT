@@ -6,9 +6,9 @@ import { FechaTexto } from '@/components/dominio'
 import { precioNeto, versionVigente } from '@/lib/calc'
 import { cn } from '@/lib/cn'
 import { HOY, moneyUnit, pct, uid } from '@/lib/format'
-import { nombreProveedor, useStore } from '@/store/useStore'
+import { nombreProveedor, useHistoricoCompras, useStore } from '@/store/useStore'
 
-type Pestana = 'precios' | 'historial' | 'uso'
+type Pestana = 'precios' | 'compras' | 'historial' | 'uso'
 
 export function FichaMaterial({ materialId, onClose }: { materialId: string; onClose: () => void }) {
   const material = useStore((s) => s.materiales.find((m) => m.id === materialId))
@@ -20,6 +20,7 @@ export function FichaMaterial({ materialId, onClose }: { materialId: string; onC
   const mutar = useStore((s) => s.mutar)
   const [tab, setTab] = useState<Pestana>('precios')
   const [nuevo, setNuevo] = useState('')
+  const historico = useHistoricoCompras()
   if (!material) return null
 
   const precios = todos.filter((p) => p.materialId === materialId).sort((a, b) => precioNeto(a) - precioNeto(b))
@@ -35,6 +36,14 @@ export function FichaMaterial({ materialId, onClose }: { materialId: string; onC
       return { ...h, neto, variacion: previo ? ((neto - precioNeto(previo)) / precioNeto(previo)) * 100 : null }
     })
     .reverse()
+
+  // Lo que realmente cobró cada proveedor, con la variación frente a la compra anterior.
+  const compras = historico
+    .filter((c) => c.materialId === materialId)
+    .map((c, i, arr) => {
+      const anterior = arr[i + 1]
+      return { ...c, proyecto: proyectos.find((p) => p.id === c.proyectoId), variacion: anterior && anterior.precio > 0 ? ((c.precio - anterior.precio) / anterior.precio) * 100 : null }
+    })
 
   const usos = proyectos.flatMap((p) =>
     versionVigente(p)
@@ -72,7 +81,8 @@ export function FichaMaterial({ materialId, onClose }: { materialId: string; onC
         onChange={setTab}
         tabs={[
           { id: 'precios', label: 'Precios', count: precios.length },
-          { id: 'historial', label: 'Historial', count: historial.length },
+          { id: 'compras', label: 'Compras reales', count: compras.length },
+          { id: 'historial', label: 'Precio de lista', count: historial.length },
           { id: 'uso', label: 'Uso en proyectos', count: usos.length },
         ]}
       />
@@ -137,6 +147,54 @@ export function FichaMaterial({ materialId, onClose }: { materialId: string; onC
           <p className="pt-1 text-xs text-slate-500">Precio neto = precio de lista × (1 − % descuento). Cada cambio queda en el historial con la fecha del día.</p>
         </div>
       )}
+
+      {tab === 'compras' &&
+        (compras.length === 0 ? (
+          <p className="p-6 text-sm text-slate-500">Este material todavía no se ha comprado en ningún proyecto. Las compras aparecen aquí al generar las órdenes de compra y registrar las facturas del proveedor.</p>
+        ) : (
+          <>
+            <p className="px-6 pt-4 text-xs text-slate-500">Precio unitario facturado por el proveedor en cada proyecto. Si la OC aún no tiene factura, se muestra el precio ordenado.</p>
+            <ol className="divide-y divide-slate-100">
+              {compras.map((c, i) => (
+                <li key={i} className="flex items-center gap-4 px-6 py-3 text-sm">
+                  <span className="num w-24 shrink-0 text-slate-500">
+                    <FechaTexto iso={c.fecha} />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-slate-900">{nombreProveedor(proveedores, c.proveedorId)}</span>
+                    <span className="block truncate text-xs text-slate-500">
+                      {c.proyecto ? (
+                        <Link to={`/proyectos/${c.proyectoId}/compras`} className="hover:text-slate-900 hover:underline">
+                          {c.proyecto.codigo}
+                        </Link>
+                      ) : null}{' '}
+                      · {c.factura ? `Factura ${c.factura}` : `OC ${c.ocConsecutivo} · sin factura`} · {c.cantidad.toLocaleString('es-CO')} {material.unidad}
+                    </span>
+                  </span>
+                  <span className="w-28 shrink-0 text-right">
+                    <span className="num block font-medium text-slate-900">{moneyUnit(c.precio)}</span>
+                    {c.factura && Math.abs(c.precio - c.precioOC) > 0.5 && (
+                      <span className="num block text-xs font-medium text-red-700">OC {moneyUnit(c.precioOC)}</span>
+                    )}
+                  </span>
+                  <span className="num w-20 shrink-0 text-right text-xs">
+                    {c.variacion === null ? (
+                      <span className="text-slate-500">Primera</span>
+                    ) : Math.abs(c.variacion) < 0.05 ? (
+                      <span className="text-slate-500">Igual</span>
+                    ) : (
+                      <span className={cn('inline-flex items-center gap-0.5 font-medium', c.variacion > 0 ? 'text-red-700' : 'text-emerald-700')}>
+                        {c.variacion > 0 ? <ArrowUpRight className="size-3.5" aria-hidden /> : <ArrowDownRight className="size-3.5" aria-hidden />}
+                        {pct(Math.abs(c.variacion))}
+                        <span className="sr-only">{c.variacion > 0 ? 'más caro que la compra anterior' : 'más barato que la compra anterior'}</span>
+                      </span>
+                    )}
+                  </span>
+                </li>
+              ))}
+            </ol>
+          </>
+        ))}
 
       {tab === 'historial' &&
         (historial.length === 0 ? (

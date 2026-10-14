@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { create } from 'zustand'
 import { immer } from 'zustand/middleware/immer'
 import { clientes, historialPrecios, kits, materiales, precios, proveedores } from '@/data/catalogo'
@@ -6,6 +7,7 @@ import { proyectos } from '@/data/proyectos'
 import { clientesDemo, facturasDemo, ordenesDemo, proyectosDemo } from '@/data/demo'
 import { precioNeto, versionActiva, versionVigente } from '@/lib/calc'
 import { formatoConsecutivoOC, generarOrdenes } from '@/lib/compras'
+import { historicoCompras } from '@/lib/historico'
 import { HOY, uid } from '@/lib/format'
 import type {
   Adjunto,
@@ -352,6 +354,14 @@ export const useStore = create<State>()(
 
 export const useProyecto = (id: string | undefined) => useStore((s) => s.proyectos.find((p) => p.id === id))
 export const useCliente = (id: string | undefined) => useStore((s) => s.clientes.find((c) => c.id === id))
+
+/** Histórico de compras reales (facturado por proveedor), derivado de OC y facturas. */
+export function useHistoricoCompras() {
+  const proyectos = useStore((s) => s.proyectos)
+  const ordenes = useStore((s) => s.ordenes)
+  const facturas = useStore((s) => s.facturas)
+  return useMemo(() => historicoCompras(proyectos, ordenes, facturas), [proyectos, ordenes, facturas])
+}
 
 export function nombreProveedor(proveedores: Proveedor[], id: string | null | undefined) {
   if (!id) return 'Sin asignar'

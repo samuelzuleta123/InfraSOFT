@@ -1,27 +1,18 @@
 import { Alert } from '@/components/ui'
 import { totalOC } from '@/lib/calc'
 import { cn } from '@/lib/cn'
+import { emparejar } from '@/lib/historico'
 import { money, moneySigned } from '@/lib/format'
 import type { FacturaProveedor, OrdenCompra } from '@/types'
 
-const normal = (s: string) =>
-  s
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .replace(/[^a-z0-9/"]+/g, ' ')
-    .trim()
-
-function emparejar(f: FacturaProveedor, oc: OrdenCompra) {
-  const usadas = new Set<string>()
-  const filas = f.lineas.map((lf) => {
-    const n = normal(lf.descripcion)
-    const lo = oc.lineas.find((l) => !usadas.has(l.id) && (normal(l.descripcion) === n || normal(l.descripcion).includes(n) || n.includes(normal(l.descripcion))))
-    if (lo) usadas.add(lo.id)
-    return { descripcion: lf.descripcion, cantOC: lo?.cantidad ?? null, cantF: lf.cantidad, precioOC: lo?.precioUnitario ?? null, precioF: lf.precioUnitario }
-  })
-  for (const lo of oc.lineas.filter((l) => !usadas.has(l.id))) filas.push({ descripcion: lo.descripcion, cantOC: lo.cantidad, cantF: 0, precioOC: lo.precioUnitario, precioF: 0 })
-  return filas
+function filas(f: FacturaProveedor, oc: OrdenCompra) {
+  return emparejar(f, oc).map(({ lf, lo }) => ({
+    descripcion: lf?.descripcion ?? lo!.descripcion,
+    cantOC: lo?.cantidad ?? null,
+    cantF: lf?.cantidad ?? 0,
+    precioOC: lo?.precioUnitario ?? null,
+    precioF: lf?.precioUnitario ?? 0,
+  }))
 }
 
 /** Compara una factura de proveedor contra su OC y resalta las diferencias. */
@@ -57,7 +48,7 @@ export function ComparacionOC({ factura, oc }: { factura: FacturaProveedor; oc: 
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {emparejar(factura, oc).map((f, i) => {
+              {filas(factura, oc).map((f, i) => {
                 const cantMal = f.cantOC === null || f.cantOC !== f.cantF
                 const precioMal = f.precioOC === null || Math.abs(f.precioOC - f.precioF) > 0.5
                 const dif = f.cantF * f.precioF - (f.cantOC ?? 0) * (f.precioOC ?? 0)

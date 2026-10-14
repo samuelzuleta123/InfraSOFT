@@ -158,4 +158,20 @@ Orden de trabajo sugerido: responder las preguntas abiertas → B3 + B4 (el form
 | Imprimibles | Cotización interna (proveedor, MO, material, otros costos, utilidad; marcada "no entregar al cliente") y liquidación del proyecto. La liquidación también aparece en Documentos | `CotizacionInternaPage.tsx`, `LiquidacionPage.tsx`, `App.tsx`, `lib/expediente.ts` |
 | Regla de moneda | `PRODUCT.md` y `README.md` documentan los 3 decimales en unitarios | — |
 
-**Pendiente:** trazabilidad del precio facturado (amarrar `LineaFactura` a `materialId` y avisar en el cotizador cuando el precio se aleje del último comprado), B3, B4, O1 a O7.
+**Segunda tanda aplicada:**
+
+| Hallazgo | Cambio | Dónde |
+|---|---|---|
+| Trazabilidad del precio facturado | Histórico derivado sin campos nuevos: factura → línea de OC (mismo emparejamiento que la comparación) → ítem de la cotización → material. Con los datos de demo salen 74 compras de 50 materiales; 3 facturas cobraron más que la OC. Pestaña **Compras reales** en la ficha del material (proveedor, proyecto, factura, variación frente a la compra anterior y precio de OC si no coincide). En el cotizador, "Última compra" debajo del proveedor de cada ítem, resaltada al pasar el 10 % (`UMBRAL_VARIACION_PRECIO`) y con alerta arriba | `lib/historico.ts`, `useHistoricoCompras` en `store/useStore.ts`, `FichaMaterial.tsx`, `TablaSeccion.tsx`, `CotizadorTab.tsx`, `ComparacionOC.tsx` |
+| B4: levantamiento no editable | Botón **Editar** y **Registrar levantamiento** en la pestaña. Formulario compartido con Nuevo proyecto, que ahora incluye el campo Observaciones | `FormLevantamiento.tsx`, `LevantamientoTab.tsx`, `NuevoProyectoModal.tsx` |
+
+Límite conocido: el emparejamiento factura ↔ OC es por descripción, igual que la comparación existente. Una factura cuya descripción no se parezca a la de la OC no entra al histórico.
+
+**Pendiente:** B3 (el formulario alimenta la v1), O1 a O7.
+
+**Correcciones del code review (2026-10-14):**
+
+- *B1, descuadre silencioso:* el residuo se reparte entre varias líneas. Si aun así no cuadra, `preciosCliente` devuelve `cuadra: false`, el cotizador ofrece el precio más cercano que sí cuadra (`precioCuadrable`, a 1 o 2 pesos) y el PDF muestra un aviso que no se imprime.
+- *B2, decimales con punto:* `parseNumero` toma el punto como decimal salvo que tenga forma exacta de miles.
+- *Observaciones:* histórico calculado una sola vez por cotizador; "Última compra" oculta en versiones bloqueadas; otros costos redondeados por línea; variación protegida ante precio 0; estado legible en la cotización interna; se pueden quitar fotos del levantamiento (y salen también del informe de entrega).
+- *`verificar`:* cubre cantidades de más de 1.000 unidades (30 de las 2.000 pruebas necesitan el precio sugerido), la lectura de números y el histórico.

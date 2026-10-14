@@ -3,10 +3,11 @@ import { Link } from 'react-router-dom'
 import { CopyPlus, Eye, FileText, Plus, Printer } from 'lucide-react'
 import { Alert, Button, Card, CardHeader, Field, NumberInput, Select, Textarea, Toggle, Input } from '@/components/ui'
 import { EstadoCotBadge } from '@/components/dominio'
-import { preciosCliente, resumen, versionActiva } from '@/lib/calc'
+import { precioCuadrable, preciosCliente, resumen, todosLosItems, totalOtroCosto, versionActiva } from '@/lib/calc'
 import { itemsSinProveedor } from '@/lib/compras'
-import { fecha, money, uid } from '@/lib/format'
-import { useStore } from '@/store/useStore'
+import { compararConUltimaCompra, UMBRAL_VARIACION_PRECIO } from '@/lib/historico'
+import { fecha, money, moneySigned, uid } from '@/lib/format'
+import { useHistoricoCompras, useStore } from '@/store/useStore'
 import type { Proyecto } from '@/types'
 import { TablaSeccion } from './TablaSeccion'
 import { ResumenBarra, ResumenPanel } from './ResumenPanel'
@@ -32,10 +33,14 @@ export function CotizadorTab({ proyecto }: { proyecto: Proyecto }) {
   const r = resumen(v)
   const cliente = preciosCliente(v)
   const pendientes = itemsSinProveedor(v)
+  const historico = useHistoricoCompras()
+  const preciosFuera = todosLosItems(v).filter((i) => compararConUltimaCompra(historico, i, proyecto.id)?.fuera)
   // Una versión aprobada o rechazada es un registro: para cambiarla se crea una versión nueva.
   const cerrado = proyecto.etapa >= 4
   const bloqueada = cerrado || v.estado === 'aprobada' || v.estado === 'rechazada'
   const fijarPrecioFinal = (n: number | null) => editarVersion(proyecto.id, (ver) => void (ver.precioFinal = n))
+  // Si el precio no se puede repartir exacto al peso, se sugiere el más cercano que sí.
+  const sugerido = cliente.cuadra ? null : precioCuadrable(v)
   let contador = 1
 
   return (
@@ -112,6 +117,29 @@ export function CotizadorTab({ proyecto }: { proyecto: Proyecto }) {
             : 'Para cambiar precios, cantidades o proveedores crea una nueva versión; la anterior se conserva tal como se envió.'}
         </Alert>
       )}
+      {!cliente.cuadra && !bloqueada && (
+        <Alert
+          tone="warn"
+          className="mb-4"
+          title={`El precio ${money(cliente.total)} no se puede repartir exacto entre los ítems`}
+          action={
+            sugerido !== null ? (
+              <Button size="sm" onClick={() => fijarPrecioFinal(sugerido)} className="shrink-0 self-center">
+                Usar {money(sugerido)}
+              </Button>
+            ) : undefined
+          }
+        >
+          {sugerido !== null
+            ? `Con valores unitarios de 3 decimales, las cantidades de esta cotización no llegan exactamente a ese total. ${money(sugerido)} sí cuadra al peso (${moneySigned(sugerido - cliente.total)}).`
+            : 'Agrega ítems con cantidad para repartir el precio.'}
+        </Alert>
+      )}
+      {!vistaCliente && !bloqueada && preciosFuera.length > 0 && (
+        <Alert tone="warn" className="mb-4" title={`${preciosFuera.length} ítem${preciosFuera.length === 1 ? '' : 's'} con precio de material a más de ${UMBRAL_VARIACION_PRECIO * 100} % de la última compra`}>
+          Compara con lo que facturó el proveedor en el proyecto anterior (debajo del proveedor de cada ítem) y confirma el precio antes de enviar.
+        </Alert>
+      )}
       {!vistaCliente && !bloqueada && pendientes.length > 0 && (
         <Alert tone="warn" className="mb-4" title={`${pendientes.length} ítem${pendientes.length === 1 ? '' : 's'} con material sin proveedor`}>
           Elige el proveedor en la columna “Proveedor” para cargar su precio neto del catálogo. Los ítems sin proveedor no generan orden de compra.
@@ -136,6 +164,7 @@ export function CotizadorTab({ proyecto }: { proyecto: Proyecto }) {
                 onAgregarKit={() => setModal({ tipo: 'kit', seccionId: s.id })}
                 soloSeccion={v.secciones.length === 1}
                 bloqueada={bloqueada}
+                historico={historico}
               />
             )
           })}
@@ -189,7 +218,7 @@ export function CotizadorTab({ proyecto }: { proyecto: Proyecto }) {
                             inputClassName="h-8"
                           />
                         </td>
-                        <td className="num px-4 py-1.5 text-right font-medium text-slate-900">{money(o.cantidad * o.valorUnitario)}</td>
+                        <td className="num px-4 py-1.5 text-right font-medium text-slate-900">{money(totalOtroCosto(o))}</td>
                       </tr>
                     ))}
                   </tbody>
