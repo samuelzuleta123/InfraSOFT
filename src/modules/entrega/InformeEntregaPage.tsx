@@ -1,39 +1,38 @@
-import { useEffect } from 'react'
 import { Navigate, useParams } from 'react-router-dom'
 import { BarraDocumento, HojaCarta, MembreteInfrasoft, PieInfrasoft } from '@/components/Documento'
 import { FotoPlaceholder } from '@/components/dominio'
 import { fecha, HOY } from '@/lib/format'
+import type { Proyecto } from '@/types'
 import { useCliente, useProyecto } from '@/store/useStore'
 
-export function InformeEntregaPage() {
-  const { id } = useParams()
-  const proyecto = useProyecto(id)
-  const cliente = useCliente(proyecto?.clienteId)
-  useEffect(() => {
-    if (window.location.hash === '#acta') document.getElementById('acta')?.scrollIntoView()
-  }, [])
-  if (!proyecto || !cliente) return <Navigate to="/proyectos" replace />
-
-  const e = proyecto.entrega
-  const fotos = proyecto.fotos.filter((f) => e.fotosSeleccionadas.includes(f.id))
-  const fechaEntrega = fecha(e.fechaEntrega ?? HOY)
-
-  const Encabezado = ({ titulo }: { titulo: string }) => (
+function Encabezado({ titulo, proyecto }: { titulo: string; proyecto: Proyecto }) {
+  return (
     <header className="flex flex-wrap items-start justify-between gap-6 border-b-2 border-brand-500 pb-5">
       <MembreteInfrasoft />
       <div className="text-right">
         <div className="text-[11px] font-semibold tracking-wider text-slate-500 uppercase">{titulo}</div>
         <div className="text-sm font-semibold text-slate-900">{proyecto.codigo}</div>
-        <div className="num text-xs text-slate-500">Pereira, {fechaEntrega}</div>
+        <div className="num text-xs text-slate-500">Pereira, {fecha(proyecto.entrega.fechaEntrega ?? HOY)}</div>
       </div>
     </header>
   )
+}
+
+/** Informe técnico de lo ejecutado: alcance, fotos, equipos, certificación y garantía. */
+export function InformeEntregaPage() {
+  const { id } = useParams()
+  const proyecto = useProyecto(id)
+  const cliente = useCliente(proyecto?.clienteId)
+  if (!proyecto || !cliente) return <Navigate to="/proyectos" replace />
+
+  const e = proyecto.entrega
+  const fotos = proyecto.fotos.filter((f) => e.fotosSeleccionadas.includes(f.id))
 
   return (
     <div>
       <BarraDocumento volver={`/proyectos/${proyecto.id}/entrega`} volverTexto="Volver a entrega" />
       <HojaCarta>
-        <Encabezado titulo="Informe de entrega" />
+        <Encabezado titulo="Informe de entrega" proyecto={proyecto} />
         <section className="mt-6 grid gap-6 sm:grid-cols-2">
           <div>
             <div className="text-[11px] font-semibold tracking-wider text-slate-500 uppercase">Cliente</div>
@@ -101,49 +100,63 @@ export function InformeEntregaPage() {
         </section>
         <PieInfrasoft />
       </HojaCarta>
+    </div>
+  )
+}
 
-      <div id="acta" className="break-before-page">
-        <HojaCarta>
-          <Encabezado titulo="Acta de conformidad" />
-          <h1 className="mt-8 text-center text-base font-semibold tracking-wide text-slate-900 uppercase">Acta de entrega y recibo a satisfacción</h1>
-          <p className="mt-6 text-justify">
-            En Puerto Caldas, a la fecha {fechaEntrega}, {cliente.nombre}, identificada con NIT {cliente.nit}, recibe a satisfacción por parte de Infrasoft Services S.A.S. los trabajos
-            correspondientes al proyecto <strong>“{proyecto.nombre}”</strong>
-            {proyecto.ocCliente && (
-              <>
-                , ejecutados según la orden de compra <strong>{proyecto.ocCliente.numero}</strong>
-              </>
-            )}
-            .
-          </p>
-          <p className="mt-4 text-justify">{proyecto.cotizacion.alcance}</p>
-          <p className="mt-4 text-justify">
-            El cliente declara que los trabajos fueron revisados y se encuentran en funcionamiento.{e.garantia && <> {e.garantia}</>}
-          </p>
-          <div className="mt-6">
-            <div className="text-[11px] font-semibold tracking-wider text-slate-500 uppercase">Observaciones</div>
-            <div className="mt-2 space-y-6">
-              <div className="border-b border-slate-300" />
-              <div className="border-b border-slate-300" />
-            </div>
+/** Acta de entrega y recibo a satisfacción: documento aparte, se imprime para que el cliente la firme. */
+export function ActaEntregaPage() {
+  const { id } = useParams()
+  const proyecto = useProyecto(id)
+  const cliente = useCliente(proyecto?.clienteId)
+  if (!proyecto || !cliente) return <Navigate to="/proyectos" replace />
+
+  const e = proyecto.entrega
+  const fechaEntrega = fecha(e.fechaEntrega ?? HOY)
+
+  return (
+    <div>
+      <BarraDocumento volver={`/proyectos/${proyecto.id}/entrega`} volverTexto="Volver a entrega" />
+      <HojaCarta>
+        <Encabezado titulo="Acta de conformidad" proyecto={proyecto} />
+        <h1 className="mt-8 text-center text-base font-semibold tracking-wide text-slate-900 uppercase">Acta de entrega y recibo a satisfacción</h1>
+        <p className="mt-6 text-justify">
+          En Puerto Caldas, a la fecha {fechaEntrega}, {cliente.nombre}, identificada con NIT {cliente.nit}, recibe a satisfacción por parte de Infrasoft Services S.A.S. los trabajos
+          correspondientes al proyecto <strong>“{proyecto.nombre}”</strong>
+          {proyecto.ocCliente && (
+            <>
+              , ejecutados según la orden de compra <strong>{proyecto.ocCliente.numero}</strong>
+            </>
+          )}
+          .
+        </p>
+        <p className="mt-4 text-justify">{proyecto.cotizacion.alcance}</p>
+        <p className="mt-4 text-justify">
+          El cliente declara que los trabajos fueron revisados y se encuentran en funcionamiento.{e.garantia && <> {e.garantia}</>}
+        </p>
+        <div className="mt-6">
+          <div className="text-[11px] font-semibold tracking-wider text-slate-500 uppercase">Observaciones</div>
+          <div className="mt-2 space-y-6">
+            <div className="border-b border-slate-300" />
+            <div className="border-b border-slate-300" />
           </div>
-          <section className="mt-20 grid grid-cols-2 gap-10">
-            <div className="border-t border-slate-400 pt-1.5 text-xs">
-              <div className="font-semibold">Entrega</div>
-              <div className="text-slate-500">Infrasoft Services S.A.S.</div>
-              <div className="mt-3 text-slate-500">Nombre: ______________________</div>
-              <div className="mt-1 text-slate-500">C.C.: _________________________</div>
-            </div>
-            <div className="border-t border-slate-400 pt-1.5 text-xs">
-              <div className="font-semibold">Recibe</div>
-              <div className="text-slate-500">{cliente.nombre}</div>
-              <div className="mt-3 text-slate-500">Nombre: ______________________</div>
-              <div className="mt-1 text-slate-500">C.C.: _________________________</div>
-            </div>
-          </section>
-          <PieInfrasoft />
-        </HojaCarta>
-      </div>
+        </div>
+        <section className="mt-20 grid grid-cols-2 gap-10">
+          <div className="border-t border-slate-400 pt-1.5 text-xs">
+            <div className="font-semibold">Entrega</div>
+            <div className="text-slate-500">Infrasoft Services S.A.S.</div>
+            <div className="mt-3 text-slate-500">Nombre: ______________________</div>
+            <div className="mt-1 text-slate-500">C.C.: _________________________</div>
+          </div>
+          <div className="border-t border-slate-400 pt-1.5 text-xs">
+            <div className="font-semibold">Recibe</div>
+            <div className="text-slate-500">{cliente.nombre}</div>
+            <div className="mt-3 text-slate-500">Nombre: ______________________</div>
+            <div className="mt-1 text-slate-500">C.C.: _________________________</div>
+          </div>
+        </section>
+        <PieInfrasoft />
+      </HojaCarta>
     </div>
   )
 }

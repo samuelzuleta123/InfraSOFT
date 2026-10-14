@@ -110,7 +110,7 @@ export function EntregaTab({ proyecto }: { proyecto: Proyecto }) {
               n={2}
               hecho={!!e.actaFirmada}
               titulo={
-                <Link to={`/proyectos/${proyecto.id}/entrega/informe#acta`} className="inline-flex items-center gap-1.5 font-medium text-brand-800 hover:underline">
+                <Link to={`/proyectos/${proyecto.id}/entrega/acta`} className="inline-flex items-center gap-1.5 font-medium text-brand-800 hover:underline">
                   <Printer className="size-3.5" aria-hidden />
                   Imprimir acta para firma
                 </Link>

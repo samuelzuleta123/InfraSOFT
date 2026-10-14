@@ -7,7 +7,7 @@ import { CotizacionPdfPage } from '@/modules/cotizaciones/CotizacionPdfPage'
 import { CotizacionInternaPage } from '@/modules/cotizaciones/CotizacionInternaPage'
 import { LiquidacionPage } from '@/modules/entrega/LiquidacionPage'
 import { OrdenCompraPdfPage } from '@/modules/compras/OrdenCompraPdfPage'
-import { InformeEntregaPage } from '@/modules/entrega/InformeEntregaPage'
+import { ActaEntregaPage, InformeEntregaPage } from '@/modules/entrega/InformeEntregaPage'
 import { RemisionPage } from '@/modules/entrega/RemisionPage'
 import { FacturasPage } from '@/modules/facturas/FacturasPage'
 import { CatalogoPage } from '@/modules/catalogo/CatalogoPage'
@@ -36,6 +36,7 @@ export default function App() {
         <Route path="proyectos/:id/cierre/liquidacion" element={<LiquidacionPage />} />
         <Route path="proyectos/:id/oc/:ocId" element={<OrdenCompraPdfPage />} />
         <Route path="proyectos/:id/entrega/informe" element={<InformeEntregaPage />} />
+        <Route path="proyectos/:id/entrega/acta" element={<ActaEntregaPage />} />
         <Route path="proyectos/:id/entrega/remision" element={<RemisionPage />} />
       </Routes>
       <VisorDocumento />
