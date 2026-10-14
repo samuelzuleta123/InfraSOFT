@@ -1,6 +1,5 @@
-import { useState } from 'react'
 import { AlertTriangle } from 'lucide-react'
-import { Modal, NumberInput } from '@/components/ui'
+import { NumberInput } from '@/components/ui'
 import type { Resumen } from '@/lib/calc'
 import { cn } from '@/lib/cn'
 import { money, pct } from '@/lib/format'
@@ -98,10 +97,9 @@ export function ResumenPanel({ r, onPrecioFinal, vistaCliente }: { r: Resumen; o
 
 /**
  * En pantallas de menos de 1600 px el panel lateral no deja espacio a la tabla:
- * el resumen pasa a una barra fija inferior con lo esencial y el detalle en un diálogo.
+ * el resumen pasa a una barra fija inferior con lo esencial.
  */
 export function ResumenBarra({ r, onPrecioFinal, vistaCliente }: { r: Resumen; onPrecioFinal: (n: number | null) => void; vistaCliente: boolean }) {
-  const [detalle, setDetalle] = useState(false)
   return (
     <div className="sticky bottom-0 z-10 -mx-4 mt-5 border-t border-slate-200 bg-white/95 px-4 py-3 shadow-[0_-4px_16px_-8px_rgb(15_23_42/0.18)] backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 min-[1600px]:hidden">
       {vistaCliente ? (
@@ -141,16 +139,8 @@ export function ResumenBarra({ r, onPrecioFinal, vistaCliente }: { r: Resumen; o
               </span>
             }
           />
-          <button type="button" onClick={() => setDetalle(true)} className="ml-auto text-[13px] font-medium text-brand-700 hover:text-brand-900 hover:underline">
-            Ver detalle
-          </button>
         </div>
       )}
-      <Modal open={detalle} onClose={() => setDetalle(false)} size="sm" title="Resumen de la cotización">
-        <div className="-mx-5 -my-4">
-          <ResumenPanel r={r} onPrecioFinal={onPrecioFinal} vistaCliente={false} />
-        </div>
-      </Modal>
     </div>
   )
 }
