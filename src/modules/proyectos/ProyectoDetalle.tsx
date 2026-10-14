@@ -3,6 +3,7 @@ import { cn } from '@/lib/cn'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, MapPin } from 'lucide-react'
 import { Button, Tabs } from '@/components/ui'
+import { useFlechas } from '@/lib/flechas'
 import { ETAPAS, EtapaBadge, EstadoCotBadge, StepperEtapas } from '@/components/dominio'
 import { useCliente, useProyecto, useStore } from '@/store/useStore'
 import { versionVigente } from '@/lib/calc'
@@ -39,6 +40,14 @@ export function ProyectoDetalle() {
   const nav = useNavigate()
   const [avanzar, setAvanzar] = useState(false)
   const ordenes = useStore((s) => s.ordenes)
+  // ←/→ en cualquier parte de la página pasan a la pestaña anterior o siguiente.
+  useFlechas((tecla, e) => {
+    if (!proyecto || (tecla !== 'ArrowLeft' && tecla !== 'ArrowRight')) return
+    const i = TABS.findIndex((t) => t.id === tab) + (tecla === 'ArrowRight' ? 1 : -1)
+    if (i < 0 || i >= TABS.length) return
+    e.preventDefault()
+    nav(`/proyectos/${proyecto.id}/${TABS[i].id}`)
+  })
 
   if (!proyecto) return <Navigate to="/proyectos" replace />
   if (!TABS.some((t) => t.id === tab)) return <Navigate to={`/proyectos/${proyecto.id}/levantamiento`} replace />

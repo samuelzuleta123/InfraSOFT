@@ -1,7 +1,8 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useRef, type KeyboardEvent } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { ArrowRight, FolderSearch, Search } from 'lucide-react'
 import { Card, EmptyState, td, th } from '@/components/ui'
+import { indiceConFlecha, useFlechas } from '@/lib/flechas'
 import { ETAPAS, EtapaBadge, EstadoCotBadge, FechaTexto } from '@/components/dominio'
 import type { Etapa } from '@/types'
 import { buscarProyectos } from '@/lib/buscar'
@@ -49,6 +50,37 @@ export function ListaProyectos({ titulo = 'Proyectos', limite }: { titulo?: stri
   const filtrados = etapa === 'todas' ? encontrados : encontrados.filter((r) => r.proyecto.etapa === etapa)
   const resultados = limite ? filtrados.slice(0, limite) : filtrados
 
+  const opcionesEtapa = ['todas', ...ETAPAS.map((e) => e.n)] as const
+  const filtroRef = useRef<HTMLDivElement>(null)
+  const tablaRef = useRef<HTMLTableSectionElement>(null)
+  const moverEtapa = (tecla: string) => {
+    const i = indiceConFlecha(tecla, opcionesEtapa.indexOf(etapa), opcionesEtapa.length)
+    if (i !== null) setEtapa(opcionesEtapa[i])
+    return i
+  }
+  // Con el foco en los filtros: patrón ARIA de radiogroup (la flecha mueve foco y selección).
+  const onKeyDownFiltro = (e: KeyboardEvent<HTMLDivElement>) => {
+    const i = moverEtapa(e.key)
+    if (i === null) return
+    e.preventDefault()
+    filtroRef.current?.querySelectorAll<HTMLElement>('[role="radio"]')[i]?.focus()
+  }
+  // En el resto de la página: ←/→ cambian la etapa y ↑/↓ recorren los proyectos (Enter abre).
+  useFlechas((tecla, e) => {
+    if (tecla === 'ArrowLeft' || tecla === 'ArrowRight') {
+      if (moverEtapa(tecla) !== null) e.preventDefault()
+      return
+    }
+    const filas = [...(tablaRef.current?.querySelectorAll<HTMLElement>('a[data-fila]') ?? [])]
+    if (!filas.length) return
+    const actual = filas.indexOf(document.activeElement as HTMLElement)
+    const sig = actual === -1 ? (tecla === 'ArrowDown' ? 0 : filas.length - 1) : actual + (tecla === 'ArrowDown' ? 1 : -1)
+    if (sig < 0 || sig >= filas.length) return
+    e.preventDefault()
+    filas[sig].focus()
+    filas[sig].scrollIntoView({ block: 'nearest' })
+  }, !limite)
+
   return (
     <Card>
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-3.5">
@@ -71,8 +103,8 @@ export function ListaProyectos({ titulo = 'Proyectos', limite }: { titulo?: stri
         </div>
         )}
       </div>
-      <div className={cn('flex gap-1.5 overflow-x-auto border-b border-slate-200 px-5 py-2.5', !!limite && 'hidden')} role="radiogroup" aria-label="Filtrar por etapa">
-        {(['todas', ...ETAPAS.map((e) => e.n)] as const).map((e) => {
+      <div ref={filtroRef} onKeyDown={onKeyDownFiltro} className={cn('flex gap-1.5 overflow-x-auto border-b border-slate-200 px-5 py-2.5', !!limite && 'hidden')} role="radiogroup" aria-label="Filtrar por etapa">
+        {opcionesEtapa.map((e) => {
           const activo = etapa === e
           const total = e === 'todas' ? encontrados.length : encontrados.filter((r) => r.proyecto.etapa === e).length
           return (
@@ -80,6 +112,7 @@ export function ListaProyectos({ titulo = 'Proyectos', limite }: { titulo?: stri
               key={e}
               role="radio"
               aria-checked={activo}
+              tabIndex={activo ? 0 : -1}
               onClick={() => setEtapa(e)}
               className={cn(
                 'inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full border px-2.5 text-xs font-medium transition-colors',
@@ -107,7 +140,7 @@ export function ListaProyectos({ titulo = 'Proyectos', limite }: { titulo?: stri
                 <th className={th}>Creado</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody ref={tablaRef} className="divide-y divide-slate-100">
               {resultados.map(({ proyecto: p, coincidencia, tab }) => {
                 const v = versionVigente(p)
                 const cliente = clientes.find((c) => c.id === p.clienteId)
@@ -115,12 +148,13 @@ export function ListaProyectos({ titulo = 'Proyectos', limite }: { titulo?: stri
                   <tr
                     key={p.id}
                     onClick={() => nav(`/proyectos/${p.id}/${tab ?? 'levantamiento'}`)}
-                    className="cursor-pointer transition-colors hover:bg-brand-50/40"
+                    className="cursor-pointer transition-colors hover:bg-brand-50/40 has-[a:focus-visible]:bg-brand-50/60"
                   >
                     <td className={td}>
                       <a
                         href={`/proyectos/${p.id}/${tab ?? 'levantamiento'}`}
                         onClick={(e) => e.preventDefault()}
+                        data-fila
                         className="font-medium text-slate-900 hover:text-brand-800"
                       >
                         {p.nombre}

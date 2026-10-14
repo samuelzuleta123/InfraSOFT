@@ -1,7 +1,8 @@
-import { useEffect, useId, useRef, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes } from 'react'
+import { useEffect, useId, useRef, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type KeyboardEvent as KeyboardEventReact, type ReactNode, type SelectHTMLAttributes } from 'react'
 import { AlertTriangle, CheckCircle2, Info, X, XCircle } from 'lucide-react'
 import { numeroEditable, parseNumero } from '@/lib/format'
 import { cn } from '@/lib/cn'
+import { indiceConFlecha } from '@/lib/flechas'
 
 // ── Botón ──────────────────────────────────────────────────────────────
 
@@ -266,13 +267,22 @@ export function Tabs<T extends string>({ tabs, value, onChange, className }: { t
     const activa = ref.current?.querySelector<HTMLElement>('[aria-selected="true"]')
     if (activa && ref.current) ref.current.scrollLeft = activa.offsetLeft - ref.current.clientWidth / 2 + activa.clientWidth / 2
   }, [value])
+  // Con el foco en las pestañas: ←/→ (e Inicio/Fin) cambian de pestaña, como en el patrón ARIA.
+  const onKeyDown = (e: KeyboardEventReact) => {
+    const i = indiceConFlecha(e.key, tabs.findIndex((t) => t.id === value), tabs.length)
+    if (i === null) return
+    e.preventDefault()
+    onChange(tabs[i].id)
+    ref.current?.querySelectorAll<HTMLElement>('[role="tab"]')[i]?.focus()
+  }
   return (
-    <div ref={ref} role="tablist" className={cn('flex gap-1 overflow-x-auto border-b border-slate-200', className)}>
+    <div ref={ref} role="tablist" onKeyDown={onKeyDown} className={cn('flex gap-1 overflow-x-auto border-b border-slate-200', className)}>
       {tabs.map((t) => (
         <button
           key={t.id}
           role="tab"
           aria-selected={value === t.id}
+          tabIndex={value === t.id ? 0 : -1}
           onClick={() => onChange(t.id)}
           className={cn(
             '-mb-px inline-flex items-center gap-2 border-b-2 px-3 py-2.5 text-sm font-medium whitespace-nowrap transition-colors',
