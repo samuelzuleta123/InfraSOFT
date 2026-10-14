@@ -1,7 +1,7 @@
 import { Navigate, useParams } from 'react-router-dom'
 import { BarraDocumento, HojaCarta, MembreteInfrasoft, PieInfrasoft } from '@/components/Documento'
 import { totalLineaOC, totalOC } from '@/lib/calc'
-import { fecha, money } from '@/lib/format'
+import { fecha, money, moneyUnit } from '@/lib/format'
 import { useProyecto, useStore } from '@/store/useStore'
 
 export function OrdenCompraPdfPage() {
@@ -58,7 +58,7 @@ export function OrdenCompraPdfPage() {
                 <td className="py-2">{l.descripcion}</td>
                 <td className="px-2 py-2">{l.unidad}</td>
                 <td className="num px-2 py-2 text-right">{l.cantidad.toLocaleString('es-CO')}</td>
-                <td className="num px-2 py-2 text-right">{money(l.precioUnitario)}</td>
+                <td className="num px-2 py-2 text-right">{moneyUnit(l.precioUnitario)}</td>
                 <td className="num py-2 text-right">{money(totalLineaOC(l))}</td>
               </tr>
             ))}

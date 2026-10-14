@@ -5,7 +5,7 @@ import { NuevoProveedorModal } from '@/modules/catalogo/NuevosModales'
 import { itemMaterial, itemMO, itemSubtotal, totalesSeccion, type ItemCliente } from '@/lib/calc'
 import { precioNeto } from '@/lib/calc'
 import { cn } from '@/lib/cn'
-import { money } from '@/lib/format'
+import { money, moneyUnit, r3 } from '@/lib/format'
 import { useStore } from '@/store/useStore'
 import type { ItemCotizacion, Seccion, Unidad } from '@/types'
 
@@ -226,11 +226,11 @@ function FilaItem({
         <NumberInput value={item.cantidad} onChange={(n) => editar((i) => (i.cantidad = n ?? 0))} aria-label={`Cantidad ítem ${numero}`} inputClassName={celdaInput} />
       </td>
       <td className="px-1 py-1">
-        <NumberInput value={item.vuMO} onChange={(n) => editar((i) => (i.vuMO = n ?? 0))} aria-label={`Valor unitario mano de obra ítem ${numero}`} inputClassName={celdaInput} />
+        <NumberInput value={item.vuMO} decimals={3} onChange={(n) => editar((i) => (i.vuMO = r3(n ?? 0)))} aria-label={`Valor unitario mano de obra ítem ${numero}`} inputClassName={celdaInput} />
       </td>
       <td className={cn(celdaNum, item.vuMO === 0 ? 'text-slate-500' : 'text-slate-700')}>{money(itemMO(item))}</td>
       <td className="px-1 py-1">
-        <NumberInput value={item.vuMaterial} onChange={(n) => editar((i) => (i.vuMaterial = n ?? 0))} aria-label={`Valor unitario material ítem ${numero}`} inputClassName={celdaInput} />
+        <NumberInput value={item.vuMaterial} decimals={3} onChange={(n) => editar((i) => (i.vuMaterial = r3(n ?? 0)))} aria-label={`Valor unitario material ítem ${numero}`} inputClassName={celdaInput} />
       </td>
       <td className={cn(celdaNum, item.vuMaterial === 0 ? 'text-slate-500' : 'text-slate-700')}>{money(itemMaterial(item))}</td>
       <td className="px-1 py-1">
@@ -256,7 +256,7 @@ function FilaItem({
             <optgroup label="Con precio en catálogo">
               {conPrecio.map((pp) => (
                 <option key={pp.id} value={pp.proveedorId}>
-                  {proveedores.find((p) => p.id === pp.proveedorId)?.nombre.replace(/ S\.A\.S?\.?$/, '')} · {money(precioNeto(pp))}
+                  {proveedores.find((p) => p.id === pp.proveedorId)?.nombre.replace(/ S\.A\.S?\.?$/, '')} · {moneyUnit(precioNeto(pp))}
                 </option>
               ))}
             </optgroup>
@@ -300,7 +300,7 @@ function TablaCliente({ items, numeroInicial }: { items: ItemCliente[]; numeroIn
             <td className="px-2 py-2 text-slate-900">{ic.item.descripcion}</td>
             <td className="px-2 py-2 text-slate-600">{ic.item.unidad}</td>
             <td className={celdaNum}>{ic.item.cantidad.toLocaleString('es-CO')}</td>
-            <td className={celdaNum}>{money(ic.unitario)}</td>
+            <td className={celdaNum}>{moneyUnit(ic.unitario)}</td>
             <td className={cn(celdaNum, 'font-medium text-slate-900')}>{money(ic.total)}</td>
           </tr>
         ))}

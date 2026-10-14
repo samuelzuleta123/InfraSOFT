@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { Check, FileText, Pencil, RefreshCw, Send, ShoppingCart, X } from 'lucide-react'
 import { Alert, Badge, Button, Card, CardHeader, DL, EmptyState, Field, Input, Modal, NumberInput } from '@/components/ui'
 import { AdjuntoChip, EstadoCotBadge, FechaTexto, SubirArchivo, nombreEstadoCot } from '@/components/dominio'
-import { resumen, totalCotizadoOC, totalOC, versionVigente } from '@/lib/calc'
+import { resumen, totalCotizadoOC, totalLineaOC, totalOC, versionVigente } from '@/lib/calc'
 import { generarOrdenes, itemsSinProveedor } from '@/lib/compras'
 import { cn } from '@/lib/cn'
 import { HOY, money, moneySigned } from '@/lib/format'
@@ -321,7 +321,7 @@ function OrdenesProveedorCard({ proyecto }: { proyecto: Proyecto }) {
                           </span>
                           {l.descripcion}
                         </span>
-                        <span className="num shrink-0 text-slate-900">{money(l.cantidad * l.precioUnitario)}</span>
+                        <span className="num shrink-0 text-slate-900">{money(totalLineaOC(l))}</span>
                       </li>
                     ))}
                   </ul>

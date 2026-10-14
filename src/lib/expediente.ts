@@ -84,6 +84,7 @@ export function documentosProyecto(p: Proyecto, ordenes: OrdenCompra[], facturas
       adjunto: { nombre: `${fc.numero.replace(/\s/g, '')}.pdf`, tipo: 'pdf' },
       contexto: { tipo: 'facturaCliente', proyectoId: p.id },
     })
+    docs.push({ id: 'liquidacion', grupo: 'Facturación', tipo: 'Liquidación', numero: `Liquidación ${p.codigo}`, fecha: fc.fecha, detalle: 'Documento interno', ruta: `/proyectos/${p.id}/cierre/liquidacion` })
   }
   return docs
 }

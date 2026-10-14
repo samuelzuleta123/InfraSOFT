@@ -4,6 +4,8 @@ import { InicioPage } from '@/modules/inicio/InicioPage'
 import { ProyectosPage } from '@/modules/proyectos/ProyectosPage'
 import { ProyectoDetalle } from '@/modules/proyectos/ProyectoDetalle'
 import { CotizacionPdfPage } from '@/modules/cotizaciones/CotizacionPdfPage'
+import { CotizacionInternaPage } from '@/modules/cotizaciones/CotizacionInternaPage'
+import { LiquidacionPage } from '@/modules/entrega/LiquidacionPage'
 import { OrdenCompraPdfPage } from '@/modules/compras/OrdenCompraPdfPage'
 import { InformeEntregaPage } from '@/modules/entrega/InformeEntregaPage'
 import { RemisionPage } from '@/modules/entrega/RemisionPage'
@@ -30,6 +32,8 @@ export default function App() {
         </Route>
         {/* Vistas de documento: sin barra lateral, listas para imprimir */}
         <Route path="proyectos/:id/cotizacion/pdf" element={<CotizacionPdfPage />} />
+        <Route path="proyectos/:id/cotizacion/interna" element={<CotizacionInternaPage />} />
+        <Route path="proyectos/:id/cierre/liquidacion" element={<LiquidacionPage />} />
         <Route path="proyectos/:id/oc/:ocId" element={<OrdenCompraPdfPage />} />
         <Route path="proyectos/:id/entrega/informe" element={<InformeEntregaPage />} />
         <Route path="proyectos/:id/entrega/remision" element={<RemisionPage />} />

@@ -7,6 +7,16 @@ export function money(n: number | null | undefined): string {
   return `${v < 0 ? '-' : ''}$${abs}`
 }
 
+/** Precisión de los valores unitarios: 3 decimales. Los totales siempre van al peso. */
+export const r3 = (n: number) => Math.round(n * 1000) / 1000
+
+/** Valor unitario: $7.547,54 — hasta 3 decimales, solo si los tiene. */
+export function moneyUnit(n: number | null | undefined): string {
+  const v = r3(n ?? 0)
+  const abs = Math.abs(v).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 3 })
+  return `${v < 0 ? '-' : ''}$${abs}`
+}
+
 /** Diferencia con signo explícito: +$12.000 / -$3.500 */
 export function moneySigned(n: number): string {
   const v = Math.round(n)

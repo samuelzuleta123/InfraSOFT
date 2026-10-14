@@ -16,11 +16,11 @@ npm run verificar    # comprueba que el cotizador del proyecto 1 cuadre con los 
 2. **Proyecto 1** (“Instalación F.O. Subestación Eléctrica – Contenedor CCM”) → pestaña **Levantamiento** (medidas, ruta, racks, fotos).
 3. **Cotización** del proyecto 1: es un proyecto cerrado, así que su cotización aparece en solo lectura (registro de lo vendido, con proveedor en cada ítem). Para cotizar en vivo abre **PRY-2026-021 “Canalización y circuito regulado”** (borrador): elige proveedores en la columna *Proveedor* (se carga el precio neto del catálogo), escribe el **% utilidad** y el **% otros ajustes** y define el precio final. Muestra también **Agregar ítem**, **Agregar kit → Punto de red**, **Agregar sección** y **Nueva versión**.
 4. **Vista cliente** (interruptor arriba a la derecha): oculta proveedores, costos y utilidad.
-5. **Vista previa PDF** → cambiar el *Nivel de detalle* → **Descargar PDF** (usa la impresión del navegador).
+5. **Vista previa PDF** → cambiar el *Nivel de detalle* y el *Documento* (Cotización o **Precotización**, el estimado rápido sin firma de aceptación) → **Descargar PDF** (usa la impresión del navegador). **Imprimir interna** saca la versión para la empresa, con proveedor, costos y utilidad.
 6. **Compras** — estados de la cotización con fecha (aprobar o rechazar pide confirmación y se puede deshacer), OC del cliente (cambiar el valor muestra la alerta) y **Generar órdenes de compra** en PRY-2026-018 (aprobado, sin OC): primero muestra la vista previa por proveedor; una tarjeta por proveedor con consecutivo, ítems, total y **Ver PDF**. **Editar** una OC resalta las diferencias contra lo cotizado.
 7. **Facturas de proveedores** (menú lateral) — `EPE28045` y `EPE28102` están en *Sin asignar*: **Asociar a proyecto / OC** → `EPE28045` va al proyecto 2 → OC 2609-005 (y `EPE28102` a la OC de Eléctricos del Valle del proyecto 7, 2609-012). Abrir `DRG-293076` para ver la comparación contra la OC (el cable F-UTP se facturó a $2.772 frente a $2.650 ordenado).
 8. **Proyecto 2 → Ejecución** — bitácora de obra (probar en celular o con el modo responsive del navegador): cantidades instaladas con +/−, semáforo por ítem y total, imprevistos con foto y seriales.
-9. **Proyecto 1 → Entrega** (fotos seleccionables, certificación, acta para firmar) y **Cierre**: factura FE 500, **Copiar texto de observaciones** para el POS y la **liquidación** (cotizado vs. instalado, mano de obra real, utilidad estimada vs. real).
+9. **Proyecto 1 → Entrega** (fotos seleccionables, certificación, acta para firmar) y **Cierre**: factura FE 500, **Copiar texto de observaciones** para el POS y la **liquidación** (cotizado vs. instalado, mano de obra real, utilidad estimada vs. real), que también se imprime.
 
 ## Flujo completo: de un proyecto nuevo a uno archivado
 
@@ -34,7 +34,7 @@ npm run verificar    # comprueba que el cotizador del proyecto 1 cuadre con los 
 
 ## Reglas que respeta el mockup
 
-- Interfaz en español (Colombia), pesos sin decimales (`$1.234.567`) y fechas DD/MM/AAAA. La fecha “de hoy” está fija en 10/10/2026 (`src/lib/format.ts`) para que la demo sea reproducible.
+- Interfaz en español (Colombia), totales en pesos sin decimales (`$1.234.567`) y valores unitarios con hasta 3 decimales; cada línea cuadra al peso y `npm run verificar` lo comprueba en todas las cotizaciones y fechas DD/MM/AAAA. La fecha “de hoy” está fija en 10/10/2026 (`src/lib/format.ts`) para que la demo sea reproducible.
 - Todos los totales se calculan en `src/lib/calc.ts` a partir de los datos; nada se guarda precalculado.
 - Utilidad, ajustes, descuentos, IVA y pólizas siempre son campos que digita el usuario; vacíos valen 0.
 - Sin facturación electrónica, DIAN ni lectura de XML: la factura al cliente se emite en el POS y aquí solo se registra; los PDF/XML de proveedores son simples adjuntos.

@@ -5,7 +5,7 @@ import { NuevoMaterialModal, NuevoProveedorModal } from './NuevosModales'
 import { FechaTexto } from '@/components/dominio'
 import { precioNeto, totalFactura } from '@/lib/calc'
 import { cn } from '@/lib/cn'
-import { money } from '@/lib/format'
+import { money, moneyUnit } from '@/lib/format'
 import { useStore } from '@/store/useStore'
 import type { CategoriaMaterial } from '@/types'
 import { FichaMaterial } from './FichaMaterial'
@@ -121,7 +121,7 @@ function TablaMateriales() {
                     <td className="num px-4 py-3 text-right">
                       {mejor ? (
                         <>
-                          <div className="font-semibold text-slate-900">{money(precioNeto(mejor))}</div>
+                          <div className="font-semibold text-slate-900">{moneyUnit(precioNeto(mejor))}</div>
                           {pm.length > 1 && <div className="text-xs text-slate-500">{corto(mejor.proveedorId)}</div>}
                         </>
                       ) : (

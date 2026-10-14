@@ -34,7 +34,7 @@ Está hecho a la medida del ciclo real de esta empresa: cotización por seccione
 
 ## Capabilities and Constraints
 
-- Interfaz 100 % en español de Colombia. Moneda en pesos sin decimales con formato `$1.234.567`. Fechas `DD/MM/AAAA`.
+- Interfaz 100 % en español de Colombia. Moneda en pesos: totales sin decimales (`$1.234.567`) y valores unitarios con hasta 3 decimales (`$7.547,54`). Cada total de línea es cantidad × unitario redondeado al peso y la suma de las líneas da exactamente el total del documento: nunca hay descuadre. Fechas `DD/MM/AAAA`.
 - Todos los cálculos se derivan de los datos en el código; nunca se guardan valores calculados.
 - No se asumen porcentajes de utilidad, descuentos, impuestos ni pólizas: siempre existen como campos, los digita el usuario y vacíos valen 0.
 - Fuera de alcance: facturación electrónica, DIAN y lectura automática de XML.

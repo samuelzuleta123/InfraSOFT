@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Check, ClipboardCopy, Pencil } from 'lucide-react'
+import { Check, ClipboardCopy, Pencil, Printer } from 'lucide-react'
 import { Alert, Button, Card, CardHeader, DL, Field, Input, NumberInput, Select, Textarea } from '@/components/ui'
 import { FechaTexto } from '@/components/dominio'
 import { liquidacion, resumen, versionVigente } from '@/lib/calc'
 import { cn } from '@/lib/cn'
 import { textoObservaciones } from '@/lib/observaciones'
-import { HOY, money, moneySigned, num, pct, sumarDias } from '@/lib/format'
+import { HOY, money, moneySigned, num, pct, sumarDias, moneyUnit } from '@/lib/format'
 import { useStore } from '@/store/useStore'
 import { ResultadoProyecto } from './ResultadoProyecto'
 import type { FacturaCliente, FormaPago, Proyecto } from '@/types'
@@ -176,7 +176,19 @@ function Liquidacion({ proyecto }: { proyecto: Proyecto }) {
   const difUtilidad = l.utilidadRealObra - l.utilidadEstimada
   return (
     <Card>
-      <CardHeader title="Liquidación del proyecto" description="Cantidades cotizadas frente a instaladas. Si un ítem no tiene registro de obra, se toma la cantidad cotizada." />
+      <CardHeader
+        title="Liquidación del proyecto"
+        description="Cantidades cotizadas frente a instaladas. Si un ítem no tiene registro de obra, se toma la cantidad cotizada."
+        actions={
+          <Link
+            to={`/proyectos/${proyecto.id}/cierre/liquidacion`}
+            className="inline-flex h-8 items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 text-[13px] font-medium text-slate-700 hover:bg-slate-50"
+          >
+            <Printer className="size-4" aria-hidden />
+            Imprimir
+          </Link>
+        }
+      />
       <div className="grid gap-px border-b border-slate-200 bg-slate-200 sm:grid-cols-2 xl:grid-cols-4">
         <div className="bg-white p-5">
           <div className="text-[13px] text-slate-500">Mano de obra real a pagar</div>
@@ -229,7 +241,7 @@ function Liquidacion({ proyecto }: { proyecto: Proyecto }) {
                 <td className={cn('num px-3 py-2 text-right font-medium', f.diferencia > 0 ? 'text-red-700' : f.diferencia < 0 ? 'text-emerald-700' : 'text-slate-500')}>
                   {f.diferencia === 0 ? '—' : `${f.diferencia > 0 ? '+' : ''}${num(f.diferencia, 2)}`}
                 </td>
-                <td className="num px-3 py-2 text-right text-slate-600">{money(f.item.vuMO)}</td>
+                <td className="num px-3 py-2 text-right text-slate-600">{moneyUnit(f.item.vuMO)}</td>
                 <td className="num px-4 py-2 text-right font-medium text-slate-900">{money(f.moReal)}</td>
               </tr>
             ))}

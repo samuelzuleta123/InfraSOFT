@@ -4,7 +4,7 @@ import { Badge, Drawer, Tabs } from '@/components/ui'
 import { FechaTexto } from '@/components/dominio'
 import { precioNeto, totalFactura, totalOC } from '@/lib/calc'
 import { cn } from '@/lib/cn'
-import { diasEntre, HOY, money } from '@/lib/format'
+import { diasEntre, HOY, money, moneyUnit } from '@/lib/format'
 import { useStore } from '@/store/useStore'
 
 type Pestana = 'precios' | 'facturas' | 'ordenes'
@@ -69,8 +69,8 @@ export function FichaProveedor({ proveedorId, onClose }: { proveedorId: string; 
                   </span>
                 </span>
                 <span className="num shrink-0 text-right">
-                  <span className="block font-semibold text-slate-900">{money(neto)}</span>
-                  {neto === mejor ? <span className="text-xs text-emerald-700">Mejor precio</span> : <span className="text-xs text-slate-500">+{money(neto - mejor)} vs. mejor</span>}
+                  <span className="block font-semibold text-slate-900">{moneyUnit(neto)}</span>
+                  {neto === mejor ? <span className="text-xs text-emerald-700">Mejor precio</span> : <span className="text-xs text-slate-500">+{moneyUnit(neto - mejor)} vs. mejor</span>}
                 </span>
               </li>
             )

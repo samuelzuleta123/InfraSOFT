@@ -1,28 +1,40 @@
 import { useState } from 'react'
-import { Navigate, useParams } from 'react-router-dom'
+import { Navigate, useParams, useSearchParams } from 'react-router-dom'
 import { BarraDocumento, HojaCarta, MembreteInfrasoft, PieInfrasoft } from '@/components/Documento'
 import { Select } from '@/components/ui'
 import { preciosCliente, versionActiva } from '@/lib/calc'
-import { fecha, money } from '@/lib/format'
+import { HOY, fecha, money, moneyUnit } from '@/lib/format'
 import { useCliente, useProyecto } from '@/store/useStore'
 
 type Nivel = 'total' | 'secciones' | 'items'
+type TipoDoc = 'cotizacion' | 'precotizacion'
 
 export function CotizacionPdfPage() {
   const { id } = useParams()
   const proyecto = useProyecto(id)
   const cliente = useCliente(proyecto?.clienteId)
   const [nivel, setNivel] = useState<Nivel>('secciones')
+  // La precotización es el estimado rápido que se envía antes de confirmar precios con los proveedores.
+  const [params] = useSearchParams()
+  const [tipo, setTipo] = useState<TipoDoc>(params.get('tipo') === 'precotizacion' ? 'precotizacion' : 'cotizacion')
   if (!proyecto || !cliente) return <Navigate to="/proyectos" replace />
 
   const v = versionActiva(proyecto)
   const pc = preciosCliente(v)
   const fechaDoc = v.historial.find((h) => h.estado === 'enviada')?.fecha ?? v.creada
+  const precot = tipo === 'precotizacion'
   let n = 1
 
   return (
     <div>
       <BarraDocumento volver={`/proyectos/${proyecto.id}/cotizacion`} volverTexto="Volver al cotizador">
+        <label htmlFor="tipo" className="text-[13px] font-medium text-slate-600">
+          Documento
+        </label>
+        <Select id="tipo" value={tipo} onChange={(e) => setTipo(e.target.value as TipoDoc)} className="w-auto!">
+          <option value="precotizacion">Precotización</option>
+          <option value="cotizacion">Cotización</option>
+        </Select>
         <label htmlFor="nivel" className="text-[13px] font-medium text-slate-600">
           Nivel de detalle
         </label>
@@ -37,11 +49,12 @@ export function CotizacionPdfPage() {
         <header className="flex flex-wrap items-start justify-between gap-6 border-b-2 border-brand-500 pb-5">
           <MembreteInfrasoft />
           <div className="text-right">
-            <div className="text-[11px] font-semibold tracking-wider text-slate-500 uppercase">Cotización</div>
+            <div className="text-[11px] font-semibold tracking-wider text-slate-500 uppercase">{precot ? 'Precotización' : 'Cotización'}</div>
             <div className="num text-lg font-semibold text-slate-900">
+              {precot && 'PRE-'}
               {proyecto.cotizacion.consecutivo}-{v.nombre.toUpperCase()}
             </div>
-            <div className="num text-xs text-slate-500">Pereira, {fecha(fechaDoc)}</div>
+            <div className="num text-xs text-slate-500">Pereira, {fecha(precot ? HOY : fechaDoc)}</div>
           </div>
         </header>
 
@@ -66,7 +79,13 @@ export function CotizacionPdfPage() {
         </section>
 
         <section className="mt-6">
-          <h2 className="text-[11px] font-semibold tracking-wider text-slate-500 uppercase">Valor de la propuesta</h2>
+          <h2 className="text-[11px] font-semibold tracking-wider text-slate-500 uppercase">{precot ? 'Valor estimado' : 'Valor de la propuesta'}</h2>
+          {precot && (
+            <p className="mt-1 rounded border border-slate-300 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+              Valores estimados, sujetos a confirmación de precios con los proveedores y a la visita técnica. Este documento no es una oferta en firme; la cotización
+              definitiva se envía una vez confirmados los precios.
+            </p>
+          )}
           {nivel === 'total' && (
             <div className="mt-2 flex items-baseline justify-between rounded border border-slate-300 px-4 py-3">
               <span className="font-medium">Valor total del proyecto</span>
@@ -123,7 +142,7 @@ export function CotizacionPdfPage() {
                       <td className="py-1.5">{ic.item.descripcion}</td>
                       <td className="py-1.5 px-2">{ic.item.unidad}</td>
                       <td className="num py-1.5 px-2 text-right">{ic.item.cantidad.toLocaleString('es-CO')}</td>
-                      <td className="num py-1.5 px-2 text-right">{money(ic.unitario)}</td>
+                      <td className="num py-1.5 px-2 text-right">{moneyUnit(ic.unitario)}</td>
                       <td className="num py-1.5 text-right">{money(ic.total)}</td>
                     </tr>
                   ))}
@@ -152,20 +171,22 @@ export function CotizacionPdfPage() {
           </div>
         </section>
 
-        <section className="mt-14 grid grid-cols-2 gap-10">
-          <div>
-            <div className="border-t border-slate-400 pt-1.5 text-xs">
-              <div className="font-semibold">Infrasoft Services S.A.S.</div>
-              <div className="text-slate-500">Gerencia de proyectos</div>
+        {!precot && (
+          <section className="mt-14 grid grid-cols-2 gap-10">
+            <div>
+              <div className="border-t border-slate-400 pt-1.5 text-xs">
+                <div className="font-semibold">Infrasoft Services S.A.S.</div>
+                <div className="text-slate-500">Gerencia de proyectos</div>
+              </div>
             </div>
-          </div>
-          <div>
-            <div className="border-t border-slate-400 pt-1.5 text-xs">
-              <div className="font-semibold">Aceptación del cliente</div>
-              <div className="text-slate-500">{cliente.nombre}</div>
+            <div>
+              <div className="border-t border-slate-400 pt-1.5 text-xs">
+                <div className="font-semibold">Aceptación del cliente</div>
+                <div className="text-slate-500">{cliente.nombre}</div>
+              </div>
             </div>
-          </div>
-        </section>
+          </section>
+        )}
         <PieInfrasoft />
       </HojaCarta>
     </div>

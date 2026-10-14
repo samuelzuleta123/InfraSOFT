@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Button, Field, Input, Modal, NumberInput, Select } from '@/components/ui'
 import { precioNeto } from '@/lib/calc'
-import { money } from '@/lib/format'
+import { moneyUnit } from '@/lib/format'
 import { useStore } from '@/store/useStore'
 import type { CategoriaMaterial, Unidad } from '@/types'
 
@@ -87,7 +87,7 @@ export function NuevoMaterialModal({ onClose, onCreado }: { onClose: () => void;
         </div>
         {prov && (lista ?? 0) > 0 && dtoValido && (
           <p className="mt-3 text-[13px] text-slate-600">
-            Precio neto: <strong className="num text-slate-900">{money(precioNeto({ precioLista: lista ?? 0, descuentoPct: dto }))}</strong>
+            Precio neto: <strong className="num text-slate-900">{moneyUnit(precioNeto({ precioLista: lista ?? 0, descuentoPct: dto }))}</strong>
           </p>
         )}
       </fieldset>

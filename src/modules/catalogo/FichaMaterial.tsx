@@ -5,7 +5,7 @@ import { Badge, Button, Drawer, NumberInput, Select, Tabs } from '@/components/u
 import { FechaTexto } from '@/components/dominio'
 import { precioNeto, versionVigente } from '@/lib/calc'
 import { cn } from '@/lib/cn'
-import { HOY, money, pct, uid } from '@/lib/format'
+import { HOY, moneyUnit, pct, uid } from '@/lib/format'
 import { nombreProveedor, useStore } from '@/store/useStore'
 
 type Pestana = 'precios' | 'historial' | 'uso'
@@ -59,7 +59,7 @@ export function FichaMaterial({ materialId, onClose }: { materialId: string; onC
       description={
         mejor ? (
           <>
-            Mejor precio neto <strong className="num font-semibold text-slate-900">{money(precioNeto(mejor))}</strong> con {nombreProveedor(proveedores, mejor.proveedorId)}
+            Mejor precio neto <strong className="num font-semibold text-slate-900">{moneyUnit(precioNeto(mejor))}</strong> con {nombreProveedor(proveedores, mejor.proveedorId)}
           </>
         ) : (
           'Aún no tiene precios de proveedor.'
@@ -93,8 +93,8 @@ export function FichaMaterial({ materialId, onClose }: { materialId: string; onC
                     </p>
                   </div>
                   <div className="text-right">
-                    <div className="num text-lg font-semibold text-slate-900">{money(neto)}</div>
-                    {esMejor ? <Badge tone="ok">Mejor precio</Badge> : precios.length > 1 && mejor && <span className="num text-xs text-slate-500">+{money(neto - precioNeto(mejor))}</span>}
+                    <div className="num text-lg font-semibold text-slate-900">{moneyUnit(neto)}</div>
+                    {esMejor ? <Badge tone="ok">Mejor precio</Badge> : precios.length > 1 && mejor && <span className="num text-xs text-slate-500">+{moneyUnit(neto - precioNeto(mejor))}</span>}
                   </div>
                 </div>
                 <div className="mt-3 grid grid-cols-2 gap-3">
@@ -149,7 +149,7 @@ export function FichaMaterial({ materialId, onClose }: { materialId: string; onC
                   <FechaTexto iso={h.fecha} />
                 </span>
                 <span className="min-w-0 flex-1 truncate text-slate-700">{nombreProveedor(proveedores, h.proveedorId)}</span>
-                <span className="num w-24 text-right font-medium text-slate-900">{money(h.neto)}</span>
+                <span className="num w-24 text-right font-medium text-slate-900">{moneyUnit(h.neto)}</span>
                 <span className="num w-20 text-right text-xs">
                   {h.variacion === null ? (
                     <span className="text-slate-500">Inicial</span>
@@ -183,7 +183,7 @@ export function FichaMaterial({ materialId, onClose }: { materialId: string; onC
                     </span>
                   </span>
                   <span className="num shrink-0 text-right">
-                    <span className="block font-medium text-slate-900">{money(i.vuMaterial)}</span>
+                    <span className="block font-medium text-slate-900">{moneyUnit(i.vuMaterial)}</span>
                     <span className="block text-xs text-slate-500">
                       × {i.cantidad.toLocaleString('es-CO')} {i.unidad}
                     </span>

@@ -9,9 +9,12 @@ import type {
   Seccion,
   VersionCotizacion,
 } from '@/types'
+import { r3 } from './format'
 
-export const itemMO = (i: ItemCotizacion) => i.cantidad * i.vuMO
-export const itemMaterial = (i: ItemCotizacion) => i.cantidad * i.vuMaterial
+// Los unitarios llevan hasta 3 decimales; cada total de línea se redondea al peso para que
+// la suma de las líneas impresas sea exactamente el total del documento.
+export const itemMO = (i: ItemCotizacion) => Math.round(i.cantidad * i.vuMO)
+export const itemMaterial = (i: ItemCotizacion) => Math.round(i.cantidad * i.vuMaterial)
 export const itemSubtotal = (i: ItemCotizacion) => itemMO(i) + itemMaterial(i)
 
 export function totalesSeccion(s: Seccion) {
@@ -94,34 +97,50 @@ export interface ItemCliente {
 
 /**
  * Precios que ve el cliente: el precio vigente se reparte entre los ítems en proporción
- * a su costo directo, de modo que la suma cuadra exactamente con el valor cotizado.
- * Nunca expone proveedores ni costos internos.
+ * a su costo directo. El unitario lleva 3 decimales y el total de cada línea es
+ * cantidad × unitario redondeado al peso, así que cualquiera puede recalcular el documento
+ * y la suma de las líneas da exactamente el valor cotizado. Nunca expone proveedores ni costos internos.
  */
 export function preciosCliente(v: VersionCotizacion) {
   const r = resumen(v)
+  const total = Math.round(r.precioVigente)
   const directo = r.mo + r.material
-  const factor = directo > 0 ? r.precioVigente / directo : 0
-  const items: ItemCliente[] = []
-  let acumulado = 0
+  const factor = directo > 0 ? total / directo : 0
   const todos = todosLosItems(v)
-  todos.forEach((item, idx) => {
-    let total = Math.round(itemSubtotal(item) * factor)
-    if (idx === todos.length - 1) total = Math.round(r.precioVigente) - acumulado
-    acumulado += total
-    items.push({ item, total, unitario: item.cantidad ? total / item.cantidad : 0 })
+  const lineas: ItemCliente[] = todos.map((item) => {
+    const unitario = item.cantidad ? r3((itemSubtotal(item) * factor) / item.cantidad) : 0
+    return { item, unitario, total: Math.round(item.cantidad * unitario) }
   })
-  const porSeccion = v.secciones.map((s) => ({
-    seccion: s,
-    items: items.filter((ic) => s.items.some((i) => i.id === ic.item.id)),
-  }))
-  return {
-    total: Math.round(r.precioVigente),
-    secciones: porSeccion.map((p) => ({ ...p, total: p.items.reduce((a, b) => a + b.total, 0) })),
+
+  // El residuo del redondeo (unos pocos pesos) lo absorbe una sola línea, eligiendo la que
+  // pueda hacerlo de forma exacta: primero cantidad 1 y luego las de menor cantidad.
+  // Con 3 decimales, cualquier línea de hasta 1.000 unidades puede llegar a un total exacto.
+  let residuo = total - lineas.reduce((a, l) => a + l.total, 0)
+  if (residuo !== 0) {
+    const candidatas = lineas
+      .filter((l) => l.item.cantidad > 0 && l.total + residuo >= 0)
+      .sort((a, b) => a.item.cantidad - b.item.cantidad || b.total - a.total)
+    for (const l of candidatas) {
+      const objetivo = l.total + residuo
+      const unitario = r3(objetivo / l.item.cantidad)
+      if (Math.round(l.item.cantidad * unitario) === objetivo) {
+        l.unitario = unitario
+        l.total = objetivo
+        residuo = 0
+        break
+      }
+    }
   }
+
+  const secciones = v.secciones.map((s) => {
+    const items = lineas.filter((ic) => s.items.some((i) => i.id === ic.item.id))
+    return { seccion: s, items, total: items.reduce((a, b) => a + b.total, 0) }
+  })
+  return { total, secciones, cuadra: residuo === 0 }
 }
 
 export const precioNeto = (p: Pick<PrecioProveedor, 'precioLista' | 'descuentoPct'>) =>
-  p.precioLista * (1 - (p.descuentoPct ?? 0) / 100)
+  r3(p.precioLista * (1 - (p.descuentoPct ?? 0) / 100))
 
 // Cada línea se redondea al peso, como lo hacen las facturas de los proveedores.
 export const totalLineaOC = (l: LineaOC) => Math.round(l.cantidad * l.precioUnitario)
@@ -148,7 +167,7 @@ export function semaforo(presupuesto: number, real: number | null): Semaforo {
 }
 
 export const costoRealItem = (i: ItemCotizacion) =>
-  i.cantInstalada === null ? null : i.cantInstalada * (i.vuMO + i.vuMaterial)
+  i.cantInstalada === null ? null : Math.round(i.cantInstalada * i.vuMO) + Math.round(i.cantInstalada * i.vuMaterial)
 
 export function avanceEjecucion(v: VersionCotizacion) {
   const items = todosLosItems(v)
@@ -177,8 +196,8 @@ export function liquidacion(v: VersionCotizacion) {
       cotizada: i.cantidad,
       instalada,
       diferencia: instalada - i.cantidad,
-      moReal: instalada * i.vuMO,
-      materialReal: instalada * i.vuMaterial,
+      moReal: Math.round(instalada * i.vuMO),
+      materialReal: Math.round(instalada * i.vuMaterial),
     }
   })
   const moReal = filas.reduce((a, f) => a + f.moReal, 0)

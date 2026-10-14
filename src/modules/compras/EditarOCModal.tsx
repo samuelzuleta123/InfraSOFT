@@ -1,7 +1,7 @@
 import { Button, Field, Modal, NumberInput, Select } from '@/components/ui'
 import { totalCotizadoLineaOC, totalCotizadoOC, totalLineaOC, totalOC } from '@/lib/calc'
 import { cn } from '@/lib/cn'
-import { money, moneySigned } from '@/lib/format'
+import { money, moneySigned, moneyUnit, r3 } from '@/lib/format'
 import { useStore } from '@/store/useStore'
 import type { OrdenCompra } from '@/types'
 
@@ -84,11 +84,12 @@ export function EditarOCModal({ ocId, onClose }: { ocId: string; onClose: () => 
                     <NumberInput
                       value={l.precioUnitario}
                       prefix="$"
-                      onChange={(n) => editar((o) => void (o.lineas[i].precioUnitario = n ?? 0))}
+                      decimals={3}
+                      onChange={(n) => editar((o) => void (o.lineas[i].precioUnitario = r3(n ?? 0)))}
                       aria-label={`Precio ${l.descripcion}`}
                       inputClassName={cn('h-8', precioDif && 'border-amber-400 bg-amber-50')}
                     />
-                    {precioDif && <div className="num mt-0.5 text-right text-xs text-amber-700">Cotizado: {money(l.precioCotizado)}</div>}
+                    {precioDif && <div className="num mt-0.5 text-right text-xs text-amber-700">Cotizado: {moneyUnit(l.precioCotizado)}</div>}
                   </td>
                   <td className="num px-3 py-2 text-right font-medium text-slate-900">{money(totalLineaOC(l))}</td>
                   <td className={cn('num px-3 py-2 text-right font-medium', d > 0 ? 'text-red-700' : d < 0 ? 'text-emerald-700' : 'text-slate-500')}>{d === 0 ? '—' : moneySigned(d)}</td>

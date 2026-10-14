@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { Plus, Search } from 'lucide-react'
 import { Badge, Button, Field, Modal, NumberInput, Select } from '@/components/ui'
 import { precioNeto } from '@/lib/calc'
-import { money, uid } from '@/lib/format'
+import { moneyUnit, uid } from '@/lib/format'
 import { useStore } from '@/store/useStore'
 import type { ItemCotizacion, Material, PrecioProveedor } from '@/types'
 
@@ -88,7 +88,7 @@ export function AgregarItemModal({ open, onClose, proyectoId, seccionId }: { ope
                   <span>{m.unidad}</span>
                   <span>
                     {pm.length} proveedor{pm.length === 1 ? '' : 'es'}
-                    {mejor !== null && <> · desde <span className="num font-medium text-slate-700">{money(mejor)}</span></>}
+                    {mejor !== null && <> · desde <span className="num font-medium text-slate-700">{moneyUnit(mejor)}</span></>}
                   </span>
                 </div>
               </div>
@@ -187,7 +187,7 @@ export function AgregarKitModal({ open, onClose, proyectoId, seccionId }: { open
               <td className="num py-2 text-right">
                 {i.cantidad.toLocaleString('es-CO')} {i.unidad}
               </td>
-              <td className="num py-2 pl-3 text-right">{money(i.vuMO)}</td>
+              <td className="num py-2 pl-3 text-right">{moneyUnit(i.vuMO)}</td>
               <td className="py-2 pl-3">{i.proveedorId ? <Badge tone="ok">Precio cargado</Badge> : i.materialId ? <Badge tone="warn">Elegir en tabla</Badge> : <Badge>Solo mano de obra</Badge>}</td>
             </tr>
           ))}
