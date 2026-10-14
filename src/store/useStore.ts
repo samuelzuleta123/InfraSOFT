@@ -152,7 +152,7 @@ export const useStore = create<State>()(
                 creada: HOY,
                 secciones: [{ id: uid('sec'), nombre: 'Sección 1', items: [] }],
                 otrosCostos: [
-                  { clave: 'siso', nombre: 'SISO', cantidad: 0, valorUnitario: 0 },
+                  { clave: 'siso', nombre: 'SG-SST', cantidad: 0, valorUnitario: 0 },
                   { clave: 'polizas', nombre: 'Pólizas', cantidad: 0, valorUnitario: 0 },
                   { clave: 'viaticos', nombre: 'Viáticos', cantidad: 0, valorUnitario: 0 },
                   { clave: 'transporte', nombre: 'Transporte / Flete', cantidad: 0, valorUnitario: 0 },

@@ -70,7 +70,7 @@ const mo = (descripcion: string, unidad: Unidad, cantidad: number, vuMO: number,
 })
 
 const otros = (siso = 1, polizas: [number, number] = [0, 0], viaticos: [number, number] = [0, 0], transporte: [number, number] = [0, 0]): OtroCosto[] => [
-  { clave: 'siso', nombre: 'SISO', cantidad: siso, valorUnitario: 150_000 },
+  { clave: 'siso', nombre: 'SG-SST', cantidad: siso, valorUnitario: 150_000 },
   { clave: 'polizas', nombre: 'Pólizas', cantidad: polizas[0], valorUnitario: polizas[1] },
   { clave: 'viaticos', nombre: 'Viáticos', cantidad: viaticos[0], valorUnitario: viaticos[1] },
   { clave: 'transporte', nombre: 'Transporte / Flete', cantidad: transporte[0], valorUnitario: transporte[1] },

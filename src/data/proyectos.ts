@@ -21,7 +21,7 @@ const it = (
 })
 
 const otros = (siso: [number, number], polizas: [number, number], viaticos: [number, number], transporte: [number, number]): OtroCosto[] => [
-  { clave: 'siso', nombre: 'SISO', cantidad: siso[0], valorUnitario: siso[1] },
+  { clave: 'siso', nombre: 'SG-SST', cantidad: siso[0], valorUnitario: siso[1] },
   { clave: 'polizas', nombre: 'Pólizas', cantidad: polizas[0], valorUnitario: polizas[1] },
   { clave: 'viaticos', nombre: 'Viáticos', cantidad: viaticos[0], valorUnitario: viaticos[1] },
   { clave: 'transporte', nombre: 'Transporte / Flete', cantidad: transporte[0], valorUnitario: transporte[1] },

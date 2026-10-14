@@ -81,7 +81,7 @@ for (let n = 0; n < PRUEBAS; n++) {
     nombre: 'v1',
     creada: '2026-10-10',
     secciones: [{ id: 's1', nombre: 'A', items: items.slice(0, 5) }, { id: 's2', nombre: 'B', items: items.slice(5) }],
-    otrosCostos: [{ clave: 'siso', nombre: 'SISO', cantidad: 1, valorUnitario: Math.round(entre(0, 400_000)) }],
+    otrosCostos: [{ clave: 'siso', nombre: 'SG-SST', cantidad: 1, valorUnitario: Math.round(entre(0, 400_000)) }],
     utilidadPct: Math.round(entre(0, 40)),
     ajustesPct: Math.round(entre(0, 5)),
     precioFinal: azar() < 0.5 ? null : Math.round(entre(1, 50)) * 100_000,
