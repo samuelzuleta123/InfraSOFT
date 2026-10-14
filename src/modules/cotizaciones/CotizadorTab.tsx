@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { CopyPlus, Eye, FileText, Plus, Printer } from 'lucide-react'
 import { Alert, Button, Card, CardHeader, Field, NumberInput, Select, Textarea, Toggle, Input } from '@/components/ui'
@@ -18,16 +18,8 @@ export function CotizadorTab({ proyecto }: { proyecto: Proyecto }) {
   const editarProyecto = useStore((s) => s.editarProyecto)
   const nuevaVersion = useStore((s) => s.nuevaVersion)
   const notificar = useStore((s) => s.notificar)
-  const setCompacta = useStore((s) => s.setSidebarCompacta)
   const [vistaCliente, setVistaCliente] = useState(false)
   const [modal, setModal] = useState<{ tipo: 'item' | 'kit'; seccionId: string | null } | null>(null)
-
-  // Modo enfoque: el cotizador necesita ancho, se contrae la barra lateral mientras está abierto.
-  useEffect(() => {
-    const previo = useStore.getState().sidebarCompacta
-    setCompacta(true)
-    return () => setCompacta(previo)
-  }, [setCompacta])
 
   const v = versionActiva(proyecto)
   const r = resumen(v)
