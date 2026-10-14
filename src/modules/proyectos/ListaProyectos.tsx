@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useEffect, useMemo } from 'react'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { ArrowRight, FolderSearch, Search } from 'lucide-react'
 import { Card, EmptyState, td, th } from '@/components/ui'
 import { ETAPAS, EtapaBadge, EstadoCotBadge, FechaTexto } from '@/components/dominio'
@@ -10,6 +10,9 @@ import { cn } from '@/lib/cn'
 import { money } from '@/lib/format'
 import { useStore } from '@/store/useStore'
 
+/** Último filtro usado en el listado, para que "← Proyectos" en el detalle vuelva a él. */
+export let ultimaBusqueda = ''
+
 /** Lista de proyectos con buscador. Encuentra por nombre, cliente o cualquier número de documento. */
 /** `limite`: versión resumida para el Inicio, sin buscador ni filtros (el buscador global ya cubre esa necesidad). */
 export function ListaProyectos({ titulo = 'Proyectos', limite }: { titulo?: string; limite?: number }) {
@@ -17,8 +20,27 @@ export function ListaProyectos({ titulo = 'Proyectos', limite }: { titulo?: stri
   const clientes = useStore((s) => s.clientes)
   const ordenes = useStore((s) => s.ordenes)
   const facturas = useStore((s) => s.facturas)
-  const [q, setQ] = useState('')
-  const [etapa, setEtapa] = useState<Etapa | 'todas'>('todas')
+  // Búsqueda y etapa viven en la URL (?q=&etapa=) para que sobrevivan al entrar a un proyecto y volver.
+  // El Inicio (`limite`) no tiene filtros, así que no toca la URL.
+  const [params, setParams] = useSearchParams()
+  const q = limite ? '' : (params.get('q') ?? '')
+  const etapaParam = Number(params.get('etapa'))
+  const etapa: Etapa | 'todas' = !limite && ETAPAS.some((e) => e.n === etapaParam) ? (etapaParam as Etapa) : 'todas'
+  const cambiar = (clave: 'q' | 'etapa', valor: string) =>
+    setParams(
+      (prev) => {
+        const sig = new URLSearchParams(prev)
+        if (valor) sig.set(clave, valor)
+        else sig.delete(clave)
+        return sig
+      },
+      { replace: true },
+    )
+  const setQ = (v: string) => cambiar('q', v)
+  const setEtapa = (e: Etapa | 'todas') => cambiar('etapa', e === 'todas' ? '' : String(e))
+  useEffect(() => {
+    if (!limite) ultimaBusqueda = params.toString() ? `?${params}` : ''
+  }, [limite, params])
   const nav = useNavigate()
   const encontrados = useMemo(
     () => buscarProyectos(q, proyectos, clientes, ordenes, facturas).sort((a, b) => b.proyecto.creado.localeCompare(a.proyecto.creado)),
@@ -92,12 +114,12 @@ export function ListaProyectos({ titulo = 'Proyectos', limite }: { titulo?: stri
                 return (
                   <tr
                     key={p.id}
-                    onClick={() => nav(`/proyectos/${p.id}/${tab ?? 'cotizacion'}`)}
+                    onClick={() => nav(`/proyectos/${p.id}/${tab ?? 'levantamiento'}`)}
                     className="cursor-pointer transition-colors hover:bg-brand-50/40"
                   >
                     <td className={td}>
                       <a
-                        href={`/proyectos/${p.id}/${tab ?? 'cotizacion'}`}
+                        href={`/proyectos/${p.id}/${tab ?? 'levantamiento'}`}
                         onClick={(e) => e.preventDefault()}
                         className="font-medium text-slate-900 hover:text-brand-800"
                       >

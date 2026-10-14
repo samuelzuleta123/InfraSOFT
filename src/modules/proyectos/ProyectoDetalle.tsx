@@ -16,6 +16,7 @@ import { ComprasTab } from '@/modules/compras/ComprasTab'
 import { BitacoraTab } from '@/modules/ejecucion/BitacoraTab'
 import { EntregaTab } from '@/modules/entrega/EntregaTab'
 import { CierreTab } from '@/modules/entrega/CierreTab'
+import { ultimaBusqueda } from './ListaProyectos'
 
 const TABS = [
   { id: 'levantamiento', label: 'Levantamiento' },
@@ -40,7 +41,7 @@ export function ProyectoDetalle() {
   const ordenes = useStore((s) => s.ordenes)
 
   if (!proyecto) return <Navigate to="/proyectos" replace />
-  if (!TABS.some((t) => t.id === tab)) return <Navigate to={`/proyectos/${proyecto.id}/cotizacion`} replace />
+  if (!TABS.some((t) => t.id === tab)) return <Navigate to={`/proyectos/${proyecto.id}/levantamiento`} replace />
 
   const v = versionVigente(proyecto)
   const cerrado = proyecto.etapa === 5 && !!proyecto.facturaCliente
@@ -51,7 +52,7 @@ export function ProyectoDetalle() {
   return (
     <div>
       <nav aria-label="Ruta" className="mb-3 flex items-center gap-1 text-[13px] text-slate-500">
-        <Link to="/proyectos" className="inline-flex items-center gap-1 rounded hover:text-slate-900">
+        <Link to={`/proyectos${ultimaBusqueda}`} className="inline-flex items-center gap-1 rounded hover:text-slate-900">
           <ChevronLeft className="size-4" aria-hidden />
           Proyectos
         </Link>

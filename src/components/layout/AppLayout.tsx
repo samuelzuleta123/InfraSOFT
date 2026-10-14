@@ -130,7 +130,7 @@ function BuscadorGlobal() {
         }}
         onFocus={() => setAbierto(true)}
         onKeyDown={(e) => {
-          if (e.key === 'Enter' && resultados[0]) ir(`/proyectos/${resultados[0].proyecto.id}/${resultados[0].tab ?? 'cotizacion'}`)
+          if (e.key === 'Enter' && resultados[0]) ir(`/proyectos/${resultados[0].proyecto.id}/${resultados[0].tab ?? 'levantamiento'}`)
           if (e.key === 'Escape') setAbierto(false)
         }}
         placeholder="Buscar proyecto, cliente, cotización, OC o factura…"
@@ -145,7 +145,7 @@ function BuscadorGlobal() {
             <ul className="max-h-96 overflow-y-auto py-1">
               {resultados.map((r) => (
                 <li key={r.proyecto.id}>
-                  <button onClick={() => ir(`/proyectos/${r.proyecto.id}/${r.tab ?? 'cotizacion'}`)} className="flex w-full items-start gap-3 px-4 py-2.5 text-left hover:bg-slate-50">
+                  <button onClick={() => ir(`/proyectos/${r.proyecto.id}/${r.tab ?? 'levantamiento'}`)} className="flex w-full items-start gap-3 px-4 py-2.5 text-left hover:bg-slate-50">
                     <FolderKanban className="mt-0.5 size-4 shrink-0 text-slate-400" aria-hidden />
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-sm font-medium text-slate-900">{r.proyecto.nombre}</span>
