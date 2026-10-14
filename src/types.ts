@@ -192,6 +192,8 @@ export interface FotoObra {
   titulo: string
   etapa: 'levantamiento' | 'ejecucion'
   tono: number // para generar el placeholder
+  /** Imagen real; sin ella se dibuja el placeholder. */
+  url?: string
 }
 
 export interface Levantamiento {
@@ -266,5 +268,5 @@ export type ContextoDoc =
   | { tipo: 'facturaCliente'; proyectoId: string }
   | { tipo: 'certificacion'; proyectoId: string }
   | { tipo: 'acta'; proyectoId: string }
-  | { tipo: 'foto'; titulo: string; tono: number }
+  | { tipo: 'foto'; titulo: string; tono: number; url?: string }
   | { tipo: 'generico' }

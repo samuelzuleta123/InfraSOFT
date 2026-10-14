@@ -58,7 +58,7 @@ export function DocumentosTab({ proyecto }: { proyecto: Proyecto }) {
         {fotos.length ? (
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8">
             {fotos.map((f) => (
-              <FotoBoton key={f.id} titulo={f.titulo} tono={f.tono} etapa={f.etapa} />
+              <FotoBoton key={f.id} titulo={f.titulo} tono={f.tono} url={f.url} etapa={f.etapa} />
             ))}
           </div>
         ) : (
@@ -71,15 +71,15 @@ export function DocumentosTab({ proyecto }: { proyecto: Proyecto }) {
   )
 }
 
-function FotoBoton({ titulo, tono, etapa }: { titulo: string; tono: number; etapa: string }) {
+function FotoBoton({ titulo, tono, url, etapa }: { titulo: string; tono: number; url?: string; etapa: string }) {
   const abrir = useStore((s) => s.abrirVisor)
   return (
     <button
       type="button"
-      onClick={() => abrir({ adjunto: { nombre: `${titulo}.jpg`, tipo: 'img' }, contexto: { tipo: 'foto', titulo, tono } })}
+      onClick={() => abrir({ adjunto: { nombre: `${titulo}.jpg`, tipo: 'img' }, contexto: { tipo: 'foto', titulo, tono, url } })}
       className="group text-left"
     >
-      <FotoPlaceholder foto={{ titulo, tono }} className="transition-shadow group-hover:shadow-md group-hover:ring-2 group-hover:ring-brand-500/60" />
+      <FotoPlaceholder foto={{ titulo, tono, url }} className="transition-shadow group-hover:shadow-md group-hover:ring-2 group-hover:ring-brand-500/60" />
       <span className="mt-1 block text-xs text-slate-500 capitalize">{etapa === 'levantamiento' ? 'Levantamiento' : 'Ejecución'}</span>
     </button>
   )
@@ -106,7 +106,7 @@ function TarjetaDoc({ d }: { d: DocExpediente }) {
       <button type="button" onClick={accion} className="relative block aspect-[3/4] overflow-hidden rounded-md border border-slate-200 bg-white text-left shadow-xs transition-shadow hover:shadow-md focus-visible:ring-2 focus-visible:ring-brand-500" aria-label={`Abrir ${d.tipo} ${d.numero}`}>
         {d.contexto?.tipo === 'foto' ? (
           <span className="absolute inset-0">
-            <FotoPlaceholder foto={{ titulo: '', tono: d.contexto.tono }} className="h-full aspect-auto rounded-none" />
+            <FotoPlaceholder foto={{ titulo: '', tono: d.contexto.tono, url: d.contexto.url }} className="h-full aspect-auto rounded-none" />
           </span>
         ) : (
           <>

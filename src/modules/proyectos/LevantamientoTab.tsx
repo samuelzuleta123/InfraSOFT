@@ -85,7 +85,7 @@ export function LevantamientoTab({ proyecto }: { proyecto: Proyecto }) {
             <button
               key={f.id}
               type="button"
-              onClick={() => abrir({ adjunto: { nombre: `${f.titulo}.jpg`, tipo: 'img' }, contexto: { tipo: 'foto', titulo: f.titulo, tono: f.tono } })}
+              onClick={() => abrir({ adjunto: { nombre: `${f.titulo}.jpg`, tipo: 'img' }, contexto: { tipo: 'foto', titulo: f.titulo, tono: f.tono, url: f.url } })}
               className="rounded-md transition-shadow hover:ring-2 hover:ring-brand-500/60"
               aria-label={`Ver foto: ${f.titulo}`}
             >

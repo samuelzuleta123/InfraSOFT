@@ -109,8 +109,8 @@ export function SemaforoDot({ estado, conTexto, className }: { estado: Semaforo;
   )
 }
 
-/** Placeholder de foto de obra (sin imágenes reales en el mockup). */
-export function FotoPlaceholder({ foto, className, children }: { foto: Pick<FotoObra, 'titulo' | 'tono'>; className?: string; children?: ReactNode }) {
+/** Foto de obra: la imagen si existe, si no un placeholder con el tono. */
+export function FotoPlaceholder({ foto, className, children }: { foto: Pick<FotoObra, 'titulo' | 'tono' | 'url'>; className?: string; children?: ReactNode }) {
   return (
     <div
       className={cn('relative flex aspect-[4/3] items-end overflow-hidden rounded-md', className)}
@@ -120,7 +120,11 @@ export function FotoPlaceholder({ foto, className, children }: { foto: Pick<Foto
       role="img"
       aria-label={foto.titulo}
     >
-      <ImageIcon className="absolute top-1/2 left-1/2 size-8 -translate-x-1/2 -translate-y-1/2 text-white/70" aria-hidden />
+      {foto.url ? (
+        <img src={foto.url} alt="" loading="lazy" className="absolute inset-0 size-full object-cover" />
+      ) : (
+        <ImageIcon className="absolute top-1/2 left-1/2 size-8 -translate-x-1/2 -translate-y-1/2 text-white/70" aria-hidden />
+      )}
       <span className="relative w-full bg-gradient-to-t from-black/55 to-transparent px-2.5 pt-6 pb-2 text-xs font-medium text-white">{foto.titulo}</span>
       {children}
     </div>

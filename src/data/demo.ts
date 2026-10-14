@@ -9,6 +9,7 @@ import type {
   Etapa,
   FacturaCliente,
   FacturaProveedor,
+  FotoObra,
   FormaPago,
   ItemCotizacion,
   OrdenCompra,
@@ -132,10 +133,12 @@ function construir(spec: ProyectoSpec): Proyecto {
     }
   })
   const vigente = versiones.find((v) => v.estado === 'aprobada') ?? versiones.at(-1)!
-  const fotos = [
+  // Los proyectos cerrados llevan fotos genéricas reales (public/fotos, ver CREDITOS.json).
+  const url = (id: string) => (spec.facturaCliente ? `/fotos/${id}.jpg` : undefined)
+  const fotos: FotoObra[] = [
     ...spec.fotos.map((titulo, i) => ({ id: `${spec.id}-f${i + 1}`, titulo, etapa: 'levantamiento' as const, tono: tono(i) })),
     ...(spec.fotosObra ?? []).map((titulo, i) => ({ id: `${spec.id}-fo${i + 1}`, titulo, etapa: 'ejecucion' as const, tono: tono(i + 4) })),
-  ]
+  ].map((f) => ({ ...f, url: url(f.id) }))
   const pdf = (nombre?: string): Adjunto | null => (nombre ? { nombre, tipo: 'pdf' } : null)
   return {
     id: spec.id,
