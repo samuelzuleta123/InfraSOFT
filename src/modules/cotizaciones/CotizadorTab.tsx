@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { CopyPlus, Eye, FileText, Plus, Printer } from 'lucide-react'
+import { CopyPlus, Eye, FileText, Plus } from 'lucide-react'
 import { Alert, Button, Card, CardHeader, Field, NumberInput, Select, Textarea, Toggle, Input } from '@/components/ui'
 import { EstadoCotBadge } from '@/components/dominio'
 import { precioCuadrable, preciosCliente, resumen, todosLosItems, totalOtroCosto, versionActiva } from '@/lib/calc'
@@ -75,12 +75,6 @@ export function CotizadorTab({ proyecto }: { proyecto: Proyecto }) {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Toggle checked={vistaCliente} onChange={setVistaCliente} labelOff="Vista interna" label="Vista cliente" />
-          {!vistaCliente && (
-            <Link to={`/proyectos/${proyecto.id}/cotizacion/interna`} className="inline-flex h-9 items-center gap-2 rounded-md border border-slate-300 bg-white px-3.5 text-sm font-medium text-slate-700 shadow-sm transition-colors hover:bg-slate-50">
-              <Printer className="size-4" aria-hidden />
-              Imprimir interna
-            </Link>
-          )}
           {v.estado === 'borrador' && (
             <Link to={`/proyectos/${proyecto.id}/cotizacion/pdf?tipo=precotizacion`} className="inline-flex h-9 items-center gap-2 rounded-md border border-slate-300 bg-white px-3.5 text-sm font-medium text-slate-700 shadow-sm transition-colors hover:bg-slate-50">
               <FileText className="size-4" aria-hidden />

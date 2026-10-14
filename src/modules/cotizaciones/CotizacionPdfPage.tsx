@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Navigate, useParams, useSearchParams } from 'react-router-dom'
+import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { BarraDocumento, HojaCarta, MembreteInfrasoft, PieInfrasoft } from '@/components/Documento'
 import { Alert, Select } from '@/components/ui'
 import { preciosCliente, versionActiva } from '@/lib/calc'
@@ -17,6 +17,7 @@ export function CotizacionPdfPage() {
   // La precotización es el estimado rápido que se envía antes de confirmar precios con los proveedores.
   const [params] = useSearchParams()
   const [tipo, setTipo] = useState<TipoDoc>(params.get('tipo') === 'precotizacion' ? 'precotizacion' : 'cotizacion')
+  const nav = useNavigate()
   if (!proyecto || !cliente) return <Navigate to="/proyectos" replace />
 
   const v = versionActiva(proyecto)
@@ -31,9 +32,15 @@ export function CotizacionPdfPage() {
         <label htmlFor="tipo" className="text-[13px] font-medium text-slate-600">
           Documento
         </label>
-        <Select id="tipo" value={tipo} onChange={(e) => setTipo(e.target.value as TipoDoc)} className="w-auto!">
+        <Select
+          id="tipo"
+          value={tipo}
+          onChange={(e) => (e.target.value === 'interna' ? nav(`/proyectos/${proyecto.id}/cotizacion/interna`, { replace: true }) : setTipo(e.target.value as TipoDoc))}
+          className="w-auto!"
+        >
           <option value="precotizacion">Precotización</option>
           <option value="cotizacion">Cotización</option>
+          <option value="interna">Interna (con costos)</option>
         </Select>
         <label htmlFor="nivel" className="text-[13px] font-medium text-slate-600">
           Nivel de detalle

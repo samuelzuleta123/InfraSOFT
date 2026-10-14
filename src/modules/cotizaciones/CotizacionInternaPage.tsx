@@ -1,6 +1,7 @@
-import { Navigate, useParams } from 'react-router-dom'
+import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { BarraDocumento, HojaCarta, MembreteInfrasoft, PieInfrasoft } from '@/components/Documento'
 import { nombreEstadoCot } from '@/components/dominio'
+import { Select } from '@/components/ui'
 import { itemMaterial, itemMO, itemSubtotal, resumen, totalesSeccion, totalOtroCosto, versionActiva } from '@/lib/calc'
 import { fecha, HOY, money, moneyUnit, pct } from '@/lib/format'
 import { nombreProveedor, useCliente, useProyecto, useStore } from '@/store/useStore'
@@ -14,6 +15,7 @@ export function CotizacionInternaPage() {
   const proyecto = useProyecto(id)
   const cliente = useCliente(proyecto?.clienteId)
   const proveedores = useStore((s) => s.proveedores)
+  const nav = useNavigate()
   if (!proyecto || !cliente) return <Navigate to="/proyectos" replace />
 
   const v = versionActiva(proyecto)
@@ -22,7 +24,17 @@ export function CotizacionInternaPage() {
 
   return (
     <div>
-      <BarraDocumento volver={`/proyectos/${proyecto.id}/cotizacion`} volverTexto="Volver al cotizador" />
+      <BarraDocumento volver={`/proyectos/${proyecto.id}/cotizacion`} volverTexto="Volver al cotizador">
+        <label htmlFor="tipo" className="text-[13px] font-medium text-slate-600">
+          Documento
+        </label>
+        {/* Mismo selector que la vista previa PDF: elegir otro documento vuelve a ella. */}
+        <Select id="tipo" value="interna" onChange={(e) => nav(`/proyectos/${proyecto.id}/cotizacion/pdf?tipo=${e.target.value}`, { replace: true })} className="w-auto!">
+          <option value="precotizacion">Precotización</option>
+          <option value="cotizacion">Cotización</option>
+          <option value="interna">Interna (con costos)</option>
+        </Select>
+      </BarraDocumento>
 
       <HojaCarta>
         <header className="flex flex-wrap items-start justify-between gap-6 border-b-2 border-brand-500 pb-5">
