@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Boxes, PackagePlus, Trash2 } from 'lucide-react'
 import { Button, IconButton, NumberInput, Select } from '@/components/ui'
+import { NuevoProveedorModal } from '@/modules/catalogo/NuevosModales'
 import { itemMaterial, itemMO, itemSubtotal, totalesSeccion, type ItemCliente } from '@/lib/calc'
 import { precioNeto } from '@/lib/calc'
 import { cn } from '@/lib/cn'
@@ -23,11 +24,13 @@ interface Props {
 
 const celdaNum = 'px-2 py-2.5 text-right num whitespace-nowrap'
 const thBase = 'px-2 py-2 text-xs font-semibold tracking-wide text-slate-500 uppercase whitespace-nowrap'
+const NUEVO_PROVEEDOR = '__nuevo_proveedor__'
 
 export function TablaSeccion({ proyectoId, seccion, numeroInicial, vistaCliente, preciosCliente, totalCliente, onAgregarItem, onAgregarKit, soloSeccion, bloqueada }: Props) {
   const editarVersion = useStore((s) => s.editarVersion)
   const t = totalesSeccion(seccion)
   const [confirmar, setConfirmar] = useState(false)
+  const [itemParaNuevoProveedor, setItemParaNuevoProveedor] = useState<string | null>(null)
 
   const renombrar = (nombre: string) =>
     editarVersion(proyectoId, (v) => {
@@ -102,7 +105,14 @@ export function TablaSeccion({ proyectoId, seccion, numeroInicial, vistaCliente,
             </thead>
             <tbody className="divide-y divide-slate-100">
               {seccion.items.map((item, idx) => (
-                <FilaItem key={item.id} proyectoId={proyectoId} item={item} numero={numeroInicial + idx} bloqueada={bloqueada} />
+                <FilaItem
+                  key={item.id}
+                  proyectoId={proyectoId}
+                  item={item}
+                  numero={numeroInicial + idx}
+                  bloqueada={bloqueada}
+                  onNuevoProveedor={() => setItemParaNuevoProveedor(item.id)}
+                />
               ))}
               {seccion.items.length === 0 && (
                 <tr>
@@ -139,11 +149,32 @@ export function TablaSeccion({ proyectoId, seccion, numeroInicial, vistaCliente,
           </Button>
         </footer>
       )}
+      {itemParaNuevoProveedor && (
+        <NuevoProveedorModal
+          onClose={() => setItemParaNuevoProveedor(null)}
+          onCreado={(proveedorId) => {
+            const itemId = itemParaNuevoProveedor
+            useStore.getState().asignarProveedor(proyectoId, itemId, proveedorId)
+          }}
+        />
+      )}
     </section>
   )
 }
 
-function FilaItem({ proyectoId, item, numero, bloqueada }: { proyectoId: string; item: ItemCotizacion; numero: number; bloqueada?: boolean }) {
+function FilaItem({
+  proyectoId,
+  item,
+  numero,
+  bloqueada,
+  onNuevoProveedor,
+}: {
+  proyectoId: string
+  item: ItemCotizacion
+  numero: number
+  bloqueada?: boolean
+  onNuevoProveedor: () => void
+}) {
   const editarVersion = useStore((s) => s.editarVersion)
   const asignarProveedor = useStore((s) => s.asignarProveedor)
   const proveedores = useStore((s) => s.proveedores)
@@ -205,7 +236,13 @@ function FilaItem({ proyectoId, item, numero, bloqueada }: { proyectoId: string;
       <td className="px-1 py-1">
         <Select
           value={item.proveedorId ?? ''}
-          onChange={(e) => asignarProveedor(proyectoId, item.id, e.target.value || null)}
+          onChange={(e) => {
+            if (e.target.value === NUEVO_PROVEEDOR) {
+              onNuevoProveedor()
+              return
+            }
+            asignarProveedor(proyectoId, item.id, e.target.value || null)
+          }}
           aria-label={`Proveedor ítem ${numero}`}
           className={cn(
             'h-8 text-[13px] shadow-none disabled:border-transparent disabled:bg-transparent disabled:text-slate-700',
@@ -214,6 +251,7 @@ function FilaItem({ proyectoId, item, numero, bloqueada }: { proyectoId: string;
           )}
         >
           <option value="">Sin asignar</option>
+          <option value={NUEVO_PROVEEDOR}>+ Agregar proveedor...</option>
           {conPrecio.length > 0 && (
             <optgroup label="Con precio en catálogo">
               {conPrecio.map((pp) => (

@@ -95,7 +95,7 @@ export function NuevoMaterialModal({ onClose, onCreado }: { onClose: () => void;
   )
 }
 
-export function NuevoProveedorModal({ onClose }: { onClose: () => void }) {
+export function NuevoProveedorModal({ onClose, onCreado }: { onClose: () => void; onCreado?: (id: string) => void }) {
   const crearProveedor = useStore((s) => s.crearProveedor)
   const notificar = useStore((s) => s.notificar)
   const [p, setP] = useState({ nombre: '', nit: '', ciudad: '' })
@@ -114,7 +114,8 @@ export function NuevoProveedorModal({ onClose }: { onClose: () => void }) {
             variant="primary"
             disabled={!p.nombre.trim() || !p.nit.trim()}
             onClick={() => {
-              crearProveedor(p)
+              const id = crearProveedor(p)
+              onCreado?.(id)
               notificar(`Proveedor ${p.nombre} creado`)
               onClose()
             }}
