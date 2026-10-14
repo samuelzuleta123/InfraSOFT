@@ -1,4 +1,4 @@
-import { Navigate, useNavigate, useParams } from 'react-router-dom'
+import { Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { BarraDocumento, HojaCarta, MembreteInfrasoft, PieInfrasoft } from '@/components/Documento'
 import { nombreEstadoCot } from '@/components/dominio'
 import { Select } from '@/components/ui'
@@ -16,6 +16,7 @@ export function CotizacionInternaPage() {
   const cliente = useCliente(proyecto?.clienteId)
   const proveedores = useStore((s) => s.proveedores)
   const nav = useNavigate()
+  const { state } = useLocation()
   if (!proyecto || !cliente) return <Navigate to="/proyectos" replace />
 
   const v = versionActiva(proyecto)
@@ -29,7 +30,7 @@ export function CotizacionInternaPage() {
           Documento
         </label>
         {/* Mismo selector que la vista previa PDF: elegir otro documento vuelve a ella. */}
-        <Select id="tipo" value="interna" onChange={(e) => nav(`/proyectos/${proyecto.id}/cotizacion/pdf?tipo=${e.target.value}`, { replace: true })} className="w-auto!">
+        <Select id="tipo" value="interna" onChange={(e) => nav(`/proyectos/${proyecto.id}/cotizacion/pdf?tipo=${e.target.value}`, { replace: true, state })} className="w-auto!">
           <option value="precotizacion">Precotización</option>
           <option value="cotizacion">Cotización</option>
           <option value="interna">Interna (con costos)</option>

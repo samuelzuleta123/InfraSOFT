@@ -1,6 +1,6 @@
 // Plantilla tipo carta para documentos imprimibles (cotización, OC, informe, acta).
 import type { ReactNode } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { ChevronLeft, Download } from 'lucide-react'
 import { Button } from '@/components/ui'
 import { Logotipo } from '@/components/Marca'
@@ -18,13 +18,18 @@ export function MembreteInfrasoft() {
   )
 }
 
+/** Origen con el que se abrió un documento (p. ej. desde Documentos), para volver allí y no al módulo que lo genera. */
+export type OrigenDocumento = { volver: string; volverTexto: string }
+
 export function BarraDocumento({ volver, volverTexto, children, onDescargar }: { volver: string; volverTexto: string; children?: ReactNode; onDescargar?: () => void }) {
+  const origen = useLocation().state as Partial<OrigenDocumento> | null
+  const destino = origen?.volver && origen.volverTexto ? (origen as OrigenDocumento) : { volver, volverTexto }
   return (
     <div className="sticky top-0 z-10 border-b border-slate-200 bg-white/95 backdrop-blur no-print">
       <div className="mx-auto flex max-w-[960px] flex-wrap items-center gap-3 px-4 py-3">
-        <Link to={volver} className="inline-flex items-center gap-1 rounded-md px-2 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900">
+        <Link to={destino.volver} className="inline-flex items-center gap-1 rounded-md px-2 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900">
           <ChevronLeft className="size-4" aria-hidden />
-          {volverTexto}
+          {destino.volverTexto}
         </Link>
         <div className="ml-auto flex flex-wrap items-center gap-3">
           {children}

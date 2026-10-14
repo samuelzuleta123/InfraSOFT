@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { BarraDocumento, HojaCarta, MembreteInfrasoft, PieInfrasoft } from '@/components/Documento'
 import { Alert, Select } from '@/components/ui'
 import { preciosCliente, versionActiva } from '@/lib/calc'
@@ -18,6 +18,7 @@ export function CotizacionPdfPage() {
   const [params] = useSearchParams()
   const [tipo, setTipo] = useState<TipoDoc>(params.get('tipo') === 'precotizacion' ? 'precotizacion' : 'cotizacion')
   const nav = useNavigate()
+  const { state } = useLocation()
   if (!proyecto || !cliente) return <Navigate to="/proyectos" replace />
 
   const v = versionActiva(proyecto)
@@ -35,7 +36,7 @@ export function CotizacionPdfPage() {
         <Select
           id="tipo"
           value={tipo}
-          onChange={(e) => (e.target.value === 'interna' ? nav(`/proyectos/${proyecto.id}/cotizacion/interna`, { replace: true }) : setTipo(e.target.value as TipoDoc))}
+          onChange={(e) => (e.target.value === 'interna' ? nav(`/proyectos/${proyecto.id}/cotizacion/interna`, { replace: true, state }) : setTipo(e.target.value as TipoDoc))}
           className="w-auto!"
         >
           <option value="precotizacion">Precotización</option>

@@ -1,4 +1,5 @@
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
+import type { OrigenDocumento } from '@/components/Documento'
 import { FileText, FolderOpen, Image as ImageIcon, Receipt, ShoppingCart } from 'lucide-react'
 import { Card, EmptyState } from '@/components/ui'
 import { AdjuntoChip, FechaTexto, FotoPlaceholder } from '@/components/dominio'
@@ -97,9 +98,12 @@ const estilo: Record<GrupoDoc, { franja: string; icono: typeof FileText }> = {
 
 function TarjetaDoc({ d }: { d: DocExpediente }) {
   const nav = useNavigate()
+  const { pathname } = useLocation()
   const abrir = useStore((s) => s.abrirVisor)
   const { franja, icono: Icono } = estilo[d.grupo]
-  const accion = () => (d.ruta ? nav(d.ruta) : d.adjunto && abrir({ adjunto: d.adjunto, contexto: d.contexto ?? { tipo: 'generico' } }))
+  // "Volver" del documento regresa a Documentos, no al módulo que lo genera.
+  const origen: OrigenDocumento = { volver: pathname, volverTexto: 'Volver a documentos' }
+  const accion = () => (d.ruta ? nav(d.ruta, { state: origen }) : d.adjunto && abrir({ adjunto: d.adjunto, contexto: d.contexto ?? { tipo: 'generico' } }))
 
   return (
     <article className="group flex flex-col">
