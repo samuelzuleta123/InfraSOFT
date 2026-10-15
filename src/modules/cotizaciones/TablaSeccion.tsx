@@ -6,7 +6,7 @@ import { itemMaterial, itemMO, itemSubtotal, totalesSeccion, type ItemCliente } 
 import { precioNeto } from '@/lib/calc'
 import { cn } from '@/lib/cn'
 import { textoVariacion, ultimaCompra, UMBRAL_VARIACION_PRECIO, type CompraMaterial } from '@/lib/historico'
-import { fecha, money, moneyUnit, pct, r3 } from '@/lib/format'
+import { fecha, money, moneyUnit, r3 } from '@/lib/format'
 import { nombreProveedor, useStore } from '@/store/useStore'
 import type { ItemCotizacion, Seccion, Unidad } from '@/types'
 
