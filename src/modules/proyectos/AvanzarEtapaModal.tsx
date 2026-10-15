@@ -6,11 +6,15 @@ import { cn } from '@/lib/cn'
 import { useStore } from '@/store/useStore'
 import type { Etapa, Proyecto } from '@/types'
 
-interface Chequeo {
+export interface Chequeo {
   texto: string
   ok: boolean
   /** Si no se cumple, impide avanzar. */
   bloquea?: boolean
+  /** Qué hacer para cumplirlo y por qué se pide. */
+  ayuda: string
+  /** Pestaña del proyecto donde se resuelve. */
+  tab: 'cotizacion' | 'compras' | 'ejecucion' | 'entrega' | 'cierre'
 }
 
 /** Lo que debería estar listo antes de entrar a cada etapa. */
@@ -21,23 +25,48 @@ export function chequeosEtapa(p: Proyecto, destino: Etapa, ocsProyecto: number):
   const registrados = items.filter((i) => i.cantInstalada !== null).length
   switch (destino) {
     case 2:
-      return [{ texto: 'Cotización enviada al cliente', ok: p.cotizacion.versiones.some((x) => x.estado !== 'borrador'), bloquea: true }]
+      return [
+        {
+          texto: 'Cotización enviada al cliente',
+          ok: p.cotizacion.versiones.some((x) => x.estado !== 'borrador'),
+          bloquea: true,
+          ayuda: 'Sin una propuesta enviada no hay nada que aprobar. Márcala como enviada en Compras › Estado de la cotización.',
+          tab: 'compras',
+        },
+      ]
     case 3:
       return [
-        { texto: 'Cotización aprobada por el cliente', ok: aprobada, bloquea: true },
-        { texto: 'OC del cliente registrada', ok: !!p.ocCliente },
-        { texto: 'Órdenes de compra a proveedores generadas', ok: ocsProyecto > 0 },
+        {
+          texto: 'Cotización aprobada por el cliente',
+          ok: aprobada,
+          bloquea: true,
+          ayuda: 'No se ejecuta una obra que el cliente no ha aprobado. Registra la aprobación en Compras › Estado de la cotización.',
+          tab: 'compras',
+        },
+        { texto: 'OC del cliente registrada', ok: !!p.ocCliente, ayuda: 'Es el respaldo del pedido y del valor a facturar. Regístrala en Compras.', tab: 'compras' },
+        { texto: 'Órdenes de compra a proveedores generadas', ok: ocsProyecto > 0, ayuda: 'Sin ellas no llegan los materiales a la obra. Genéralas en Compras.', tab: 'compras' },
       ]
     case 4:
       return [
-        { texto: `Cantidades instaladas registradas (${registrados} de ${items.length} ítems)`, ok: registrados === items.length },
-        { texto: 'Seriales de equipos registrados', ok: p.seriales.length > 0 },
+        {
+          texto: `Cantidades instaladas registradas (${registrados} de ${items.length} ítems)`,
+          ok: registrados === items.length,
+          ayuda: 'La liquidación compara lo instalado con lo cotizado. Regístralas en Ejecución.',
+          tab: 'ejecucion',
+        },
+        { texto: 'Seriales de equipos registrados', ok: p.seriales.length > 0, ayuda: 'Van en la remisión y respaldan la garantía. Regístralos en Ejecución.', tab: 'ejecucion' },
       ]
     case 5:
       return [
-        { texto: 'Acta de conformidad firmada cargada', ok: !!p.entrega.actaFirmada, bloquea: true },
-        { texto: 'Fecha de entrega registrada', ok: !!p.entrega.fechaEntrega },
-        { texto: 'Remisión registrada', ok: !!p.entrega.remision },
+        {
+          texto: 'Acta de conformidad firmada cargada',
+          ok: !!p.entrega.actaFirmada,
+          bloquea: true,
+          ayuda: 'Es la prueba de que el cliente recibió a satisfacción; sin ella no se cierra ni se factura. Cárgala en Entrega.',
+          tab: 'entrega',
+        },
+        { texto: 'Fecha de entrega registrada', ok: !!p.entrega.fechaEntrega, ayuda: 'Desde esa fecha corre la garantía. Regístrala en Entrega.', tab: 'entrega' },
+        { texto: 'Remisión registrada', ok: !!p.entrega.remision, ayuda: 'Soporta qué equipos y materiales se entregaron. Regístrala en Entrega.', tab: 'entrega' },
       ]
     default:
       return []
@@ -88,6 +117,7 @@ export function AvanzarEtapaModal({ proyecto, destino, onClose, onAvanzado }: { 
                 {c.texto}
                 <span className="sr-only">{c.ok ? ': listo' : c.bloquea ? ': obligatorio, pendiente' : ': pendiente'}</span>
                 {!c.ok && c.bloquea && <span className="ml-1.5 text-xs font-medium text-red-700">Obligatorio</span>}
+                {!c.ok && <span className="mt-0.5 block text-xs text-slate-500">{c.ayuda}</span>}
               </span>
             </li>
           )

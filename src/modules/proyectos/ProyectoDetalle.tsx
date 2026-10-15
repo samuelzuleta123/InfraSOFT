@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { cn } from '@/lib/cn'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
-import { ChevronLeft, ChevronRight, Lock, MapPin } from 'lucide-react'
+import { CheckCircle2, ChevronLeft, ChevronRight, CircleAlert, Lock, MapPin, XCircle } from 'lucide-react'
 import { Button, Card, Tabs } from '@/components/ui'
 import { useFlechas } from '@/lib/flechas'
 import { ETAPAS, EtapaBadge, EstadoCotBadge, nombreEtapa, StepperEtapas } from '@/components/dominio'
@@ -11,7 +11,7 @@ import type { Etapa } from '@/types'
 import { LevantamientoTab } from './LevantamientoTab'
 import { DocumentosTab } from './DocumentosTab'
 import { HistorialTab } from './HistorialTab'
-import { AvanzarEtapaModal, chequeosEtapa } from './AvanzarEtapaModal'
+import { AvanzarEtapaModal, chequeosEtapa, type Chequeo } from './AvanzarEtapaModal'
 import { CotizadorTab } from '@/modules/cotizaciones/CotizadorTab'
 import { ComprasTab } from '@/modules/compras/ComprasTab'
 import { BitacoraTab } from '@/modules/ejecucion/BitacoraTab'
@@ -33,7 +33,8 @@ type TabId = (typeof TABS)[number]['id']
 
 const tabDeEtapa: Record<Etapa, TabId> = { 1: 'cotizacion', 2: 'compras', 3: 'ejecucion', 4: 'entrega', 5: 'cierre' }
 /** Pestañas que pertenecen a una etapa: se abren cuando el proyecto llega a ella, para no saltarse pasos. */
-const etapaDeTab: Partial<Record<TabId, Etapa>> = { compras: 2, ejecucion: 3, entrega: 4, cierre: 5 }
+// Compras queda abierta desde el inicio: ahí se marca la cotización como enviada y aprobada.
+const etapaDeTab: Partial<Record<TabId, Etapa>> = { ejecucion: 3, entrega: 4, cierre: 5 }
 
 export function ProyectoDetalle() {
   const { id, tab } = useParams()
@@ -65,8 +66,9 @@ export function ProyectoDetalle() {
       ? { id: t.id, label: <span className="inline-flex items-center gap-1.5 text-slate-400" title={`Se habilita en la etapa ${e}`}><Lock className="size-3.5" aria-hidden />{t.label}</span> }
       : t
   })
+  const chequeos = proyecto.etapa < 5 ? chequeosEtapa(proyecto, siguiente, ordenes.filter((o) => o.proyectoId === proyecto.id).length) : []
   // Si falta un requisito obligatorio, avanzar deja de ser la acción principal y lo dice.
-  const bloqueos = proyecto.etapa < 5 ? chequeosEtapa(proyecto, siguiente, ordenes.filter((o) => o.proyectoId === proyecto.id).length).filter((c) => c.bloquea && !c.ok).length : 0
+  const bloqueos = chequeos.filter((c) => c.bloquea && !c.ok).length
 
   return (
     <div>
@@ -142,6 +144,7 @@ export function ProyectoDetalle() {
             }}
           />
         </div>
+        <PendientesEtapa proyectoId={proyecto.id} etapa={proyecto.etapa} cerrado={cerrado} chequeos={chequeos} />
         <Tabs className="px-3" tabs={tabs} value={tab as TabId} onChange={(t) => nav(`/proyectos/${proyecto.id}/${t}`)} />
       </div>
 
@@ -186,6 +189,56 @@ function EtapaBloqueada({ etapaTab, etapa, esSiguiente, bloqueos, onAvanzar }: {
           Avanzar a {nombreEtapa(etapaTab).toLowerCase()}
         </Button>
       )}
+      {esSiguiente && bloqueos > 0 && <p className="mt-2 text-xs text-slate-500">Revisa arriba qué falta: los obligatorios impiden avanzar.</p>}
     </Card>
+  )
+}
+
+const nombreTab: Record<Chequeo['tab'], string> = { cotizacion: 'Cotización', compras: 'Compras', ejecucion: 'Ejecución', entrega: 'Entrega', cierre: 'Cierre' }
+
+/** Qué falta para pasar a la siguiente etapa, por qué se pide y dónde se resuelve. Siempre visible bajo el stepper. */
+function PendientesEtapa({ proyectoId, etapa, cerrado, chequeos }: { proyectoId: string; etapa: Etapa; cerrado: boolean; chequeos: Chequeo[] }) {
+  if (cerrado) return null
+  // En cierre ya no hay etapa siguiente: lo único pendiente es registrar la factura.
+  const lista: Chequeo[] =
+    etapa === 5
+      ? [{ texto: 'Factura al cliente registrada', ok: false, bloquea: true, ayuda: 'Con la factura registrada el proyecto queda cerrado y entra a la liquidación.', tab: 'cierre' }]
+      : chequeos
+  const faltan = lista.filter((c) => !c.ok)
+  const obligatorios = faltan.filter((c) => c.bloquea)
+  const destino = etapa === 5 ? 'cerrar el proyecto' : `pasar a ${nombreEtapa((etapa + 1) as Etapa).toLowerCase()}`
+  const tono = obligatorios.length ? 'bloqueado' : faltan.length ? 'pendiente' : 'listo'
+
+  return (
+    <section aria-label="Requisitos para avanzar" className="border-t border-slate-100 px-5 py-3">
+      <p className={cn('flex items-center gap-2 text-[13px] font-medium', tono === 'bloqueado' ? 'text-red-800' : tono === 'pendiente' ? 'text-amber-800' : 'text-brand-800')}>
+        {tono === 'bloqueado' ? <XCircle className="size-4 shrink-0" aria-hidden /> : tono === 'pendiente' ? <CircleAlert className="size-4 shrink-0" aria-hidden /> : <CheckCircle2 className="size-4 shrink-0" aria-hidden />}
+        {tono === 'bloqueado'
+          ? `No puedes ${destino}: ${obligatorios.length === 1 ? 'falta 1 requisito obligatorio' : `faltan ${obligatorios.length} requisitos obligatorios`}.`
+          : tono === 'pendiente'
+            ? `Puedes ${destino}, pero ${faltan.length === 1 ? 'queda 1 pendiente' : `quedan ${faltan.length} pendientes`}.`
+            : `Todo listo para ${destino}.`}
+        {lista.length > faltan.length && <span className="font-normal text-slate-500">· {lista.length - faltan.length} de {lista.length} listos</span>}
+      </p>
+      {faltan.length > 0 && (
+        <ul className="mt-2 grid gap-2 lg:grid-cols-2">
+          {faltan.map((c) => (
+            <li key={c.texto} className={cn('flex items-start gap-2.5 rounded-md border px-3 py-2', c.bloquea ? 'border-red-200 bg-red-50/60' : 'border-amber-200 bg-amber-50/60')}>
+              {c.bloquea ? <XCircle className="mt-0.5 size-4 shrink-0 text-red-700" aria-hidden /> : <CircleAlert className="mt-0.5 size-4 shrink-0 text-amber-600" aria-hidden />}
+              <div className="min-w-0 flex-1">
+                <p className="text-[13px] font-medium text-slate-900">
+                  {c.texto}
+                  {c.bloquea ? <span className="ml-1.5 text-xs font-medium text-red-700">Obligatorio</span> : <span className="ml-1.5 text-xs font-normal text-amber-800">Recomendado</span>}
+                </p>
+                <p className="mt-0.5 text-xs text-slate-600">{c.ayuda}</p>
+              </div>
+              <Link to={`/proyectos/${proyectoId}/${c.tab}`} className="shrink-0 self-center text-xs font-medium text-brand-800 underline-offset-2 hover:underline">
+                Ir a {nombreTab[c.tab]}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   )
 }
