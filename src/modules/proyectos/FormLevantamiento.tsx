@@ -46,7 +46,7 @@ export function FormLevantamiento({ datos, onChange, fotosExistentes = [] }: { d
           {medidas.map((m, i) => (
             <div key={i} className="flex gap-2">
               <Input aria-label={`Medida ${i + 1}`} placeholder="Ej. Distancia entre racks" value={m.etiqueta} onChange={(e) => set({ medidas: medidas.map((x, j) => (j === i ? { ...x, etiqueta: e.target.value } : x)) })} />
-              <Input aria-label={`Valor ${i + 1}`} placeholder="Ej. 48 m" className="w-40" value={m.valor} onChange={(e) => set({ medidas: medidas.map((x, j) => (j === i ? { ...x, valor: e.target.value } : x)) })} />
+              <Input aria-label={`Valor ${i + 1}`} placeholder="Ej. 48" className="w-40" value={m.valor} onChange={(e) => set({ medidas: medidas.map((x, j) => (j === i ? { ...x, valor: e.target.value } : x)) })} />
               <IconButton label="Quitar medida" onClick={() => set({ medidas: medidas.filter((_, j) => j !== i) })} disabled={medidas.length === 1} className="size-9">
                 <Trash2 />
               </IconButton>
@@ -94,5 +94,15 @@ function FotoChip({ titulo, onQuitar }: { titulo: string; onQuitar: () => void }
 /** Datos del formulario → levantamiento guardado (sin las medidas vacías). */
 export function aLevantamiento(d: DatosLevantamiento, responsable: string): Levantamiento {
   const { fotosNuevas: _n, fotosQuitadas: _q, ...resto } = d
-  return { ...resto, responsable, medidas: d.medidas.filter((m) => m.etiqueta.trim() || m.valor.trim()) }
+  const medidas = d.medidas
+    .filter((m) => m.etiqueta.trim() || m.valor.trim())
+    .map((m) => ({ ...m, valor: SOLO_NUMERO.test(m.valor.trim()) ? `${m.valor.trim()} m` : m.valor.trim() }))
+  return { ...resto, responsable, medidas }
 }
+
+/** Un valor que es solo un número ("48", "2,70") se guarda en metros. */
+const SOLO_NUMERO = /^\d+([.,]\d+)?$/
+
+/** Al editar, quita la " m" que se agregó al guardar para no duplicarla. */
+export const valorParaEditar = (valor: string) => valor.replace(/^(\d+(?:[.,]\d+)?) m$/, '$1')
+

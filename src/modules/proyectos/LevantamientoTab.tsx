@@ -5,7 +5,7 @@ import { FechaTexto, FotoPlaceholder } from '@/components/dominio'
 import { HOY, uid } from '@/lib/format'
 import type { Proyecto } from '@/types'
 import { useStore } from '@/store/useStore'
-import { aLevantamiento, FormLevantamiento, levantamientoVacio, type DatosLevantamiento } from './FormLevantamiento'
+import { aLevantamiento, FormLevantamiento, levantamientoVacio, valorParaEditar, type DatosLevantamiento } from './FormLevantamiento'
 
 export function LevantamientoTab({ proyecto }: { proyecto: Proyecto }) {
   const l = proyecto.levantamiento
@@ -104,7 +104,7 @@ function EditarLevantamientoModal({ proyecto, onClose }: { proyecto: Proyecto; o
   const notificar = useStore((s) => s.notificar)
   const l = proyecto.levantamiento
   const [datos, setDatos] = useState<DatosLevantamiento>(() =>
-    l ? { fecha: l.fecha, medidas: l.medidas.length ? l.medidas : [{ etiqueta: '', valor: '' }], rutaTuberia: l.rutaTuberia, rackOrigen: l.rackOrigen, rackDestino: l.rackDestino, observaciones: l.observaciones, fotosNuevas: [], fotosQuitadas: [] } : levantamientoVacio(HOY),
+    l ? { fecha: l.fecha, medidas: l.medidas.length ? l.medidas.map((m) => ({ ...m, valor: valorParaEditar(m.valor) })) : [{ etiqueta: '', valor: '' }], rutaTuberia: l.rutaTuberia, rackOrigen: l.rackOrigen, rackDestino: l.rackDestino, observaciones: l.observaciones, fotosNuevas: [], fotosQuitadas: [] } : levantamientoVacio(HOY),
   )
   const fotosExistentes = proyecto.fotos.filter((f) => f.etapa === 'levantamiento')
 
