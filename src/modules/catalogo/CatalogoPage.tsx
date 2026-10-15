@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Boxes, ChevronRight, Plus, Search, Truck } from 'lucide-react'
 import { Badge, Button, Card, EmptyState, PageHeader, Select, Tabs } from '@/components/ui'
 import { NuevoMaterialModal, NuevoProveedorModal } from './NuevosModales'
@@ -10,6 +11,7 @@ import { useStore } from '@/store/useStore'
 import type { CategoriaMaterial } from '@/types'
 import { FichaMaterial } from './FichaMaterial'
 import { FichaProveedor } from './FichaProveedor'
+import { TablaKits } from './Kits'
 
 const CATEGORIAS: CategoriaMaterial[] = ['Fibra óptica', 'Cableado', 'Canalización', 'Equipos activos', 'Inalámbrico', 'Racks y gabinetes', 'Energía']
 
@@ -19,9 +21,13 @@ const nombreCorto = (nombre: string) => nombre.replace(/\s+S\.A\.S?\.?$/, '')
 const thc = 'px-4 py-3 text-left text-xs font-semibold tracking-wide text-slate-500 uppercase whitespace-nowrap'
 
 export function CatalogoPage() {
-  const [tab, setTab] = useState<'materiales' | 'proveedores'>('materiales')
+  // La pestaña va en la URL para poder enlazar directo a los kits desde el cotizador.
+  const [params, setParams] = useSearchParams()
+  const tab = (['materiales', 'proveedores', 'kits'] as const).find((t) => t === params.get('tab')) ?? 'materiales'
+  const setTab = (t: typeof tab) => setParams(t === 'materiales' ? {} : { tab: t }, { replace: true })
   const materiales = useStore((s) => s.materiales)
   const proveedores = useStore((s) => s.proveedores)
+  const kits = useStore((s) => s.kits)
   return (
     <>
       <PageHeader title="Catálogo y proveedores" description="Precios de cada material por proveedor. Al elegir el proveedor de un ítem, el cotizador carga su precio neto." />
@@ -32,9 +38,10 @@ export function CatalogoPage() {
         tabs={[
           { id: 'materiales', label: 'Materiales', count: materiales.length },
           { id: 'proveedores', label: 'Proveedores', count: proveedores.length },
+          { id: 'kits', label: 'Kits', count: kits.length },
         ]}
       />
-      {tab === 'materiales' ? <TablaMateriales /> : <TablaProveedores />}
+      {tab === 'materiales' ? <TablaMateriales /> : tab === 'proveedores' ? <TablaProveedores /> : <TablaKits />}
     </>
   )
 }

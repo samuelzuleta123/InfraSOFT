@@ -82,6 +82,9 @@ interface State {
   nuevaVersion: (proyectoId: string) => void
   cambiarEstadoCotizacion: (proyectoId: string, versionId: string, estado: EstadoCotizacion, fecha?: string) => void
   generarOCs: (proyectoId: string) => number
+  /** Crea el kit si su id no existe; si existe, lo reemplaza. */
+  guardarKit: (kit: Kit) => void
+  eliminarKit: (kitId: string) => void
   actualizarPrecio: (precioId: string, cambios: Partial<Pick<PrecioProveedor, 'precioLista' | 'descuentoPct'>>) => void
   notificar: (texto: string, tono?: Toast['tono'], deshacer?: () => void) => void
   ejecutarDeshacer: (toastId: string) => void
@@ -297,6 +300,18 @@ export const useStore = create<State>()(
       })
       return nuevas.length
     },
+
+    guardarKit: (kit) =>
+      set((s) => {
+        const i = s.kits.findIndex((k) => k.id === kit.id)
+        if (i === -1) s.kits.push(kit)
+        else s.kits[i] = kit
+      }),
+
+    eliminarKit: (kitId) =>
+      set((s) => {
+        s.kits = s.kits.filter((k) => k.id !== kitId)
+      }),
 
     actualizarPrecio: (precioId, cambios) =>
       set((s) => {

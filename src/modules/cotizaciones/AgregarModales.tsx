@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react'
-import { Plus, Search } from 'lucide-react'
-import { Badge, Button, Field, Modal, NumberInput, Select } from '@/components/ui'
+import { Link } from 'react-router-dom'
+import { Boxes, Pencil, Plus, Search } from 'lucide-react'
+import { Badge, Button, EmptyState, Field, Modal, NumberInput, Select } from '@/components/ui'
+import { KitModal } from '@/modules/catalogo/Kits'
 import { precioNeto } from '@/lib/calc'
 import { moneyUnit, uid } from '@/lib/format'
 import { useStore } from '@/store/useStore'
@@ -109,7 +111,8 @@ export function AgregarKitModal({ open, onClose, proyectoId, seccionId }: { open
   const [kitId, setKitId] = useState(kits[0]?.id ?? '')
   const [puntos, setPuntos] = useState<number | null>(1)
   const [destino, setDestino] = useState<'actual' | 'nueva'>('nueva')
-  const kit = kits.find((k) => k.id === kitId)
+  const [editor, setEditor] = useState<'nuevo' | 'editar' | null>(null)
+  const kit = kits.find((k) => k.id === kitId) ?? kits[0]
   const n = puntos ?? 0
 
   const items = (kit?.items ?? []).map((ki) => {
@@ -131,68 +134,99 @@ export function AgregarKitModal({ open, onClose, proyectoId, seccionId }: { open
   }
 
   return (
-    <Modal
-      open={open}
-      onClose={onClose}
-      size="lg"
-      title="Agregar kit"
-      description="Un kit es un grupo de ítems predefinido. Las cantidades se multiplican por el número de unidades."
-      footer={
-        <>
-          <Button variant="ghost" onClick={onClose}>
-            Cancelar
-          </Button>
-          <Button variant="primary" onClick={confirmar} disabled={!kit || n <= 0}>
-            Agregar {items.length} ítems
-          </Button>
-        </>
-      }
-    >
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Field label="Kit" htmlFor="kit">
-          <Select id="kit" value={kitId} onChange={(e) => setKitId(e.target.value)}>
-            {kits.map((k) => (
-              <option key={k.id} value={k.id}>
-                {k.nombre}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        <Field label="Cantidad de puntos" htmlFor="puntos">
-          <NumberInput id="puntos" value={puntos} onChange={setPuntos} allowEmpty decimals={0} />
-        </Field>
-        <Field label="Agregar en" htmlFor="destino">
-          <Select id="destino" value={destino} onChange={(e) => setDestino(e.target.value as 'actual' | 'nueva')}>
-            <option value="nueva">Nueva sección</option>
-            <option value="actual" disabled={!seccionId}>
-              Sección actual
-            </option>
-          </Select>
-        </Field>
-      </div>
-      {kit && <p className="mt-3 text-[13px] text-slate-500">{kit.descripcion}</p>}
-      <table className="mt-3 w-full text-[13px]">
-        <thead className="border-b border-slate-200 text-xs font-semibold tracking-wide text-slate-500 uppercase">
-          <tr>
-            <th className="py-2 text-left">Ítem</th>
-            <th className="py-2 text-right">Cant.</th>
-            <th className="py-2 pl-3 text-right">V. unit. MO</th>
-            <th className="py-2 pl-3 text-left">Proveedor</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-slate-100">
-          {items.map((i) => (
-            <tr key={i.id}>
-              <td className="py-2 text-slate-900">{i.descripcion}</td>
-              <td className="num py-2 text-right">
-                {i.cantidad.toLocaleString('es-CO')} {i.unidad}
-              </td>
-              <td className="num py-2 pl-3 text-right">{moneyUnit(i.vuMO)}</td>
-              <td className="py-2 pl-3">{i.proveedorId ? <Badge tone="ok">Precio cargado</Badge> : i.materialId ? <Badge tone="warn">Elegir en tabla</Badge> : <Badge>Solo mano de obra</Badge>}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </Modal>
+    <>
+      <Modal
+        open={open}
+        onClose={onClose}
+        size="lg"
+        title="Agregar kit"
+        description="Un kit es un grupo de ítems predefinido. Las cantidades se multiplican por el número de unidades."
+        footer={
+          <>
+            <Link to="/catalogo?tab=kits" className="mr-auto self-center text-[13px] font-medium text-brand-800 hover:text-brand-900 hover:underline">
+              Administrar kits en el catálogo
+            </Link>
+            <Button variant="ghost" onClick={onClose}>
+              Cancelar
+            </Button>
+            <Button variant="primary" onClick={confirmar} disabled={!kit || n <= 0}>
+              Agregar {items.length} ítems
+            </Button>
+          </>
+        }
+      >
+        {kits.length === 0 ? (
+          <EmptyState
+            icon={<Boxes />}
+            title="Todavía no hay kits"
+            description="Un kit agrupa los materiales y la mano de obra que siempre van juntos. Créalo una vez y úsalo en cualquier cotización."
+            action={
+              <Button variant="subtle" icon={<Plus />} onClick={() => setEditor('nuevo')}>
+                Crear kit
+              </Button>
+            }
+          />
+        ) : (
+          <>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <Field label="Kit" htmlFor="kit">
+                <Select id="kit" value={kit?.id ?? ''} onChange={(e) => setKitId(e.target.value)}>
+                  {kits.map((k) => (
+                    <option key={k.id} value={k.id}>
+                      {k.nombre}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+              <Field label="Cantidad de puntos" htmlFor="puntos">
+                <NumberInput id="puntos" value={puntos} onChange={setPuntos} allowEmpty decimals={0} />
+              </Field>
+              <Field label="Agregar en" htmlFor="destino">
+                <Select id="destino" value={destino} onChange={(e) => setDestino(e.target.value as 'actual' | 'nueva')}>
+                  <option value="nueva">Nueva sección</option>
+                  <option value="actual" disabled={!seccionId}>
+                    Sección actual
+                  </option>
+                </Select>
+              </Field>
+            </div>
+            <div className="mt-3 flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
+              <p className="min-w-0 flex-1 text-[13px] text-slate-500">{kit?.descripcion}</p>
+              <div className="flex shrink-0 gap-1">
+                <Button size="sm" variant="ghost" icon={<Pencil />} onClick={() => setEditor('editar')}>
+                  Editar kit
+                </Button>
+                <Button size="sm" variant="ghost" icon={<Plus />} onClick={() => setEditor('nuevo')}>
+                  Nuevo kit
+                </Button>
+              </div>
+            </div>
+            <table className="mt-3 w-full text-[13px]">
+              <thead className="border-b border-slate-200 text-xs font-semibold tracking-wide text-slate-500 uppercase">
+                <tr>
+                  <th className="py-2 text-left">Ítem</th>
+                  <th className="py-2 text-right">Cant.</th>
+                  <th className="py-2 pl-3 text-right">V. unit. MO</th>
+                  <th className="py-2 pl-3 text-left">Proveedor</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {items.map((i) => (
+                  <tr key={i.id}>
+                    <td className="py-2 text-slate-900">{i.descripcion}</td>
+                    <td className="num py-2 text-right">
+                      {i.cantidad.toLocaleString('es-CO')} {i.unidad}
+                    </td>
+                    <td className="num py-2 pl-3 text-right">{moneyUnit(i.vuMO)}</td>
+                    <td className="py-2 pl-3">{i.proveedorId ? <Badge tone="ok">Precio cargado</Badge> : i.materialId ? <Badge tone="warn">Elegir en tabla</Badge> : <Badge>Solo mano de obra</Badge>}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </>
+        )}
+      </Modal>
+      {open && editor && <KitModal kit={editor === 'editar' ? kit : undefined} onClose={() => setEditor(null)} onGuardado={setKitId} />}
+    </>
   )
 }
