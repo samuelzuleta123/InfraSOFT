@@ -1,6 +1,6 @@
-import { useEffect, useId, useRef, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type KeyboardEvent as KeyboardEventReact, type ReactNode, type SelectHTMLAttributes } from 'react'
+import { useEffect, useId, useLayoutEffect, useRef, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type KeyboardEvent as KeyboardEventReact, type ReactNode, type SelectHTMLAttributes } from 'react'
 import { AlertTriangle, CheckCircle2, Info, X, XCircle } from 'lucide-react'
-import { numeroEditable, parseNumero } from '@/lib/format'
+import { numeroEditable, numeroEnVivo, parseNumero } from '@/lib/format'
 import { cn } from '@/lib/cn'
 import { indiceConFlecha } from '@/lib/flechas'
 
@@ -205,9 +205,20 @@ export function NumberInput({
 }) {
   const [texto, setTexto] = useState(() => numeroEditable(value, decimals))
   const enfocado = useRef(false)
+  const input = useRef<HTMLInputElement>(null)
+  // Cifras (y coma) antes del cursor: al reformatear con puntos de miles el cursor vuelve al mismo dígito.
+  const cursor = useRef<number | null>(null)
   useEffect(() => {
     if (!enfocado.current) setTexto(numeroEditable(value, decimals))
   }, [value, decimals])
+  useLayoutEffect(() => {
+    const el = input.current
+    if (cursor.current === null || !el) return
+    let pos = 0
+    for (let vistos = 0; pos < texto.length && vistos < cursor.current; pos++) if (/[\d,]/.test(texto[pos])) vistos++
+    el.setSelectionRange(pos, pos)
+    cursor.current = null
+  }, [texto])
   return (
     <div className={cn('relative', className)}>
       {prefix && <span className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-sm text-slate-500">{prefix}</span>}
@@ -215,6 +226,7 @@ export function NumberInput({
         inputMode="decimal"
         autoComplete="off"
         className={cn(inputBase, 'num text-right', prefix && 'pl-6', suffix && 'pr-7', inputClassName)}
+        ref={input}
         value={texto}
         onFocus={(e) => {
           enfocado.current = true
@@ -225,9 +237,11 @@ export function NumberInput({
           setTexto(numeroEditable(value, decimals))
         }}
         onChange={(e) => {
-          const limpio = e.target.value.replace(/[^\d.,-]/g, '')
-          setTexto(limpio)
-          const n = parseNumero(limpio)
+          const nuevo = numeroEnVivo(e.target.value, texto, decimals)
+          const antes = e.target.value.slice(0, e.target.selectionStart ?? e.target.value.length)
+          cursor.current = (antes.match(/[\d,]/g)?.length ?? 0) + (nuevo.endsWith(',') && antes.endsWith('.') ? 1 : 0)
+          setTexto(nuevo)
+          const n = parseNumero(nuevo)
           onChange(n === null ? (allowEmpty ? null : 0) : n)
         }}
         {...props}

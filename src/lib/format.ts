@@ -76,6 +76,25 @@ export function parseNumero(s: string): number | null {
   return isFinite(n) ? n : null
 }
 
+/**
+ * Formato en vivo de un campo numérico: pone los puntos de miles mientras se digita ("1234567,5" → "1.234.567,5").
+ * El punto es siempre separador de miles; un punto recién digitado al final se toma como la coma decimal
+ * (así escribe el teclado numérico). Un texto pegado se interpreta completo con parseNumero.
+ */
+export function numeroEnVivo(digitado: string, anterior: string, decimals: number): string {
+  let s = digitado.replace(/[^\d.,-]/g, '')
+  if (s.length > anterior.length + 1) {
+    const n = parseNumero(s)
+    return n === null ? '' : numeroEditable(n, decimals)
+  }
+  if (decimals > 0 && s.endsWith('.') && s.slice(0, -1) === anterior && !anterior.includes(',')) s = `${s.slice(0, -1)},`
+  const negativo = s.startsWith('-')
+  const [entero = '', ...resto] = s.replace(/[-.]/g, '').split(',')
+  const conComa = resto.length > 0 && decimals > 0
+  const ent = entero.replace(/^0+(?=\d)/, '').replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+  return `${negativo ? '-' : ''}${ent || (conComa ? '0' : '')}${conComa ? `,${resto.join('').slice(0, decimals)}` : ''}`
+}
+
 /** Para mostrar en un input mientras se edita: 65743.2 → "65.743,2" */
 export function numeroEditable(n: number | null | undefined, decimals = 2): string {
   if (n === null || n === undefined) return ''

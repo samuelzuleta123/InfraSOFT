@@ -5,7 +5,7 @@ import { NuevoProveedorModal } from '@/modules/catalogo/NuevosModales'
 import { itemMaterial, itemMO, itemSubtotal, totalesSeccion, type ItemCliente } from '@/lib/calc'
 import { precioNeto } from '@/lib/calc'
 import { cn } from '@/lib/cn'
-import { compararConUltimaCompra, type ComparacionPrecio, type CompraMaterial } from '@/lib/historico'
+import { ultimaCompra, UMBRAL_VARIACION_PRECIO, type CompraMaterial } from '@/lib/historico'
 import { fecha, money, moneyUnit, pct, r3 } from '@/lib/format'
 import { nombreProveedor, useStore } from '@/store/useStore'
 import type { ItemCotizacion, Seccion, Unidad } from '@/types'
@@ -136,7 +136,7 @@ export function TablaSeccion({ proyectoId, seccion, numeroInicial, vistaCliente,
                   numero={numeroInicial + idx}
                   bloqueada={bloqueada}
                   // En una versión bloqueada no aplica: compararía lo ya vendido con compras posteriores.
-                  comparacion={bloqueada ? undefined : compararConUltimaCompra(historico, item, proyectoId)}
+                  compra={bloqueada ? undefined : ultimaCompra(historico, item.materialId, proyectoId)}
                   onNuevoProveedor={() => setItemParaNuevoProveedor(item.id)}
                 />
               ))}
@@ -193,14 +193,14 @@ function FilaItem({
   item,
   numero,
   bloqueada,
-  comparacion,
+  compra,
   onNuevoProveedor,
 }: {
   proyectoId: string
   item: ItemCotizacion
   numero: number
   bloqueada?: boolean
-  comparacion?: ComparacionPrecio
+  compra?: CompraMaterial
   onNuevoProveedor: () => void
 }) {
   const editarVersion = useStore((s) => s.editarVersion)
@@ -222,6 +222,7 @@ function FilaItem({
     })
 
   const conPrecio = item.materialId ? precios.filter((p) => p.materialId === item.materialId) : []
+  const catalogo = item.proveedorId ? conPrecio.find((p) => p.proveedorId === item.proveedorId) : undefined
   const otros = proveedores.filter((p) => !conPrecio.some((c) => c.proveedorId === p.id))
   const sinProveedor = !item.proveedorId && item.vuMaterial > 0
   const celdaInput = 'h-8 text-[13px] px-2 shadow-none border-transparent bg-transparent hover:border-slate-300 hover:bg-white focus:bg-white disabled:border-transparent disabled:bg-transparent disabled:text-slate-800'
@@ -297,7 +298,15 @@ function FilaItem({
             ))}
           </optgroup>
         </Select>
-        {comparacion && <UltimaCompra c={comparacion} />}
+        {!bloqueada && (
+          <ReferenciasPrecio
+            numero={numero}
+            vu={item.vuMaterial}
+            catalogo={catalogo && precioNeto(catalogo)}
+            compra={compra}
+            onUsar={(precio) => editar((i) => (i.vuMaterial = r3(precio)))}
+          />
+        )}
       </td>
       <td className={cn(celdaNum, 'font-medium text-slate-900')}>{money(itemSubtotal(item))}</td>
       <td className="px-1 py-1 text-right">
@@ -309,15 +318,57 @@ function FilaItem({
   )
 }
 
-/** Último precio real de compra del material; se resalta si el precio cotizado se aleja del umbral. */
-function UltimaCompra({ c }: { c: ComparacionPrecio }) {
+/**
+ * Precios de referencia del material bajo el proveedor: el neto vigente del catálogo (solo si el unitario ya no coincide,
+ * p. ej. porque el precio del proveedor cambió) y la última compra real. Cada uno se aplica al unitario con un clic.
+ */
+function ReferenciasPrecio({ numero, vu, catalogo, compra, onUsar }: { numero: number; vu: number; catalogo?: number; compra?: CompraMaterial; onUsar: (precio: number) => void }) {
   const proveedores = useStore((s) => s.proveedores)
-  const proyecto = useStore((s) => s.proyectos.find((p) => p.id === c.compra.proyectoId))
-  const detalle = `${c.compra.factura ? `Factura ${c.compra.factura}` : `OC ${c.compra.ocConsecutivo} (sin factura)`} · ${nombreProveedor(proveedores, c.compra.proveedorId)} · ${proyecto?.codigo ?? ''} · ${fecha(c.compra.fecha)}`
+  const proyecto = useStore((s) => s.proyectos.find((p) => p.id === compra?.proyectoId))
+  const distinto = (precio: number) => precio > 0 && r3(precio) !== r3(vu)
+  const verCatalogo = catalogo !== undefined && distinto(catalogo)
+  if (!verCatalogo && !compra) return null
+
+  const variacion = compra && vu > 0 && compra.precio > 0 ? (vu - compra.precio) / compra.precio : 0
+  const fuera = Math.abs(variacion) >= UMBRAL_VARIACION_PRECIO
+  const detalleCompra = compra && `${compra.factura ? `Factura ${compra.factura}` : `OC ${compra.ocConsecutivo} (sin factura)`} · ${nombreProveedor(proveedores, compra.proveedorId)} · ${proyecto?.codigo ?? ''} · ${fecha(compra.fecha)}`
   return (
-    <div title={detalle} className={cn('num mt-0.5 truncate px-1 text-[11px]', c.fuera ? 'font-medium text-amber-800' : 'text-slate-500')}>
-      Última compra {moneyUnit(c.compra.precio)}
-      {c.fuera && ` · ${c.variacion > 0 ? '+' : ''}${pct(c.variacion * 100, 0)}`}
+    <div className="mt-0.5 space-y-px px-1 text-[11px] leading-5">
+      {verCatalogo && (
+        <Referencia etiqueta="Catálogo" precio={catalogo} title="Precio neto vigente del proveedor elegido: cambió desde que se cotizó este ítem" numero={numero} onUsar={onUsar} destacar />
+      )}
+      {compra && (
+        <Referencia
+          etiqueta="Última compra"
+          precio={compra.precio}
+          variacion={fuera ? variacion : undefined}
+          title={detalleCompra}
+          numero={numero}
+          onUsar={distinto(compra.precio) ? onUsar : undefined}
+          destacar={fuera}
+        />
+      )}
+    </div>
+  )
+}
+
+function Referencia({ etiqueta, precio, variacion, title, numero, onUsar, destacar }: { etiqueta: string; precio: number; variacion?: number; title?: string; numero: number; onUsar?: (precio: number) => void; destacar?: boolean }) {
+  return (
+    <div className={cn('flex items-center gap-2', destacar ? 'text-amber-800' : 'text-slate-500')}>
+      <span title={title} className={cn('num min-w-0 truncate', destacar && 'font-medium')}>
+        {etiqueta} {moneyUnit(precio)}
+        {variacion !== undefined && ` · ${variacion > 0 ? '+' : ''}${pct(variacion * 100, 0)}`}
+      </span>
+      {onUsar && (
+        <button
+          type="button"
+          onClick={() => onUsar(precio)}
+          aria-label={`Usar ${moneyUnit(precio)} (${etiqueta.toLowerCase()}) como unitario de material del ítem ${numero}`}
+          className="-my-0.5 ml-auto shrink-0 cursor-pointer rounded px-1.5 py-0.5 font-medium text-brand-800 transition-colors hover:bg-brand-50 hover:text-brand-900 focus-visible:ring-2 focus-visible:ring-brand-600/40 focus-visible:outline-none active:bg-brand-100"
+        >
+          Usar
+        </button>
+      )}
     </div>
   )
 }
