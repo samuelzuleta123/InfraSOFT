@@ -5,7 +5,7 @@ import { NuevoProveedorModal } from '@/modules/catalogo/NuevosModales'
 import { itemMaterial, itemMO, itemSubtotal, totalesSeccion, type ItemCliente } from '@/lib/calc'
 import { precioNeto } from '@/lib/calc'
 import { cn } from '@/lib/cn'
-import { ultimaCompra, UMBRAL_VARIACION_PRECIO, type CompraMaterial } from '@/lib/historico'
+import { textoVariacion, ultimaCompra, UMBRAL_VARIACION_PRECIO, type CompraMaterial } from '@/lib/historico'
 import { fecha, money, moneyUnit, pct, r3 } from '@/lib/format'
 import { nombreProveedor, useStore } from '@/store/useStore'
 import type { ItemCotizacion, Seccion, Unidad } from '@/types'
@@ -357,7 +357,7 @@ function Referencia({ etiqueta, precio, variacion, title, numero, onUsar, destac
     <div className={cn('flex items-center gap-2', destacar ? 'text-amber-800' : 'text-slate-500')}>
       <span title={title} className={cn('num min-w-0 truncate', destacar && 'font-medium')}>
         {etiqueta} {moneyUnit(precio)}
-        {variacion !== undefined && ` · ${variacion > 0 ? '+' : ''}${pct(variacion * 100, 0)}`}
+        {variacion !== undefined && ` · ${textoVariacion(variacion)}`}
       </span>
       {onUsar && (
         <button

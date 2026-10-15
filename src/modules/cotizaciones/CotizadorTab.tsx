@@ -5,8 +5,8 @@ import { Alert, Button, Card, CardHeader, Field, NumberInput, Select, Textarea, 
 import { EstadoCotBadge } from '@/components/dominio'
 import { precioCuadrable, preciosCliente, resumen, todosLosItems, totalOtroCosto, versionActiva } from '@/lib/calc'
 import { itemsSinProveedor } from '@/lib/compras'
-import { compararConUltimaCompra, UMBRAL_VARIACION_PRECIO } from '@/lib/historico'
-import { fecha, money, moneySigned, uid } from '@/lib/format'
+import { compararConUltimaCompra, posibleErrorDeCeros, textoVariacion, UMBRAL_VARIACION_PRECIO } from '@/lib/historico'
+import { fecha, money, moneySigned, moneyUnit, uid } from '@/lib/format'
 import { useHistoricoCompras, useStore } from '@/store/useStore'
 import type { Proyecto } from '@/types'
 import { TablaSeccion } from './TablaSeccion'
@@ -26,7 +26,10 @@ export function CotizadorTab({ proyecto }: { proyecto: Proyecto }) {
   const cliente = preciosCliente(v)
   const pendientes = itemsSinProveedor(v)
   const historico = useHistoricoCompras()
-  const preciosFuera = todosLosItems(v).filter((i) => compararConUltimaCompra(historico, i, proyecto.id)?.fuera)
+  const preciosFuera = todosLosItems(v).flatMap((item) => {
+    const c = compararConUltimaCompra(historico, item, proyecto.id)
+    return c?.fuera ? [{ item, c }] : []
+  })
   // Una versión aprobada o rechazada es un registro: para cambiarla se crea una versión nueva.
   const cerrado = proyecto.etapa >= 4
   const bloqueada = cerrado || v.estado === 'aprobada' || v.estado === 'rechazada'
@@ -122,8 +125,19 @@ export function CotizadorTab({ proyecto }: { proyecto: Proyecto }) {
         </Alert>
       )}
       {!vistaCliente && !bloqueada && preciosFuera.length > 0 && (
-        <Alert tone="warn" className="mb-4" title={`${preciosFuera.length} ítem${preciosFuera.length === 1 ? '' : 's'} con precio de material a más de ${UMBRAL_VARIACION_PRECIO * 100} % de la última compra`}>
-          Compara con lo que facturó el proveedor en el proyecto anterior (debajo del proveedor de cada ítem) y confirma el precio antes de enviar.
+        <Alert tone="warn" className="mb-4" title={`${preciosFuera.length} ítem${preciosFuera.length === 1 ? '' : 's'} con precio de material muy distinto a la última compra`}>
+          <ul className="num space-y-0.5">
+            {preciosFuera.slice(0, 5).map(({ item, c }) => (
+              <li key={item.id}>
+                <span className="font-medium">{item.descripcion || 'Ítem sin descripción'}</span>: {moneyUnit(item.vuMaterial)} frente a {moneyUnit(c.compra.precio)} ({textoVariacion(c.variacion)})
+                {posibleErrorDeCeros(c) && ' · ¿faltan o sobran ceros?'}
+              </li>
+            ))}
+            {preciosFuera.length > 5 && <li>y {preciosFuera.length - 5} más</li>}
+          </ul>
+          <p className="mt-1">
+            Se avisa desde una diferencia de {UMBRAL_VARIACION_PRECIO * 100} %. Confirma el precio antes de enviar, o aplica el de la última compra con “Usar”, debajo del proveedor del ítem.
+          </p>
         </Alert>
       )}
       {!vistaCliente && !bloqueada && pendientes.length > 0 && (
@@ -255,7 +269,6 @@ export function CotizadorTab({ proyecto }: { proyecto: Proyecto }) {
                   id="alcance"
                   rows={3}
                   value={proyecto.cotizacion.alcance}
-                  readOnly={vistaCliente}
                   onChange={(e) => editarProyecto(proyecto.id, (p) => void (p.cotizacion.alcance = e.target.value))}
                 />
               </Field>
@@ -263,7 +276,6 @@ export function CotizadorTab({ proyecto }: { proyecto: Proyecto }) {
                 <Input
                   id="entrega"
                   value={proyecto.cotizacion.tiempoEntrega}
-                  readOnly={vistaCliente}
                   onChange={(e) => editarProyecto(proyecto.id, (p) => void (p.cotizacion.tiempoEntrega = e.target.value))}
                 />
               </Field>
@@ -272,7 +284,6 @@ export function CotizadorTab({ proyecto }: { proyecto: Proyecto }) {
                   id="condiciones"
                   rows={3}
                   value={proyecto.cotizacion.condiciones}
-                  readOnly={vistaCliente}
                   onChange={(e) => editarProyecto(proyecto.id, (p) => void (p.cotizacion.condiciones = e.target.value))}
                 />
               </Field>

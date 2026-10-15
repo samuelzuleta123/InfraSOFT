@@ -1,6 +1,7 @@
 // Histórico de precios reales de compra: lo que cada proveedor facturó por un material en
 // cada proyecto. Se deriva de los datos (factura → línea de la OC → ítem de la cotización →
 // material); no se guarda nada aparte.
+import { pct } from './format'
 import type { FacturaProveedor, ISODate, ItemCotizacion, LineaFactura, LineaOC, OrdenCompra, Proyecto } from '@/types'
 
 const normal = (s: string) =>
@@ -95,6 +96,19 @@ export interface ComparacionPrecio {
   variacion: number
   fuera: boolean
 }
+
+/**
+ * Variación con signo para mostrar: "+137 %", "-12 %". Cerca de -100 % lleva un decimal ("-99,9 %"):
+ * redondeado diría que el material es gratis, y casi siempre es un precio digitado sin ceros.
+ */
+export function textoVariacion(variacion: number): string {
+  const p = variacion * 100
+  const decimales = Math.abs(p) >= 99.5 && Math.abs(p) < 100 ? 1 : 0
+  return `${p > 0 ? '+' : ''}${pct(p, decimales)}`
+}
+
+/** Un precio 100 veces mayor o menor que la última compra casi siempre es un error de ceros al digitar. */
+export const posibleErrorDeCeros = (c: ComparacionPrecio) => c.variacion <= -0.99 || c.variacion >= 99
 
 /** Compara el precio unitario de material de un ítem con su última compra en otro proyecto. */
 export function compararConUltimaCompra(compras: CompraMaterial[], item: ItemCotizacion, proyectoId: string): ComparacionPrecio | undefined {
