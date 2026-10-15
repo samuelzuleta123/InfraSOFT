@@ -139,9 +139,10 @@ function OCClienteCard({ proyecto }: { proyecto: Proyecto }) {
   const editarProyecto = useStore((s) => s.editarProyecto)
   const notificar = useStore((s) => s.notificar)
   const oc = proyecto.ocCliente
-  const [editando, setEditando] = useState(!oc)
-  const [form, setForm] = useState<OCCliente>(oc ?? { numero: '', fecha: HOY, valor: 0, adjunto: null })
   const cotizado = Math.round(resumen(versionVigente(proyecto)).precioVigente)
+  const [editando, setEditando] = useState(!oc)
+  // Lo normal es que la OC traiga lo cotizado; se precarga y solo se cambia si el cliente envió otro valor.
+  const [form, setForm] = useState<OCCliente>(oc ?? { numero: '', fecha: HOY, valor: cotizado, adjunto: null })
   const valorActual = editando ? form.valor : (oc?.valor ?? 0)
   const diferencia = valorActual - cotizado
   const hayValor = editando ? form.valor > 0 : !!oc
