@@ -79,6 +79,8 @@ interface State {
   editarVersion: (proyectoId: string, fn: (v: VersionCotizacion, p: Proyecto) => void) => void
   editarItem: (proyectoId: string, itemId: string, fn: (i: ItemCotizacion) => void) => void
   asignarProveedor: (proyectoId: string, itemId: string, proveedorId: string | null) => void
+  /** Guarda en el catálogo el precio digitado de un material en un proveedor que todavía no lo tenía. */
+  guardarPrecioDigitado: (materialId: string, proveedorId: string, precio: number) => void
   nuevaVersion: (proyectoId: string) => void
   cambiarEstadoCotizacion: (proyectoId: string, versionId: string, estado: EstadoCotizacion, fecha?: string) => void
   generarOCs: (proyectoId: string) => number
@@ -244,10 +246,17 @@ export const useStore = create<State>()(
           .find((x) => x.id === itemId)
         if (!item) return
         item.proveedorId = proveedorId
-        if (proveedorId && item.materialId) {
-          const precio = s.precios.find((x) => x.materialId === item.materialId && x.proveedorId === proveedorId)
-          if (precio) item.vuMaterial = precioNeto(precio)
-        }
+        // Sin proveedor, o con uno sin precio para este material, el costo queda vacío: no hereda el del anterior.
+        const precio = proveedorId && item.materialId ? s.precios.find((x) => x.materialId === item.materialId && x.proveedorId === proveedorId) : undefined
+        item.vuMaterial = precio ? precioNeto(precio) : 0
+      }),
+
+    guardarPrecioDigitado: (materialId, proveedorId, precio) =>
+      set((s) => {
+        if (precio <= 0 || s.precios.some((x) => x.materialId === materialId && x.proveedorId === proveedorId)) return
+        const nuevo = { materialId, proveedorId, precioLista: precio, descuentoPct: null, fecha: HOY }
+        s.precios.push({ id: uid('pp'), ...nuevo })
+        s.historial.push({ id: uid('hp'), ...nuevo })
       }),
 
     nuevaVersion: (proyectoId) =>

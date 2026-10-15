@@ -15,6 +15,7 @@ function itemDesdeMaterial(m: Material, precios: PrecioProveedor[], cantidad = 1
   return {
     id: uid('it'),
     materialId: m.id,
+    tipo: 'material',
     descripcion: m.descripcion,
     unidad: m.unidad,
     cantidad,
@@ -54,7 +55,7 @@ export function AgregarItemModal({ open, onClose, proyectoId, seccionId }: { ope
             variant="ghost"
             icon={<Plus />}
             onClick={() => {
-              agregar({ id: uid('it'), descripcion: 'Nuevo ítem (solo mano de obra)', unidad: 'Un', cantidad: 1, vuMO: 0, vuMaterial: 0, proveedorId: null, cantInstalada: null })
+              agregar({ id: uid('it'), tipo: 'mo', descripcion: 'Nuevo ítem (solo mano de obra)', unidad: 'Un', cantidad: 1, vuMO: 0, vuMaterial: 0, proveedorId: null, cantInstalada: null })
               onClose()
             }}
           >
@@ -119,7 +120,7 @@ export function AgregarKitModal({ open, onClose, proyectoId, seccionId }: { open
     const m = materiales.find((x) => x.id === ki.materialId)
     const base = m
       ? itemDesdeMaterial(m, precios, ki.cantidad * n, ki.vuMO)
-      : { id: uid('it'), descripcion: ki.descripcion, unidad: ki.unidad, cantidad: ki.cantidad * n, vuMO: ki.vuMO, vuMaterial: 0, proveedorId: null, cantInstalada: null }
+      : { id: uid('it'), descripcion: ki.descripcion, unidad: ki.unidad, tipo: 'mo' as const, cantidad: ki.cantidad * n, vuMO: ki.vuMO, vuMaterial: 0, proveedorId: null, cantInstalada: null }
     return { ...base, descripcion: ki.descripcion }
   })
 

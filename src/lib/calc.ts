@@ -16,6 +16,8 @@ import { r3 } from './format'
 // la suma de las líneas impresas sea exactamente el total del documento.
 export const itemMO = (i: ItemCotizacion) => Math.round(i.cantidad * i.vuMO)
 export const itemMaterial = (i: ItemCotizacion) => Math.round(i.cantidad * i.vuMaterial)
+/** Un ítem es material si se compra: tiene material de catálogo o precio de compra. Lo demás es mano de obra. */
+export const esMaterial = (i: ItemCotizacion) => (i.tipo ? i.tipo === 'material' : Boolean(i.materialId) || i.vuMaterial > 0)
 export const itemSubtotal = (i: ItemCotizacion) => itemMO(i) + itemMaterial(i)
 
 export function totalesSeccion(s: Seccion) {

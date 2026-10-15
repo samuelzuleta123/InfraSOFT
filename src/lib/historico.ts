@@ -110,9 +110,13 @@ export function textoVariacion(variacion: number): string {
 /** Un precio 100 veces mayor o menor que la última compra casi siempre es un error de ceros al digitar. */
 export const posibleErrorDeCeros = (c: ComparacionPrecio) => c.variacion <= -0.99 || c.variacion >= 99
 
-/** Compara el precio unitario de material de un ítem con su última compra en otro proyecto. */
+/**
+ * Compara el precio unitario de material de un ítem con lo que su mismo proveedor cobró en la última compra (en otro proyecto).
+ * Contra otro proveedor no se compara: que cobre distinto es normal, y el aviso existe para atrapar errores de digitación.
+ */
 export function compararConUltimaCompra(compras: CompraMaterial[], item: ItemCotizacion, proyectoId: string): ComparacionPrecio | undefined {
-  const compra = ultimaCompra(compras, item.materialId, proyectoId)
+  if (!item.materialId || !item.proveedorId) return undefined
+  const compra = compras.find((c) => c.materialId === item.materialId && c.proveedorId === item.proveedorId && c.proyectoId !== proyectoId)
   if (!compra || item.vuMaterial <= 0 || compra.precio <= 0) return undefined
   const variacion = (item.vuMaterial - compra.precio) / compra.precio
   return { compra, variacion, fuera: Math.abs(variacion) >= UMBRAL_VARIACION_PRECIO }

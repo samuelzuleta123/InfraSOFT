@@ -57,6 +57,10 @@ export interface ItemCotizacion {
   vuMO: number
   vuMaterial: number
   proveedorId: string | null
+  /** Material (se compra) o mano de obra (se cobra). Sin valor se deduce: con material de catálogo o precio de material es material. */
+  tipo?: 'material' | 'mo'
+  /** Nombre de la instalación que un material lleva en su vuMO; se muestra como fila unida en el bloque de mano de obra. */
+  descripcionMO?: string
   /** Cantidad instalada en obra (bitácora). null = sin registrar. */
   cantInstalada: number | null
 }

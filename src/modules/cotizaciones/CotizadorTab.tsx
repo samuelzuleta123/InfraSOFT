@@ -11,7 +11,7 @@ import { useHistoricoCompras, useStore } from '@/store/useStore'
 import type { Proyecto } from '@/types'
 import { TablaSeccion } from './TablaSeccion'
 import { ResumenBarra, ResumenPanel } from './ResumenPanel'
-import { AgregarItemModal, AgregarKitModal } from './AgregarModales'
+import { AgregarKitModal } from './AgregarModales'
 
 export function CotizadorTab({ proyecto }: { proyecto: Proyecto }) {
   const editarVersion = useStore((s) => s.editarVersion)
@@ -19,7 +19,7 @@ export function CotizadorTab({ proyecto }: { proyecto: Proyecto }) {
   const nuevaVersion = useStore((s) => s.nuevaVersion)
   const notificar = useStore((s) => s.notificar)
   const [vistaCliente, setVistaCliente] = useState(false)
-  const [modal, setModal] = useState<{ tipo: 'item' | 'kit'; seccionId: string | null } | null>(null)
+  const [kitPara, setKitPara] = useState<{ seccionId: string | null } | null>(null)
 
   const v = versionActiva(proyecto)
   const r = resumen(v)
@@ -125,7 +125,7 @@ export function CotizadorTab({ proyecto }: { proyecto: Proyecto }) {
         </Alert>
       )}
       {!vistaCliente && !bloqueada && preciosFuera.length > 0 && (
-        <Alert tone="warn" className="mb-4" title={`${preciosFuera.length} ítem${preciosFuera.length === 1 ? '' : 's'} con precio de material muy distinto a la última compra`}>
+        <Alert tone="warn" className="mb-4" title={`${preciosFuera.length} ítem${preciosFuera.length === 1 ? '' : 's'} con precio muy distinto a la última compra al mismo proveedor`}>
           <ul className="num space-y-0.5">
             {preciosFuera.slice(0, 5).map(({ item, c }) => (
               <li key={item.id}>
@@ -136,13 +136,13 @@ export function CotizadorTab({ proyecto }: { proyecto: Proyecto }) {
             {preciosFuera.length > 5 && <li>y {preciosFuera.length - 5} más</li>}
           </ul>
           <p className="mt-1">
-            Se avisa desde una diferencia de {UMBRAL_VARIACION_PRECIO * 100} %. Confirma el precio antes de enviar, o aplica el de la última compra con “Usar”, debajo del proveedor del ítem.
+            Se avisa desde una diferencia de {UMBRAL_VARIACION_PRECIO * 100} %. Puede ser un error de digitación. Confirma el precio antes de enviar, o elige el de la última compra en la columna Proveedor.
           </p>
         </Alert>
       )}
       {!vistaCliente && !bloqueada && pendientes.length > 0 && (
         <Alert tone="warn" className="mb-4" title={`${pendientes.length} ítem${pendientes.length === 1 ? '' : 's'} con material sin proveedor`}>
-          Elige el proveedor en la columna “Proveedor” para cargar su precio neto del catálogo. Los ítems sin proveedor no generan orden de compra.
+          Elige el precio bajo el costo de cada material: así se asigna el proveedor y se carga su precio neto. Los materiales sin proveedor no generan orden de compra.
         </Alert>
       )}
 
@@ -160,8 +160,7 @@ export function CotizadorTab({ proyecto }: { proyecto: Proyecto }) {
                 vistaCliente={vistaCliente}
                 preciosCliente={cliente.secciones[idx]?.items}
                 totalCliente={cliente.secciones[idx]?.total}
-                onAgregarItem={() => setModal({ tipo: 'item', seccionId: s.id })}
-                onAgregarKit={() => setModal({ tipo: 'kit', seccionId: s.id })}
+                onAgregarKit={() => setKitPara({ seccionId: s.id })}
                 soloSeccion={v.secciones.length === 1}
                 bloqueada={bloqueada}
                 historico={historico}
@@ -301,8 +300,7 @@ export function CotizadorTab({ proyecto }: { proyecto: Proyecto }) {
         <ResumenBarra r={r} vistaCliente={vistaCliente} onPrecioFinal={fijarPrecioFinal} />
       </fieldset>
 
-      <AgregarItemModal open={modal?.tipo === 'item'} onClose={() => setModal(null)} proyectoId={proyecto.id} seccionId={modal?.seccionId ?? null} />
-      {modal?.tipo === 'kit' && <AgregarKitModal open onClose={() => setModal(null)} proyectoId={proyecto.id} seccionId={modal.seccionId} />}
+      {kitPara && <AgregarKitModal open onClose={() => setKitPara(null)} proyectoId={proyecto.id} seccionId={kitPara.seccionId} />}
     </div>
   )
 }

@@ -1,14 +1,15 @@
-import { useState } from 'react'
-import { Boxes, PackagePlus, Trash2 } from 'lucide-react'
-import { Button, IconButton, NumberInput, Select } from '@/components/ui'
+import { useState, type KeyboardEvent, type ReactNode } from 'react'
+import { Boxes, Package, Trash2, Wrench } from 'lucide-react'
+import { Badge, Button, IconButton, NumberInput } from '@/components/ui'
 import { NuevoProveedorModal } from '@/modules/catalogo/NuevosModales'
-import { itemMaterial, itemMO, itemSubtotal, totalesSeccion, type ItemCliente } from '@/lib/calc'
-import { precioNeto } from '@/lib/calc'
+import { esMaterial, itemMaterial, itemMO, itemSubtotal, totalesSeccion, type ItemCliente } from '@/lib/calc'
 import { cn } from '@/lib/cn'
-import { textoVariacion, ultimaCompra, UMBRAL_VARIACION_PRECIO, type CompraMaterial } from '@/lib/historico'
-import { fecha, money, moneyUnit, r3 } from '@/lib/format'
+import { ultimaCompra, type CompraMaterial } from '@/lib/historico'
+import { money, moneyUnit, r3, uid } from '@/lib/format'
 import { nombreProveedor, useStore } from '@/store/useStore'
-import type { ItemCotizacion, Seccion, Unidad } from '@/types'
+import type { ItemCotizacion, Seccion, Unidad, VersionCotizacion } from '@/types'
+import { FuentePrecio, SelectorPrecio } from './SelectorPrecio'
+import { AgregarEnLinea } from './AgregarEnLinea'
 
 interface Props {
   proyectoId: string
@@ -17,7 +18,6 @@ interface Props {
   vistaCliente: boolean
   preciosCliente?: ItemCliente[]
   totalCliente?: number
-  onAgregarItem: () => void
   onAgregarKit: () => void
   soloSeccion: boolean
   bloqueada?: boolean
@@ -27,46 +27,90 @@ interface Props {
 
 const celdaNum = 'px-2 py-2.5 text-right num whitespace-nowrap'
 const thBase = 'px-2 py-2 text-xs font-semibold tracking-wide text-slate-500 uppercase whitespace-nowrap'
-const NUEVO_PROVEEDOR = '__nuevo_proveedor__'
+// Una sola rejilla para encabezados y filas de los dos bloques: descripción, cantidad, precio unitario, total, quitar.
+const rejilla = 'grid grid-cols-[minmax(0,1fr)_132px_minmax(140px,176px)_104px_32px] gap-x-3 px-4'
+// Materiales suman la columna Proveedor después de la descripción; cantidad, precio y total quedan alineados con mano de obra.
+const rejillaMaterial = 'grid grid-cols-[minmax(0,1fr)_minmax(150px,210px)_132px_minmax(140px,176px)_104px_32px] gap-x-3 px-4'
+const UNIDAD: Record<Unidad, string> = { Un: 'un', Mts: 'm' }
+const etiquetaMO = (i: ItemCotizacion) => i.descripcionMO ?? `Instalación de ${i.descripcion}`
+/** Un material lleva mano de obra unida si tiene valor de instalación o si ya se le dio nombre a esa fila. */
+const tieneMOUnida = (i: ItemCotizacion) => i.vuMO > 0 || i.descripcionMO !== undefined
 
-export function TablaSeccion({ proyectoId, seccion, numeroInicial, vistaCliente, preciosCliente, totalCliente, onAgregarItem, onAgregarKit, soloSeccion, bloqueada, historico }: Props) {
+type FilaMO = { clave: string; item: ItemCotizacion; unida: boolean }
+
+export function TablaSeccion({ proyectoId, seccion, numeroInicial, vistaCliente, preciosCliente, totalCliente, onAgregarKit, soloSeccion, bloqueada, historico }: Props) {
   const editarVersion = useStore((s) => s.editarVersion)
   const t = totalesSeccion(seccion)
   const [confirmar, setConfirmar] = useState(false)
   const [itemParaNuevoProveedor, setItemParaNuevoProveedor] = useState<string | null>(null)
 
-  const renombrar = (nombre: string) =>
+  const materiales = seccion.items.filter(esMaterial)
+  // La mano de obra unida a un material aparece en el orden del material; la independiente, en el suyo.
+  const filasMO = seccion.items.flatMap<FilaMO>((i) =>
+    esMaterial(i) ? (tieneMOUnida(i) ? [{ clave: `mo-${i.id}`, item: i, unida: true }] : []) : [{ clave: i.id, item: i, unida: false }],
+  )
+  const pendientes =
+    materiales.filter((i) => i.vuMaterial <= 0 || !i.proveedorId).length + filasMO.filter((f) => !f.unida && f.item.vuMO <= 0).length
+
+  const conSeccion = (fn: (s: Seccion, v: VersionCotizacion) => void) =>
     editarVersion(proyectoId, (v) => {
       const s = v.secciones.find((x) => x.id === seccion.id)
-      if (s) s.nombre = nombre
+      if (s) fn(s, v)
     })
 
-  const eliminarSeccion = () =>
-    editarVersion(proyectoId, (v) => {
-      v.secciones = v.secciones.filter((x) => x.id !== seccion.id)
-    })
+  const agregar = (item: ItemCotizacion) => {
+    conSeccion((s) => void s.items.push(item))
+    // El evento que agrega es discreto: React ya pintó la fila cuando corre el timeout.
+    setTimeout(() => {
+      const el = document.getElementById(`cant-${item.id}`) as HTMLInputElement | null
+      el?.focus()
+    }, 0)
+  }
+
+  // Enter baja al mismo campo de la fila siguiente, como en la hoja de Excel que reemplaza.
+  const bajarConEnter = (e: KeyboardEvent<HTMLElement>) => {
+    const el = e.target as HTMLElement
+    const col = el.dataset.col
+    if (e.key !== 'Enter' || !col || el.tagName !== 'INPUT') return
+    e.preventDefault()
+    const campos = [...document.querySelectorAll<HTMLInputElement>(`input[data-col="${col}"]:not(:disabled)`)]
+    campos[campos.indexOf(el as HTMLInputElement) + 1]?.focus()
+  }
 
   return (
-    <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-xs" aria-label={`Sección ${seccion.nombre}`}>
-      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-slate-50/70 px-4 py-2.5">
+    <section className="rounded-lg border border-slate-200 bg-white shadow-xs" aria-label={`Sección ${seccion.nombre}`}>
+      <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-t-lg border-b border-slate-200 px-4 py-3">
         {vistaCliente ? (
-          <h3 className="text-sm font-semibold text-slate-900">{seccion.nombre}</h3>
+          <h3 className="text-[15px] font-semibold text-slate-900">{seccion.nombre}</h3>
         ) : (
           <input
             value={seccion.nombre}
-            onChange={(e) => renombrar(e.target.value)}
+            onChange={(e) => conSeccion((s) => void (s.nombre = e.target.value))}
             aria-label="Nombre de la sección"
-            className="-ml-1.5 min-w-0 flex-1 rounded px-1.5 py-1 text-sm font-semibold text-slate-900 hover:bg-white focus:bg-white focus:ring-2 focus:ring-brand-600/25 focus:outline-none"
+            className="-ml-1.5 min-w-0 flex-1 rounded-md border border-transparent px-1.5 py-1 text-[15px] font-semibold text-slate-900 hover:border-slate-300 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/25 focus:outline-none"
           />
         )}
-        <div className="flex items-center gap-3">
-          <span className="text-xs text-slate-500">Subtotal sección</span>
-          <span className="num text-sm font-semibold text-slate-900">{money(vistaCliente ? totalCliente : t.subtotal)}</span>
+        <div className="flex items-center gap-4">
+          {!vistaCliente && !bloqueada && seccion.items.length > 0 && (
+            pendientes > 0 ? (
+              <Badge tone="warn" dot>
+                {pendientes} {pendientes === 1 ? 'ítem pendiente' : 'ítems pendientes'}
+              </Badge>
+            ) : (
+              <Badge tone="ok" dot>
+                Precios completos
+              </Badge>
+            )
+          )}
+          <div className="text-right leading-tight">
+            <span className="block text-xs text-slate-500">Total sección</span>
+            <span className="num text-base font-semibold text-slate-900">{money(vistaCliente ? totalCliente : t.subtotal)}</span>
+          </div>
           {!vistaCliente && !soloSeccion && !bloqueada && (
             confirmar ? (
               <span className="flex items-center gap-1">
-                <Button size="sm" variant="danger" onClick={eliminarSeccion}>
-                  Eliminar
+                <Button size="sm" variant="danger" onClick={() => editarVersion(proyectoId, (v) => void (v.secciones = v.secciones.filter((x) => x.id !== seccion.id)))}>
+                  Eliminar sección
                 </Button>
                 <Button size="sm" variant="ghost" onClick={() => setConfirmar(false)}>
                   Cancelar
@@ -81,295 +125,344 @@ export function TablaSeccion({ proyectoId, seccion, numeroInicial, vistaCliente,
         </div>
       </header>
 
-      {!vistaCliente && <TarjetasItems items={seccion.items} numeroInicial={numeroInicial} />}
-      <div className={cn('overflow-x-auto', !vistaCliente && 'hidden md:block')}>
-        {vistaCliente ? (
+      {vistaCliente ? (
+        <div className="overflow-x-auto">
           <TablaCliente items={preciosCliente ?? []} numeroInicial={numeroInicial} />
-        ) : (
-          <table className="w-full min-w-[1000px] table-fixed text-[13px]">
-            {/* Con table-fixed los anchos salen de aquí: el encabezado agrupado no los puede dar. */}
-            <colgroup>
-              <col className="w-8" />
-              <col />
-              <col className="w-[60px]" />
-              <col className="w-[64px]" />
-              <col className="w-[92px]" />
-              <col className="w-[92px]" />
-              <col className="w-[92px]" />
-              <col className="w-[96px]" />
-              <col className="w-[236px]" />
-              <col className="w-[100px]" />
-              <col className="w-8" />
-            </colgroup>
-            <thead className="border-b border-slate-200">
-              {/* Encabezado en dos niveles: qué se cobra (mano de obra) y qué se compra (material), cada uno por unidad y en total. */}
-              <tr>
-                <th rowSpan={2} className={cn(thBase, 'text-left align-bottom')}>#</th>
-                <th rowSpan={2} className={cn(thBase, 'text-left align-bottom')}>Descripción</th>
-                <th rowSpan={2} className={cn(thBase, 'text-left align-bottom')}>Unidad</th>
-                <th rowSpan={2} className={cn(thBase, 'text-right align-bottom')}>Cant.</th>
-                <th colSpan={2} scope="colgroup" className={cn(thBase, 'border-b border-slate-200 pb-1 text-center')} title="Lo que cobra Infrasoft por instalar">
-                  Mano de obra
-                </th>
-                <th colSpan={2} scope="colgroup" className={cn(thBase, 'border-b border-slate-200 pb-1 text-center')} title="Lo que cuesta comprar el material al proveedor">
-                  Material (costo)
-                </th>
-                <th rowSpan={2} className={cn(thBase, 'text-left align-bottom')}>Proveedor</th>
-                <th rowSpan={2} className={cn(thBase, 'text-right align-bottom')} title="Mano de obra + material, sin utilidad ni otros costos">
-                  Subtotal
-                </th>
-                <th rowSpan={2} />
-              </tr>
-              <tr>
-                <th className={cn(thBase, 'pt-1 text-right')} title="Mano de obra por cada unidad">Unitario</th>
-                <th className={cn(thBase, 'pt-1 text-right')} title="Mano de obra × cantidad">Total</th>
-                <th className={cn(thBase, 'pt-1 text-right')} title="Precio de compra por unidad, según el proveedor elegido">Unitario</th>
-                <th className={cn(thBase, 'pt-1 text-right')} title="Precio de compra × cantidad">Total</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {seccion.items.map((item, idx) => (
-                <FilaItem
+        </div>
+      ) : (
+        <>
+          <TarjetasItems items={seccion.items} numeroInicial={numeroInicial} />
+          <div className="hidden md:block" onKeyDown={bajarConEnter}>
+            <Bloque
+              icono={<Package />}
+              titulo="Materiales"
+              ayuda="lo que se compra"
+              precio="Costo unitario"
+              vacio="Sin materiales."
+              conProveedor
+              pie={!bloqueada && <AgregarEnLinea tipo="material" onAgregar={agregar} />}
+            >
+              {materiales.map((item) => (
+                <FilaMaterial
                   key={item.id}
                   proyectoId={proyectoId}
                   item={item}
-                  numero={numeroInicial + idx}
                   bloqueada={bloqueada}
                   // En una versión bloqueada no aplica: compararía lo ya vendido con compras posteriores.
                   compra={bloqueada ? undefined : ultimaCompra(historico, item.materialId, proyectoId)}
                   onNuevoProveedor={() => setItemParaNuevoProveedor(item.id)}
                 />
               ))}
-              {seccion.items.length === 0 && (
-                <tr>
-                  <td colSpan={11} className="px-4 py-8 text-center text-sm text-slate-500">
-                    Esta sección no tiene ítems. Agrega uno desde el catálogo o un kit predefinido.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-            <tfoot className="border-t border-slate-200 bg-slate-50/70 text-[13px] font-medium">
-              <tr>
-                <td colSpan={5} className="px-2 py-2 text-right text-xs text-slate-500">
-                  Totales sección
-                </td>
-                <td className={celdaNum}>{money(t.mo)}</td>
-                <td />
-                <td className={celdaNum}>{money(t.material)}</td>
-                <td />
-                <td className={cn(celdaNum, 'font-semibold text-slate-900')}>{money(t.subtotal)}</td>
-                <td />
-              </tr>
-            </tfoot>
-          </table>
-        )}
-      </div>
+            </Bloque>
+            <Bloque
+              icono={<Wrench />}
+              titulo="Mano de obra"
+              ayuda="lo que cobra Infrasoft"
+              precio="Valor unitario"
+              vacio="Sin mano de obra."
+              pie={!bloqueada && <AgregarEnLinea tipo="mo" onAgregar={agregar} />}
+              separado
+            >
+              {filasMO.map((f) => (
+                <FilaManoObra key={f.clave} proyectoId={proyectoId} seccionId={seccion.id} fila={f} materiales={materiales} bloqueada={bloqueada} />
+              ))}
+            </Bloque>
+          </div>
+        </>
+      )}
 
-      {!vistaCliente && !bloqueada && (
-        <footer className="flex flex-wrap gap-2 border-t border-slate-200 px-3 py-2.5">
-          <Button size="sm" variant="ghost" icon={<PackagePlus />} onClick={onAgregarItem} className="text-brand-800 hover:bg-brand-50 hover:text-brand-900">
-            Agregar ítem
-          </Button>
-          <Button size="sm" variant="ghost" icon={<Boxes />} onClick={onAgregarKit} className="text-brand-800 hover:bg-brand-50 hover:text-brand-900">
-            Agregar kit
-          </Button>
+      {!vistaCliente && (
+        <footer className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 rounded-b-lg border-t border-slate-200 bg-slate-50 px-4 py-2.5">
+          {!bloqueada ? (
+            <Button size="sm" variant="ghost" icon={<Boxes />} onClick={onAgregarKit} className="-ml-1 text-brand-800 hover:bg-brand-50 hover:text-brand-900">
+              Agregar kit
+            </Button>
+          ) : (
+            <span />
+          )}
+          <dl className="num flex flex-wrap items-baseline gap-x-6 gap-y-1 text-[13px]">
+            <Total etiqueta="Materiales" valor={t.material} />
+            <Total etiqueta="Mano de obra" valor={t.mo} />
+            <Total etiqueta="Total sección" valor={t.subtotal} fuerte />
+          </dl>
         </footer>
       )}
+
       {itemParaNuevoProveedor && (
         <NuevoProveedorModal
           onClose={() => setItemParaNuevoProveedor(null)}
-          onCreado={(proveedorId) => {
-            const itemId = itemParaNuevoProveedor
-            useStore.getState().asignarProveedor(proyectoId, itemId, proveedorId)
-          }}
+          onCreado={(proveedorId) => useStore.getState().asignarProveedor(proyectoId, itemParaNuevoProveedor, proveedorId)}
         />
       )}
     </section>
   )
 }
 
-function FilaItem({
-  proyectoId,
-  item,
-  numero,
-  bloqueada,
-  compra,
-  onNuevoProveedor,
-}: {
-  proyectoId: string
-  item: ItemCotizacion
-  numero: number
-  bloqueada?: boolean
-  compra?: CompraMaterial
-  onNuevoProveedor: () => void
-}) {
-  const editarVersion = useStore((s) => s.editarVersion)
-  const asignarProveedor = useStore((s) => s.asignarProveedor)
-  const proveedores = useStore((s) => s.proveedores)
-  const precios = useStore((s) => s.precios)
+function Total({ etiqueta, valor, fuerte }: { etiqueta: string; valor: number; fuerte?: boolean }) {
+  return (
+    <div className="flex items-baseline gap-2">
+      <dt className="text-slate-500">{etiqueta}</dt>
+      <dd className={cn('m-0', fuerte ? 'font-semibold text-slate-900' : 'font-medium text-slate-800')}>{money(valor)}</dd>
+    </div>
+  )
+}
 
-  const editar = (fn: (i: ItemCotizacion) => void) =>
+function Bloque({ icono, titulo, ayuda, precio, vacio, pie, separado, conProveedor, children }: { icono: ReactNode; titulo: string; ayuda: string; precio: string; vacio: string; pie: ReactNode; separado?: boolean; conProveedor?: boolean; children: ReactNode[] }) {
+  return (
+    <div role="group" aria-label={titulo} className={cn('pb-3', separado && 'border-t border-slate-200')}>
+      <div className={cn(conProveedor ? rejillaMaterial : rejilla, 'items-end pt-3.5 pb-1.5 text-xs font-semibold tracking-wide text-slate-500 uppercase')}>
+        <div className="flex items-center gap-2 text-slate-900 [&>svg]:size-4 [&>svg]:text-brand-700">
+          {icono}
+          {titulo}
+          <span className="font-normal tracking-normal text-slate-500 normal-case">· {ayuda}</span>
+        </div>
+        {conProveedor && <div>Proveedor</div>}
+        <div className="text-right">Cantidad</div>
+        <div className="text-right">{precio}</div>
+        <div className="text-right">Total</div>
+        <div />
+      </div>
+      {children.length > 0 ? <div>{children}</div> : <p className="px-4 py-2 text-[13px] text-slate-500">{vacio}</p>}
+      {pie && <div className="px-4 pt-2">{pie}</div>}
+    </div>
+  )
+}
+
+/** Campos de la fila: sin borde hasta que se pasa el cursor, para que la tabla se lea como tabla y no como formulario. */
+const campo =
+  'h-8 border-transparent bg-transparent px-2 text-[13px] shadow-none hover:border-slate-300 hover:bg-white focus:bg-white disabled:border-transparent disabled:bg-transparent disabled:text-slate-800'
+
+function Descripcion({ valor, onChange, etiqueta }: { valor: string; onChange: (v: string) => void; etiqueta: string }) {
+  // Se ajusta en varias líneas en vez de cortarse: hay que poder leer qué ítem es cada fila.
+  return (
+    <textarea
+      rows={1}
+      value={valor}
+      onChange={(e) => onChange(e.target.value)}
+      aria-label={etiqueta}
+      className="block min-h-8 w-full min-w-0 resize-none rounded-md border border-transparent px-2 py-[7px] text-[13px] leading-snug text-slate-900 [field-sizing:content] hover:border-slate-300 hover:bg-white focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-500/25 focus:outline-none disabled:bg-transparent"
+    />
+  )
+}
+
+function Cantidad({ id, valor, unidad, onChange, onUnidad, disabled, etiqueta }: { id: string; valor: number; unidad: Unidad; onChange?: (n: number) => void; onUnidad?: () => void; disabled?: boolean; etiqueta: string }) {
+  return (
+    <div className="relative">
+      <NumberInput id={`cant-${id}`} data-col="cant" value={valor} onChange={(n) => onChange?.(n ?? 0)} disabled={disabled} aria-label={etiqueta} inputClassName={cn(campo, 'pr-10')} />
+      <button
+        type="button"
+        onClick={onUnidad}
+        disabled={disabled || !onUnidad}
+        title="Cambiar unidad"
+        aria-label={`Unidad: ${unidad === 'Un' ? 'unidades' : 'metros'}. Cambiar`}
+        className="absolute top-1/2 right-1 h-6 min-w-8 -translate-y-1/2 cursor-pointer rounded bg-slate-100 px-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-brand-100 hover:text-brand-900 disabled:cursor-default disabled:bg-transparent disabled:hover:text-slate-600"
+      >
+        {UNIDAD[unidad]}
+      </button>
+    </div>
+  )
+}
+
+function TotalFila({ valor, falta, texto }: { valor: number; falta: boolean; texto: string }) {
+  return falta ? (
+    <div className="pt-[7px] text-right text-[13px] font-medium whitespace-nowrap text-amber-800">{texto}</div>
+  ) : (
+    <div className="num pt-[7px] text-right text-[13px] font-medium whitespace-nowrap text-slate-900">{money(valor)}</div>
+  )
+}
+
+function useEditarItem(proyectoId: string) {
+  const editarVersion = useStore((s) => s.editarVersion)
+  return (itemId: string, fn: (i: ItemCotizacion, s: Seccion) => void) =>
     editarVersion(proyectoId, (v) => {
       for (const s of v.secciones) {
-        const i = s.items.find((x) => x.id === item.id)
-        if (i) return fn(i)
+        const i = s.items.find((x) => x.id === itemId)
+        if (i) return fn(i, s)
+      }
+    })
+}
+
+function FilaMaterial({ proyectoId, item, bloqueada, compra, onNuevoProveedor }: { proyectoId: string; item: ItemCotizacion; bloqueada?: boolean; compra?: CompraMaterial; onNuevoProveedor: () => void }) {
+  const editar = useEditarItem(proyectoId)
+  const asignarProveedor = useStore((s) => s.asignarProveedor)
+  const sinPrecio = item.vuMaterial <= 0
+
+  // Al terminar de digitar el costo de un proveedor que no tenía precio para este material, queda en su catálogo
+  // para las próximas cotizaciones. Un precio que ya existía no se pisa: puede ser un precio negociado solo para este proyecto.
+  const guardarEnCatalogo = () => {
+    const { precios, proveedores, guardarPrecioDigitado, notificar } = useStore.getState()
+    const { materialId, proveedorId, vuMaterial } = item
+    if (!materialId || !proveedorId || vuMaterial <= 0) return
+    if (precios.some((p) => p.materialId === materialId && p.proveedorId === proveedorId)) return
+    guardarPrecioDigitado(materialId, proveedorId, vuMaterial)
+    notificar(`${moneyUnit(vuMaterial)} quedó en el catálogo de ${nombreProveedor(proveedores, proveedorId)} para ${item.descripcion}`)
+  }
+
+  return (
+    <div className={cn(rejillaMaterial, 'group items-start py-1.5 transition-colors hover:bg-slate-50/70')}>
+      <Descripcion valor={item.descripcion} onChange={(d) => editar(item.id, (i) => void (i.descripcion = d))} etiqueta="Descripción del material" />
+      <SelectorPrecio
+        item={item}
+        compra={compra}
+        bloqueada={bloqueada}
+        onNuevoProveedor={onNuevoProveedor}
+        onElegir={(proveedorId, precio) => {
+          if (precio === undefined) asignarProveedor(proyectoId, item.id, proveedorId)
+          else
+            editar(item.id, (i) => {
+              i.proveedorId = proveedorId
+              i.vuMaterial = precio
+            })
+        }}
+      />
+      <Cantidad
+        id={item.id}
+        valor={item.cantidad}
+        unidad={item.unidad}
+        onChange={(n) => editar(item.id, (i) => void (i.cantidad = n))}
+        onUnidad={() => editar(item.id, (i) => void (i.unidad = i.unidad === 'Un' ? 'Mts' : 'Un'))}
+        etiqueta={`Cantidad de ${item.descripcion}`}
+      />
+      <div className="min-w-0" onBlur={bloqueada ? undefined : guardarEnCatalogo}>
+        <NumberInput
+          data-col="precio"
+          value={sinPrecio ? null : item.vuMaterial}
+          allowEmpty
+          decimals={3}
+          prefix="$"
+          placeholder="Falta"
+          onChange={(n) => editar(item.id, (i) => void (i.vuMaterial = r3(n ?? 0)))}
+          aria-label={`Costo unitario de ${item.descripcion}`}
+          inputClassName={cn(campo, sinPrecio && !bloqueada && 'border-amber-200 bg-amber-50/70 placeholder:text-amber-700')}
+        />
+        {!bloqueada && <FuentePrecio item={item} compra={compra} />}
+      </div>
+      <TotalFila valor={itemMaterial(item)} falta={sinPrecio} texto="Falta precio" />
+      <Quitar bloqueada={bloqueada} etiqueta={`Quitar ${item.descripcion}${tieneMOUnida(item) ? ' y su instalación' : ''}`} onClick={() => editar(item.id, (_, s) => void (s.items = s.items.filter((x) => x.id !== item.id)))} />
+    </div>
+  )
+}
+
+function FilaManoObra({ proyectoId, seccionId, fila, materiales, bloqueada }: { proyectoId: string; seccionId: string; fila: FilaMO; materiales: ItemCotizacion[]; bloqueada?: boolean }) {
+  const editar = useEditarItem(proyectoId)
+  const editarVersion = useStore((s) => s.editarVersion)
+  const { item, unida } = fila
+  const descripcion = unida ? etiquetaMO(item) : item.descripcion
+  const sinValor = item.vuMO <= 0
+
+  const conSeccion = (fn: (s: Seccion) => void) =>
+    editarVersion(proyectoId, (v) => {
+      const s = v.secciones.find((x) => x.id === seccionId)
+      if (s) fn(s)
+    })
+
+  /** Cambiar de dónde sale la cantidad: de un material de la sección (queda unida a él) o propia. */
+  const vincular = (materialId: string) =>
+    conSeccion((s) => {
+      const origen = s.items.find((x) => x.id === item.id)
+      if (!origen) return
+      const destino = materialId ? s.items.find((x) => x.id === materialId) : undefined
+      if (destino?.id === origen.id) return
+      const nombre = unida ? etiquetaMO(origen) : origen.descripcion
+      if (destino) {
+        destino.vuMO = origen.vuMO
+        destino.descripcionMO = nombre
+      }
+      if (unida) {
+        if (!destino)
+          s.items.splice(s.items.indexOf(origen) + 1, 0, {
+            id: uid('it'),
+            tipo: 'mo',
+            descripcion: nombre,
+            unidad: origen.unidad,
+            cantidad: origen.cantidad,
+            vuMO: origen.vuMO,
+            vuMaterial: 0,
+            proveedorId: null,
+            cantInstalada: origen.cantInstalada,
+          })
+        origen.vuMO = 0
+        delete origen.descripcionMO
+      } else if (destino) {
+        s.items = s.items.filter((x) => x.id !== origen.id)
       }
     })
 
-  const eliminar = () =>
-    editarVersion(proyectoId, (v) => {
-      for (const s of v.secciones) s.items = s.items.filter((x) => x.id !== item.id)
-    })
-
-  const conPrecio = item.materialId ? precios.filter((p) => p.materialId === item.materialId) : []
-  const catalogo = item.proveedorId ? conPrecio.find((p) => p.proveedorId === item.proveedorId) : undefined
-  const otros = proveedores.filter((p) => !conPrecio.some((c) => c.proveedorId === p.id))
-  const sinProveedor = !item.proveedorId && item.vuMaterial > 0
-  const celdaInput = 'h-8 text-[13px] px-2 shadow-none border-transparent bg-transparent hover:border-slate-300 hover:bg-white focus:bg-white disabled:border-transparent disabled:bg-transparent disabled:text-slate-800'
+  const quitar = () =>
+    unida
+      ? editar(item.id, (i) => {
+          i.vuMO = 0
+          delete i.descripcionMO
+        })
+      : editar(item.id, (_, s) => void (s.items = s.items.filter((x) => x.id !== item.id)))
 
   return (
-    <tr className="group align-top hover:bg-slate-50/60">
-      <td className="num px-2 py-2 text-slate-500">{numero}</td>
-      <td className="px-1 py-1">
-        {/* La descripción se ajusta en varias líneas en vez de cortarse: hay que poder leer qué ítem es cada fila. */}
-        <textarea
-          rows={1}
-          value={item.descripcion}
-          onChange={(e) => editar((i) => (i.descripcion = e.target.value))}
-          aria-label={`Descripción ítem ${numero}`}
-          className="block min-h-8 w-full min-w-0 resize-none rounded-md border border-transparent px-1.5 py-[7px] text-[13px] leading-snug text-slate-900 [field-sizing:content] hover:border-slate-300 hover:bg-white focus:border-brand-700 focus:bg-white focus:ring-2 focus:ring-brand-600/25 focus:outline-none disabled:bg-transparent"
+    <div className={cn(rejilla, 'group items-start py-1.5 transition-colors hover:bg-slate-50/70')}>
+      <Descripcion
+        valor={descripcion}
+        onChange={(d) => editar(item.id, (i) => void (unida ? (i.descripcionMO = d) : (i.descripcion = d)))}
+        etiqueta="Descripción de la mano de obra"
+      />
+      <div className="min-w-0">
+        <Cantidad
+          id={unida ? `mo-${item.id}` : item.id}
+          valor={item.cantidad}
+          unidad={item.unidad}
+          disabled={unida}
+          onChange={(n) => editar(item.id, (i) => void (i.cantidad = n))}
+          onUnidad={unida ? undefined : () => editar(item.id, (i) => void (i.unidad = i.unidad === 'Un' ? 'Mts' : 'Un'))}
+          etiqueta={`Cantidad de ${descripcion}`}
         />
-      </td>
-      <td className="px-1 py-1">
-        <Select
-          value={item.unidad}
-          onChange={(e) => editar((i) => (i.unidad = e.target.value as Unidad))}
-          aria-label={`Unidad ítem ${numero}`}
-          className={cn(celdaInput, 'pr-5! pl-1.5! bg-[right_2px_center]')}
-        >
-          <option value="Un">Un</option>
-          <option value="Mts">Mts</option>
-        </Select>
-      </td>
-      <td className="px-1 py-1">
-        <NumberInput value={item.cantidad} onChange={(n) => editar((i) => (i.cantidad = n ?? 0))} aria-label={`Cantidad ítem ${numero}`} inputClassName={celdaInput} />
-      </td>
-      <td className="px-1 py-1">
-        <NumberInput value={item.vuMO} decimals={3} onChange={(n) => editar((i) => (i.vuMO = r3(n ?? 0)))} aria-label={`Valor unitario mano de obra ítem ${numero}`} inputClassName={celdaInput} />
-      </td>
-      <td className={cn(celdaNum, item.vuMO === 0 ? 'text-slate-500' : 'text-slate-700')}>{money(itemMO(item))}</td>
-      <td className="px-1 py-1">
-        <NumberInput value={item.vuMaterial} decimals={3} onChange={(n) => editar((i) => (i.vuMaterial = r3(n ?? 0)))} aria-label={`Valor unitario material ítem ${numero}`} inputClassName={celdaInput} />
-      </td>
-      <td className={cn(celdaNum, item.vuMaterial === 0 ? 'text-slate-500' : 'text-slate-700')}>{money(itemMaterial(item))}</td>
-      <td className="px-1 py-1">
-        <Select
-          value={item.proveedorId ?? ''}
-          onChange={(e) => {
-            if (e.target.value === NUEVO_PROVEEDOR) {
-              onNuevoProveedor()
-              return
-            }
-            asignarProveedor(proyectoId, item.id, e.target.value || null)
-          }}
-          aria-label={`Proveedor ítem ${numero}`}
-          className={cn(
-            'h-8 text-[13px] shadow-none disabled:border-transparent disabled:bg-transparent disabled:text-slate-700',
-            sinProveedor ? 'border-amber-300 bg-amber-50 text-amber-900 hover:border-amber-400' : 'border-slate-200',
-            !item.proveedorId && !sinProveedor && 'text-slate-500',
-          )}
-        >
-          <option value="">Sin asignar</option>
-          <option value={NUEVO_PROVEEDOR}>+ Agregar proveedor...</option>
-          {conPrecio.length > 0 && (
-            <optgroup label="Con precio en catálogo">
-              {conPrecio.map((pp) => (
-                <option key={pp.id} value={pp.proveedorId}>
-                  {proveedores.find((p) => p.id === pp.proveedorId)?.nombre.replace(/ S\.A\.S?\.?$/, '')} · {moneyUnit(precioNeto(pp))}
-                </option>
-              ))}
-            </optgroup>
-          )}
-          <optgroup label={conPrecio.length ? 'Otros proveedores' : 'Proveedores'}>
-            {otros.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.nombre.replace(/ S\.A\.S?\.?$/, '')}
+        {bloqueada ? (
+          unida && <p className="mt-1 truncate px-1 text-xs leading-[18px] text-slate-500">Igual al material</p>
+        ) : (
+          <select
+            value={unida ? item.id : ''}
+            onChange={(e) => vincular(e.target.value)}
+            aria-label={`De dónde sale la cantidad de ${descripcion}`}
+            className={cn(
+              'mt-1 w-full cursor-pointer truncate rounded border-0 bg-transparent px-1 py-px text-xs leading-[18px] hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-brand-500/50 focus-visible:outline-none',
+              unida ? 'font-medium text-brand-800' : 'text-slate-500',
+            )}
+          >
+            <option value="">Cantidad propia</option>
+            {materiales.map((m) => (
+              <option key={m.id} value={m.id} disabled={m.id !== item.id && tieneMOUnida(m)}>
+                {m.id === item.id ? 'Igual al material' : `Igual a ${m.descripcion}`}
               </option>
             ))}
-          </optgroup>
-        </Select>
-        {!bloqueada && (
-          <ReferenciasPrecio
-            numero={numero}
-            vu={item.vuMaterial}
-            catalogo={catalogo && precioNeto(catalogo)}
-            compra={compra}
-            onUsar={(precio) => editar((i) => (i.vuMaterial = r3(precio)))}
-          />
+          </select>
         )}
-      </td>
-      <td className={cn(celdaNum, 'font-medium text-slate-900')}>{money(itemSubtotal(item))}</td>
-      <td className="px-1 py-1 text-right">
-        {!bloqueada && <IconButton label={`Eliminar ítem ${numero}`} onClick={eliminar} className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:text-red-700">
-          <Trash2 />
-        </IconButton>}
-      </td>
-    </tr>
-  )
-}
-
-/**
- * Precios de referencia del material bajo el proveedor: el neto vigente del catálogo (solo si el unitario ya no coincide,
- * p. ej. porque el precio del proveedor cambió) y la última compra real. Cada uno se aplica al unitario con un clic.
- */
-function ReferenciasPrecio({ numero, vu, catalogo, compra, onUsar }: { numero: number; vu: number; catalogo?: number; compra?: CompraMaterial; onUsar: (precio: number) => void }) {
-  const proveedores = useStore((s) => s.proveedores)
-  const proyecto = useStore((s) => s.proyectos.find((p) => p.id === compra?.proyectoId))
-  const distinto = (precio: number) => precio > 0 && r3(precio) !== r3(vu)
-  const verCatalogo = catalogo !== undefined && distinto(catalogo)
-  if (!verCatalogo && !compra) return null
-
-  const variacion = compra && vu > 0 && compra.precio > 0 ? (vu - compra.precio) / compra.precio : 0
-  const fuera = Math.abs(variacion) >= UMBRAL_VARIACION_PRECIO
-  const detalleCompra = compra && `${compra.factura ? `Factura ${compra.factura}` : `OC ${compra.ocConsecutivo} (sin factura)`} · ${nombreProveedor(proveedores, compra.proveedorId)} · ${proyecto?.codigo ?? ''} · ${fecha(compra.fecha)}`
-  return (
-    <div className="mt-0.5 space-y-px px-1 text-[11px] leading-5">
-      {verCatalogo && (
-        <Referencia etiqueta="Catálogo" precio={catalogo} title="Precio neto vigente del proveedor elegido: cambió desde que se cotizó este ítem" numero={numero} onUsar={onUsar} destacar />
-      )}
-      {compra && (
-        <Referencia
-          etiqueta="Última compra"
-          precio={compra.precio}
-          variacion={fuera ? variacion : undefined}
-          title={detalleCompra}
-          numero={numero}
-          onUsar={distinto(compra.precio) ? onUsar : undefined}
-          destacar={fuera}
-        />
-      )}
+      </div>
+      <NumberInput
+        data-col="precio"
+        value={sinValor ? null : item.vuMO}
+        allowEmpty
+        decimals={3}
+        prefix="$"
+        placeholder="Falta"
+        onChange={(n) =>
+          editar(item.id, (i) => {
+            // Al editar la instalación de un material se fija su nombre: así la fila no desaparece si el valor queda en 0.
+            if (unida && i.descripcionMO === undefined) i.descripcionMO = etiquetaMO(i)
+            i.vuMO = r3(n ?? 0)
+          })
+        }
+        aria-label={`Valor unitario de ${descripcion}`}
+        inputClassName={cn(campo, sinValor && !bloqueada && 'border-amber-200 bg-amber-50/70 placeholder:text-amber-700')}
+      />
+      <TotalFila valor={itemMO(item)} falta={sinValor} texto="Falta valor" />
+      <Quitar bloqueada={bloqueada} etiqueta={`Quitar ${descripcion}`} onClick={quitar} />
     </div>
   )
 }
 
-function Referencia({ etiqueta, precio, variacion, title, numero, onUsar, destacar }: { etiqueta: string; precio: number; variacion?: number; title?: string; numero: number; onUsar?: (precio: number) => void; destacar?: boolean }) {
+function Quitar({ bloqueada, etiqueta, onClick }: { bloqueada?: boolean; etiqueta: string; onClick: () => void }) {
+  if (bloqueada) return <div />
   return (
-    <div className={cn('flex items-center gap-2', destacar ? 'text-amber-800' : 'text-slate-500')}>
-      <span title={title} className={cn('num min-w-0 truncate', destacar && 'font-medium')}>
-        {etiqueta} {moneyUnit(precio)}
-        {variacion !== undefined && ` · ${textoVariacion(variacion)}`}
-      </span>
-      {onUsar && (
-        <button
-          type="button"
-          onClick={() => onUsar(precio)}
-          aria-label={`Usar ${moneyUnit(precio)} (${etiqueta.toLowerCase()}) como unitario de material del ítem ${numero}`}
-          className="-my-0.5 ml-auto shrink-0 cursor-pointer rounded px-1.5 py-0.5 font-medium text-brand-800 transition-colors hover:bg-brand-50 hover:text-brand-900 focus-visible:ring-2 focus-visible:ring-brand-600/40 focus-visible:outline-none active:bg-brand-100"
-        >
-          Usar
-        </button>
-      )}
-    </div>
+    <IconButton label={etiqueta} onClick={onClick} className="text-slate-400 hover:text-red-700">
+      <Trash2 />
+    </IconButton>
   )
 }
 
