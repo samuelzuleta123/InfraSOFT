@@ -161,9 +161,26 @@ export function CotizadorTab({ proyecto }: { proyecto: Proyecto }) {
 
           {!vistaCliente && (
             <Card>
-              <CardHeader title="Parámetros de precio" description="Los digita el usuario. Vacío equivale a 0 %." />
+              <CardHeader
+                title="Cómo se calcula el precio al cliente"
+                description="Costo total + utilidad + otros ajustes = precio sugerido. Vacío equivale a 0 %; el precio final se puede cambiar abajo."
+              />
               <div className="grid gap-4 p-5 sm:grid-cols-2">
-                <Field label="% utilidad" htmlFor="utilidad">
+                <Field
+                  label="% utilidad"
+                  htmlFor="utilidad"
+                  hint={
+                    <>
+                      Lo que gana Infrasoft. Se calcula sobre el costo total de <span className="num">{money(r.costo)}</span>
+                      {r.utilidadPct > 0 && (
+                        <>
+                          : <span className="num font-medium text-slate-700">{money(r.utilidadSugerida)}</span>
+                        </>
+                      )}
+                      .
+                    </>
+                  }
+                >
                   <NumberInput
                     id="utilidad"
                     value={v.utilidadPct}
@@ -173,7 +190,21 @@ export function CotizadorTab({ proyecto }: { proyecto: Proyecto }) {
                     onChange={(n) => editarVersion(proyecto.id, (ver) => void (ver.utilidadPct = n))}
                   />
                 </Field>
-                <Field label="% otros ajustes" htmlFor="ajustes" hint="Comisiones, retenciones u otros.">
+                <Field
+                  label="% otros ajustes"
+                  htmlFor="ajustes"
+                  hint={
+                    <>
+                      Lo que se descuenta del precio y no es ganancia: comisiones, retenciones o impuestos. Se suma sobre costo + utilidad
+                      {r.ajustesPct > 0 && (
+                        <>
+                          : <span className="num font-medium text-slate-700">{money(r.ajustesSugeridos)}</span>
+                        </>
+                      )}
+                      .
+                    </>
+                  }
+                >
                   <NumberInput
                     id="ajustes"
                     value={v.ajustesPct}
@@ -184,6 +215,14 @@ export function CotizadorTab({ proyecto }: { proyecto: Proyecto }) {
                   />
                 </Field>
               </div>
+              <p className="num flex flex-wrap items-baseline gap-x-2 gap-y-1 border-t border-slate-200 bg-slate-50 px-5 py-3 text-[13px] text-slate-500">
+                <span>Costo {money(r.costo)}</span>
+                <span>+ utilidad {money(r.utilidadSugerida)}</span>
+                <span>+ ajustes {money(r.ajustesSugeridos)}</span>
+                <span>
+                  = precio sugerido <span className="font-semibold text-slate-900">{money(r.precioSugerido)}</span>
+                </span>
+              </p>
             </Card>
           )}
 

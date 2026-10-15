@@ -4,6 +4,7 @@ import { immer } from 'zustand/middleware/immer'
 import { clientes, historialPrecios, kits, materiales, precios, proveedores } from '@/data/catalogo'
 import { facturasProveedor, ordenesCompra } from '@/data/compras'
 import { proyectos } from '@/data/proyectos'
+import { fotoGenerica } from '@/data/fotosGenericas'
 import { clientesDemo, facturasDemo, ordenesDemo, proyectosDemo } from '@/data/demo'
 import { precioNeto, versionActiva, versionVigente } from '@/lib/calc'
 import { formatoConsecutivoOC, generarOrdenes } from '@/lib/compras'
@@ -95,10 +96,12 @@ interface State {
 const clonar = <T,>(x: T): T => JSON.parse(JSON.stringify(x))
 
 /**
+ * Datos de prueba al cargar: toda foto sin imagen propia recibe una foto genérica según su título.
  * La cotización ya no se divide en secciones: cada versión tiene una sola lista de ítems (materiales y mano de obra).
  * Las versiones con varias secciones se unen conservando el orden de los ítems.
  */
-const unificarSecciones = (lista: Proyecto[]) => {
+const prepararDatos = (lista: Proyecto[]) => {
+  for (const p of lista) p.fotos.forEach((f, i) => void (f.url ??= fotoGenerica(f.titulo, i)))
   for (const p of lista)
     for (const v of p.cotizacion.versiones)
       if (v.secciones.length !== 1) v.secciones = [{ id: v.secciones[0]?.id ?? uid('sec'), nombre: 'Ítems', items: v.secciones.flatMap((x) => x.items) }]
@@ -110,7 +113,7 @@ const deshaceres = new Map<string, () => void>()
 
 export const useStore = create<State>()(
   immer((set, get) => ({
-    proyectos: unificarSecciones(clonar([...proyectos, ...proyectosDemo])),
+    proyectos: prepararDatos(clonar([...proyectos, ...proyectosDemo])),
     clientes: clonar([...clientes, ...clientesDemo]),
     proveedores: clonar(proveedores),
     materiales: clonar(materiales),
