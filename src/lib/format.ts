@@ -40,8 +40,14 @@ export function fecha(iso: ISODate | null | undefined): string {
   return `${d}/${m}/${y}`
 }
 
-/** Fecha "de hoy" del mockup. Fija para que la demo sea reproducible. */
-export const HOY: ISODate = '2026-10-10'
+/** Fecha local de hoy (AAAA-MM-DD). Local y no UTC: en Colombia, después de las 7 p. m. UTC ya es mañana. */
+export function hoy(): ISODate {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+/** Fecha de hoy al cargar la app. */
+export const HOY: ISODate = hoy()
 
 export function diasEntre(desde: ISODate, hasta: ISODate): number {
   const a = Date.UTC(+desde.slice(0, 4), +desde.slice(5, 7) - 1, +desde.slice(8, 10))
