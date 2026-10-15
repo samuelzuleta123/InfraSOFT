@@ -168,7 +168,13 @@ export function TablaSeccion({ proyectoId, seccion, otrosCostos, vistaCliente, p
           pie={!bloqueada && <AgregarEnLinea tipo="mo" onAgregar={agregar} />}
           despues={
             <>
-              <p className="mt-3 border-t border-dashed border-slate-200 px-4 pt-3 pb-1 text-xs font-semibold tracking-wide text-slate-500 uppercase">Otros costos</p>
+              <div className={cn(rejilla, 'mt-3 items-end border-t border-dashed border-slate-200 pt-3 pb-1.5 text-xs font-semibold tracking-wide text-slate-500 uppercase')}>
+                <div>Otros costos</div>
+                <div className="text-right">Cantidad</div>
+                <div className="text-right">Valor unitario</div>
+                <div className="text-right">Total</div>
+                <div />
+              </div>
               {otrosCostos.map((o) => (
                 <div key={o.clave} className={cn(rejilla, 'items-start py-1.5 transition-colors hover:bg-slate-50/70')}>
                   <p className="px-2 py-[7px] text-[13px] text-slate-900">{o.nombre}</p>
@@ -192,7 +198,7 @@ export function TablaSeccion({ proyectoId, seccion, otrosCostos, vistaCliente, p
           separado
         >
           {filasMO.map((f) => (
-            <FilaManoObra key={f.clave} proyectoId={proyectoId} seccionId={seccion.id} fila={f} materiales={materiales} bloqueada={bloqueada} />
+            <FilaManoObra key={f.clave} proyectoId={proyectoId} fila={f} bloqueada={bloqueada} />
           ))}
         </Bloque>
       </div>
@@ -385,50 +391,11 @@ function FilaMaterial({ proyectoId, item, bloqueada, compra, onNuevoProveedor }:
   )
 }
 
-function FilaManoObra({ proyectoId, seccionId, fila, materiales, bloqueada }: { proyectoId: string; seccionId: string; fila: FilaMO; materiales: ItemCotizacion[]; bloqueada?: boolean }) {
+function FilaManoObra({ proyectoId, fila, bloqueada }: { proyectoId: string; fila: FilaMO; bloqueada?: boolean }) {
   const editar = useEditarItem(proyectoId)
-  const editarVersion = useStore((s) => s.editarVersion)
   const { item, unida } = fila
   const descripcion = unida ? etiquetaMO(item) : item.descripcion
   const sinValor = item.vuMO <= 0
-
-  const conSeccion = (fn: (s: Seccion) => void) =>
-    editarVersion(proyectoId, (v) => {
-      const s = v.secciones.find((x) => x.id === seccionId)
-      if (s) fn(s)
-    })
-
-  /** Cambiar de dónde sale la cantidad: de un material de la sección (queda unida a él) o propia. */
-  const vincular = (materialId: string) =>
-    conSeccion((s) => {
-      const origen = s.items.find((x) => x.id === item.id)
-      if (!origen) return
-      const destino = materialId ? s.items.find((x) => x.id === materialId) : undefined
-      if (destino?.id === origen.id) return
-      const nombre = unida ? etiquetaMO(origen) : origen.descripcion
-      if (destino) {
-        destino.vuMO = origen.vuMO
-        destino.descripcionMO = nombre
-      }
-      if (unida) {
-        if (!destino)
-          s.items.splice(s.items.indexOf(origen) + 1, 0, {
-            id: uid('it'),
-            tipo: 'mo',
-            descripcion: nombre,
-            unidad: origen.unidad,
-            cantidad: origen.cantidad,
-            vuMO: origen.vuMO,
-            vuMaterial: 0,
-            proveedorId: null,
-            cantInstalada: origen.cantInstalada,
-          })
-        origen.vuMO = 0
-        delete origen.descripcionMO
-      } else if (destino) {
-        s.items = s.items.filter((x) => x.id !== origen.id)
-      }
-    })
 
   const quitar = () =>
     unida
@@ -445,7 +412,8 @@ function FilaManoObra({ proyectoId, seccionId, fila, materiales, bloqueada }: { 
         onChange={(d) => editar(item.id, (i) => void (unida ? (i.descripcionMO = d) : (i.descripcion = d)))}
         etiqueta="Descripción de la mano de obra"
       />
-      <div className="min-w-0">
+      {/* La instalación de un material toma la cantidad de ese material. */}
+      <div className="min-w-0" title={unida ? 'Igual a la cantidad del material' : undefined}>
         <Cantidad
           id={unida ? `mo-${item.id}` : item.id}
           valor={item.cantidad}
@@ -455,26 +423,6 @@ function FilaManoObra({ proyectoId, seccionId, fila, materiales, bloqueada }: { 
           onUnidad={unida ? undefined : () => editar(item.id, (i) => void (i.unidad = i.unidad === 'Un' ? 'Mts' : 'Un'))}
           etiqueta={`Cantidad de ${descripcion}`}
         />
-        {bloqueada ? (
-          unida && <p className="mt-1 truncate px-1 text-xs leading-[18px] text-slate-500">Igual al material</p>
-        ) : (
-          <select
-            value={unida ? item.id : ''}
-            onChange={(e) => vincular(e.target.value)}
-            aria-label={`De dónde sale la cantidad de ${descripcion}`}
-            className={cn(
-              'mt-1 w-full cursor-pointer truncate rounded border-0 bg-transparent px-1 py-px text-xs leading-[18px] hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-brand-500/50 focus-visible:outline-none',
-              unida ? 'font-medium text-brand-800' : 'text-slate-500',
-            )}
-          >
-            <option value="">Cantidad propia</option>
-            {materiales.map((m) => (
-              <option key={m.id} value={m.id} disabled={m.id !== item.id && tieneMOUnida(m)}>
-                {m.id === item.id ? 'Igual al material' : `Igual a ${m.descripcion}`}
-              </option>
-            ))}
-          </select>
-        )}
       </div>
       <NumberInput
         data-col="precio"

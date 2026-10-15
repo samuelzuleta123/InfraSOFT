@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { cn } from '@/lib/cn'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
-import { ChevronLeft, ChevronRight, MapPin } from 'lucide-react'
-import { Button, Tabs } from '@/components/ui'
+import { ChevronLeft, ChevronRight, Lock, MapPin } from 'lucide-react'
+import { Button, Card, Tabs } from '@/components/ui'
 import { useFlechas } from '@/lib/flechas'
-import { ETAPAS, EtapaBadge, EstadoCotBadge, StepperEtapas } from '@/components/dominio'
+import { ETAPAS, EtapaBadge, EstadoCotBadge, nombreEtapa, StepperEtapas } from '@/components/dominio'
 import { useCliente, useProyecto, useStore } from '@/store/useStore'
 import { versionVigente } from '@/lib/calc'
 import type { Etapa } from '@/types'
@@ -32,6 +32,8 @@ const TABS = [
 type TabId = (typeof TABS)[number]['id']
 
 const tabDeEtapa: Record<Etapa, TabId> = { 1: 'cotizacion', 2: 'compras', 3: 'ejecucion', 4: 'entrega', 5: 'cierre' }
+/** Pestañas que pertenecen a una etapa: se abren cuando el proyecto llega a ella, para no saltarse pasos. */
+const etapaDeTab: Partial<Record<TabId, Etapa>> = { compras: 2, ejecucion: 3, entrega: 4, cierre: 5 }
 
 export function ProyectoDetalle() {
   const { id, tab } = useParams()
@@ -55,6 +57,14 @@ export function ProyectoDetalle() {
   const v = versionVigente(proyecto)
   const cerrado = proyecto.etapa === 5 && !!proyecto.facturaCliente
   const siguiente = (proyecto.etapa + 1) as Etapa
+  const etapaTab = etapaDeTab[tab as TabId]
+  const tabBloqueada = etapaTab !== undefined && etapaTab > proyecto.etapa
+  const tabs = TABS.map((t) => {
+    const e = etapaDeTab[t.id]
+    return e && e > proyecto.etapa
+      ? { id: t.id, label: <span className="inline-flex items-center gap-1.5 text-slate-400" title={`Se habilita en la etapa ${e}`}><Lock className="size-3.5" aria-hidden />{t.label}</span> }
+      : t
+  })
   // Si falta un requisito obligatorio, avanzar deja de ser la acción principal y lo dice.
   const bloqueos = proyecto.etapa < 5 ? chequeosEtapa(proyecto, siguiente, ordenes.filter((o) => o.proyectoId === proyecto.id).length).filter((c) => c.bloquea && !c.ok).length : 0
 
@@ -126,15 +136,20 @@ export function ProyectoDetalle() {
         <div className="hidden border-t border-slate-100 px-5 py-4 sm:block">
           <StepperEtapas
             etapa={proyecto.etapa}
+            cerrado={cerrado}
             onSelect={(e) => {
               nav(`/proyectos/${proyecto.id}/${tabDeEtapa[e]}`)
             }}
           />
         </div>
-        <Tabs className="px-3" tabs={[...TABS]} value={tab as TabId} onChange={(t) => nav(`/proyectos/${proyecto.id}/${t}`)} />
+        <Tabs className="px-3" tabs={tabs} value={tab as TabId} onChange={(t) => nav(`/proyectos/${proyecto.id}/${t}`)} />
       </div>
 
       <div className="mt-6">
+        {tabBloqueada ? (
+          <EtapaBloqueada etapaTab={etapaTab} etapa={proyecto.etapa} esSiguiente={etapaTab === siguiente} bloqueos={bloqueos} onAvanzar={() => setAvanzar(true)} />
+        ) : (
+          <>
         {tab === 'levantamiento' && <LevantamientoTab proyecto={proyecto} />}
         {tab === 'cotizacion' && <CotizadorTab proyecto={proyecto} />}
         {tab === 'compras' && <ComprasTab proyecto={proyecto} />}
@@ -143,8 +158,34 @@ export function ProyectoDetalle() {
         {tab === 'cierre' && <CierreTab proyecto={proyecto} />}
         {tab === 'documentos' && <DocumentosTab proyecto={proyecto} />}
         {tab === 'historial' && <HistorialTab proyecto={proyecto} />}
+          </>
+        )}
       </div>
       {avanzar && <AvanzarEtapaModal proyecto={proyecto} destino={siguiente} onClose={() => setAvanzar(false)} onAvanzado={() => nav(`/proyectos/${proyecto.id}/${tabDeEtapa[siguiente]}`)} />}
     </div>
+  )
+}
+
+function EtapaBloqueada({ etapaTab, etapa, esSiguiente, bloqueos, onAvanzar }: { etapaTab: Etapa; etapa: Etapa; esSiguiente: boolean; bloqueos: number; onAvanzar: () => void }) {
+  return (
+    <Card className="mx-auto max-w-xl px-6 py-10 text-center">
+      <span className="mx-auto flex size-11 items-center justify-center rounded-full bg-slate-100 text-slate-500">
+        <Lock className="size-5" aria-hidden />
+      </span>
+      <h2 className="mt-4 text-[15px] font-semibold text-slate-900">Se habilita en la etapa {etapaTab} · {nombreEtapa(etapaTab)}</h2>
+      <p className="mt-1.5 text-[13px] text-slate-500">
+        El proyecto está en la etapa {etapa} · {nombreEtapa(etapa)}.{' '}
+        {esSiguiente
+          ? etapaTab === 5
+            ? 'Para cerrarlo hay que cargar primero el acta de conformidad firmada por el cliente en Entrega.'
+            : 'Avanza el proyecto cuando la etapa actual esté lista.'
+          : `Primero hay que pasar por ${nombreEtapa((etapa + 1) as Etapa).toLowerCase()}.`}
+      </p>
+      {esSiguiente && (
+        <Button variant={bloqueos ? 'secondary' : 'primary'} icon={<ChevronRight />} onClick={onAvanzar} className="mt-5">
+          Avanzar a {nombreEtapa(etapaTab).toLowerCase()}
+        </Button>
+      )}
+    </Card>
   )
 }

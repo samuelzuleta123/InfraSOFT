@@ -83,6 +83,8 @@ export function parseNumero(s: string): number | null {
  */
 export function numeroEnVivo(digitado: string, anterior: string, decimals: number): string {
   let s = digitado.replace(/[^\d.,-]/g, '')
+  // Un 0 que ya estaba no es una cifra del usuario: al escribir encima (antes o después del cursor) se reemplaza, no queda "30" ni "03".
+  if (anterior === '0' && /^\d{2}$/.test(s)) s = s.replace('0', '')
   if (s.length > anterior.length + 1) {
     const n = parseNumero(s)
     return n === null ? '' : numeroEditable(n, decimals)

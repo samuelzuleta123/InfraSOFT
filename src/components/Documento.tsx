@@ -1,5 +1,5 @@
 // Plantilla tipo carta para documentos imprimibles (cotización, OC, informe, acta).
-import type { ReactNode } from 'react'
+import { useEffect, type ReactNode } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { ChevronLeft, Download } from 'lucide-react'
 import { Button } from '@/components/ui'
@@ -24,6 +24,10 @@ export type OrigenDocumento = { volver: string; volverTexto: string }
 export function BarraDocumento({ volver, volverTexto, children, onDescargar }: { volver: string; volverTexto: string; children?: ReactNode; onDescargar?: () => void }) {
   const origen = useLocation().state as Partial<OrigenDocumento> | null
   const destino = origen?.volver && origen.volverTexto ? (origen as OrigenDocumento) : { volver, volverTexto }
+  // Los documentos van fuera del layout de la app: sin esto abren con el scroll de la página anterior (p. ej. en las firmas).
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [])
   return (
     <div className="sticky top-0 z-10 border-b border-slate-200 bg-white/95 backdrop-blur no-print">
       <div className="mx-auto flex max-w-[960px] flex-wrap items-center gap-3 px-4 py-3">

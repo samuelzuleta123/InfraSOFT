@@ -34,7 +34,7 @@ export function HistorialTab({ proyecto }: { proyecto: Proyecto }) {
     <Card className="mx-auto max-w-4xl">
       <header className="border-b border-slate-200 px-5 py-3.5">
         <h2 className="text-[15px] font-semibold text-slate-900">Historial del proyecto</h2>
-        <p className="mt-0.5 text-[13px] text-slate-500">{eventos.length} eventos, del más reciente al más antiguo. Haz clic en un documento para verlo.</p>
+        <p className="mt-0.5 text-[13px] text-slate-500">{eventos.length} eventos, del más antiguo al más reciente. Haz clic en un documento para verlo.</p>
       </header>
       <ol className="px-5 py-5">
         {eventos.map((e, i) => {

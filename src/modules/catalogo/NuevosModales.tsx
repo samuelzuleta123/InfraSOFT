@@ -7,12 +7,12 @@ import type { CategoriaMaterial, Unidad } from '@/types'
 
 const CATEGORIAS: CategoriaMaterial[] = ['Fibra óptica', 'Cableado', 'Canalización', 'Equipos activos', 'Inalámbrico', 'Racks y gabinetes', 'Energía']
 
-export function NuevoMaterialModal({ onClose, onCreado }: { onClose: () => void; onCreado: (id: string) => void }) {
+export function NuevoMaterialModal({ onClose, onCreado, descripcionInicial = '' }: { onClose: () => void; onCreado: (id: string) => void; descripcionInicial?: string }) {
   const proveedores = useStore((s) => s.proveedores)
   const materiales = useStore((s) => s.materiales)
   const crearMaterial = useStore((s) => s.crearMaterial)
   const notificar = useStore((s) => s.notificar)
-  const [m, setM] = useState({ codigo: '', descripcion: '', unidad: 'Un' as Unidad, categoria: 'Cableado' as CategoriaMaterial })
+  const [m, setM] = useState({ codigo: '', descripcion: descripcionInicial, unidad: 'Un' as Unidad, categoria: 'Cableado' as CategoriaMaterial })
   const [prov, setProv] = useState('')
   const [lista, setLista] = useState<number | null>(null)
   const [dto, setDto] = useState<number | null>(null)

@@ -100,7 +100,7 @@ export interface Evento {
   doc?: DocExpediente
 }
 
-/** Línea de tiempo del proyecto, de lo más reciente a lo más antiguo. */
+/** Línea de tiempo del proyecto, de lo más antiguo a lo más reciente. */
 export function historialProyecto(p: Proyecto, ordenes: OrdenCompra[], facturas: FacturaProveedor[], proveedores: Proveedor[]): Evento[] {
   const docs = documentosProyecto(p, ordenes, facturas, proveedores)
   const doc = (id: string) => docs.find((d) => d.id === id)
@@ -139,5 +139,5 @@ export function historialProyecto(p: Proyecto, ordenes: OrdenCompra[], facturas:
   }
   if (p.facturaCliente) ev.push({ fecha: p.facturaCliente.fecha, tipo: 'cierre', titulo: `Factura ${p.facturaCliente.numero} emitida al cliente`, detalle: p.facturaCliente.formaPago, valor: doc('fc')?.valor, doc: doc('fc') })
   // Orden estable: por fecha y, en la misma fecha, en el orden lógico del flujo.
-  return ev.map((e, i) => ({ e, i })).sort((a, b) => b.e.fecha.localeCompare(a.e.fecha) || b.i - a.i).map(({ e }) => e)
+  return ev.map((e, i) => ({ e, i })).sort((a, b) => a.e.fecha.localeCompare(b.e.fecha) || a.i - b.i).map(({ e }) => e)
 }

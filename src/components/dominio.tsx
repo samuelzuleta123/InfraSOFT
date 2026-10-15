@@ -43,12 +43,13 @@ export function EstadoCotBadge({ estado }: { estado: EstadoCotizacion }) {
 }
 
 /** Stepper de las 5 etapas del proyecto. */
-export function StepperEtapas({ etapa, onSelect }: { etapa: Etapa; onSelect?: (e: Etapa) => void }) {
+/** Cada etapa se marca con chulo al superarla; la de cierre solo cuando el proyecto queda cerrado (factura registrada). */
+export function StepperEtapas({ etapa, cerrado = false, onSelect }: { etapa: Etapa; cerrado?: boolean; onSelect?: (e: Etapa) => void }) {
   return (
     <ol className="flex w-full items-center" aria-label="Etapas del proyecto">
       {ETAPAS.map((e, idx) => {
-        const hecho = e.n < etapa || etapa === 5
-        const actual = e.n === etapa
+        const hecho = e.n < etapa || cerrado
+        const actual = e.n === etapa && !cerrado
         return (
           <li key={e.n} className={cn('flex items-center', idx < ETAPAS.length - 1 && 'flex-1')}>
             <button
@@ -62,11 +63,11 @@ export function StepperEtapas({ etapa, onSelect }: { etapa: Etapa; onSelect?: (e
                 className={cn(
                   'num flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold ring-2 transition-colors',
                   hecho && !actual && 'bg-brand-800 text-white ring-brand-800',
-                  actual && (etapa === 5 ? 'bg-emerald-600 text-white ring-emerald-600' : 'bg-white text-brand-800 ring-brand-700'),
+                  actual && 'bg-white text-brand-800 ring-brand-700',
                   !hecho && !actual && 'bg-white text-slate-500 ring-slate-300',
                 )}
               >
-                {hecho && !actual ? <Check className="size-3.5" strokeWidth={3} /> : actual && etapa === 5 ? <Check className="size-3.5" strokeWidth={3} /> : e.n}
+                {hecho && !actual ? <Check className="size-3.5" strokeWidth={3} /> : e.n}
               </span>
               <span className="hidden min-w-0 md:block">
                 <span className={cn('block text-xs font-medium tracking-wide uppercase', actual ? 'text-brand-700' : 'text-slate-500')}>Etapa {e.n}</span>
