@@ -13,7 +13,23 @@ const normal = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/
  * Elegir materiales del catálogo en su propia ventana, de alto fijo: buscador arriba y la lista completa agrupada por
  * categoría debajo. Se marcan varios y se agregan de una vez. Los que ya están se muestran pero no se pueden repetir.
  */
-export function SelectorMaterialesModal({ onClose, onAgregar, yaAgregados = [] }: { onClose: () => void; onAgregar: (materialIds: string[]) => void; yaAgregados?: string[] }) {
+export function SelectorMaterialesModal({
+  onClose,
+  onAgregar,
+  yaAgregados = [],
+  etiquetaYa = 'Ya está en el kit',
+  permitirRepetir = false,
+  onCrearLibre,
+}: {
+  onClose: () => void
+  onAgregar: (materialIds: string[]) => void
+  yaAgregados?: string[]
+  etiquetaYa?: string
+  /** En la cotización un material puede ir dos veces (otra cantidad u otro proveedor): se avisa pero se deja marcar. */
+  permitirRepetir?: boolean
+  /** Si se da, la búsqueda sin resultados (o con ellos) ofrece crear un material sin catálogo con ese nombre. */
+  onCrearLibre?: (descripcion: string) => void
+}) {
   const materiales = useStore((s) => s.materiales)
   const precios = useStore((s) => s.precios)
   const [q, setQ] = useState('')
@@ -79,6 +95,7 @@ export function SelectorMaterialesModal({ onClose, onAgregar, yaAgregados = [] }
               <ul className="divide-y divide-slate-100">
                 {g.materiales.map((m) => {
                   const ya = yaAgregados.includes(m.id)
+                  const bloqueado = ya && !permitirRepetir
                   const marcado = elegidos.includes(m.id)
                   const pm = precios.filter((p) => p.materialId === m.id)
                   const desde = pm.length ? Math.min(...pm.map(precioNeto)) : null
@@ -88,7 +105,7 @@ export function SelectorMaterialesModal({ onClose, onAgregar, yaAgregados = [] }
                         type="button"
                         role="checkbox"
                         aria-checked={marcado}
-                        disabled={ya}
+                        disabled={bloqueado}
                         onClick={() => alternar(m.id)}
                         className={cn(
                           'flex w-full cursor-pointer items-center gap-3 px-3 py-2 text-left transition-colors disabled:cursor-default',
@@ -98,20 +115,21 @@ export function SelectorMaterialesModal({ onClose, onAgregar, yaAgregados = [] }
                         <span
                           className={cn(
                             'flex size-4 shrink-0 items-center justify-center rounded border',
-                            marcado ? 'border-brand-800 bg-brand-800 text-white' : ya ? 'border-slate-200 bg-slate-100' : 'border-slate-300 bg-white',
+                            marcado ? 'border-brand-800 bg-brand-800 text-white' : bloqueado ? 'border-slate-200 bg-slate-100' : 'border-slate-300 bg-white',
                           )}
                           aria-hidden
                         >
-                          {(marcado || ya) && <Check className={cn('size-3', ya && 'text-slate-400')} strokeWidth={3} />}
+                          {(marcado || bloqueado) && <Check className={cn('size-3', bloqueado && 'text-slate-400')} strokeWidth={3} />}
                         </span>
                         <span className="min-w-0 flex-1">
-                          <span className={cn('block text-[13px]', ya ? 'text-slate-400' : 'text-slate-900')}>{m.descripcion}</span>
+                          <span className={cn('block text-[13px]', bloqueado ? 'text-slate-400' : 'text-slate-900')}>{m.descripcion}</span>
                           <span className="block text-xs text-slate-500">
                             <span className="font-mono">{m.codigo}</span> · {m.unidad}
                           </span>
                         </span>
                         <span className="num shrink-0 text-right text-xs text-slate-500">
-                          {ya ? 'Ya está en el kit' : desde !== null ? `desde ${moneyUnit(desde)}` : 'Sin precio'}
+                          {ya && <span className={cn('block', permitirRepetir && 'font-medium text-amber-800')}>{etiquetaYa}</span>}
+                          {!bloqueado && (desde !== null ? `desde ${moneyUnit(desde)}` : 'Sin precio')}
                         </span>
                       </button>
                     </li>
@@ -120,7 +138,22 @@ export function SelectorMaterialesModal({ onClose, onAgregar, yaAgregados = [] }
               </ul>
             </section>
           ))}
-          {total === 0 && <p className="px-3 py-10 text-center text-sm text-slate-500">Ningún material coincide con “{q}”.</p>}
+          {total === 0 && <p className="px-3 pt-10 pb-3 text-center text-sm text-slate-500">Ningún material coincide con “{q}”.</p>}
+          {onCrearLibre && q.trim() && (
+            <div className={cn('px-3 py-3', total > 0 && 'border-t border-slate-200')}>
+              <button
+                type="button"
+                onClick={() => {
+                  onCrearLibre(q.trim())
+                  onClose()
+                }}
+                className="w-full cursor-pointer rounded-md border border-dashed border-slate-300 px-3 py-2 text-left text-[13px] text-brand-800 transition-colors hover:border-brand-400 hover:bg-brand-50"
+              >
+                <span className="font-medium">Crear “{q.trim()}”</span>
+                <span className="text-slate-500"> · material sin catálogo; el precio y el proveedor se digitan en la tabla</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </Modal>

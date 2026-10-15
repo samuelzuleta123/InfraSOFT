@@ -1,8 +1,9 @@
 import { useState, type KeyboardEvent, type ReactNode } from 'react'
-import { Boxes, Package, Trash2, Wrench } from 'lucide-react'
+import { Boxes, Package, Plus, Trash2, Wrench } from 'lucide-react'
 import { Badge, Button, IconButton, NumberInput } from '@/components/ui'
 import { NuevoProveedorModal } from '@/modules/catalogo/NuevosModales'
-import { esMaterial, itemMaterial, itemMO, itemSubtotal, totalesSeccion, totalOtroCosto, type ItemCliente } from '@/lib/calc'
+import { SelectorMaterialesModal } from '@/modules/catalogo/SelectorMateriales'
+import { esMaterial, precioNeto, itemMaterial, itemMO, itemSubtotal, totalesSeccion, totalOtroCosto, type ItemCliente } from '@/lib/calc'
 import { cn } from '@/lib/cn'
 import { ultimaCompra, type CompraMaterial } from '@/lib/historico'
 import { money, moneyUnit, r3, uid } from '@/lib/format'
@@ -64,6 +65,34 @@ export function TablaSeccion({ proyectoId, seccion, otrosCostos, vistaCliente, p
     }, 0)
   }
 
+  // Material del catálogo: entra con el proveedor más barato y su precio neto ya cargados.
+  const [eligiendo, setEligiendo] = useState(false)
+  const agregarMateriales = (ids: string[]) => {
+    const { materiales: catalogo, precios } = useStore.getState()
+    const nuevos = ids.flatMap<ItemCotizacion>((id) => {
+      const m = catalogo.find((x) => x.id === id)
+      if (!m) return []
+      const mejor = precios.filter((p) => p.materialId === id).sort((a, b) => precioNeto(a) - precioNeto(b))[0]
+      return [
+        {
+          id: uid('it'),
+          tipo: 'material',
+          materialId: m.id,
+          descripcion: m.descripcion,
+          unidad: m.unidad,
+          cantidad: 1,
+          vuMO: 0,
+          vuMaterial: mejor ? precioNeto(mejor) : 0,
+          proveedorId: mejor?.proveedorId ?? null,
+          cantInstalada: null,
+        },
+      ]
+    })
+    nuevos.forEach(agregar)
+  }
+  const crearMaterialLibre = (descripcion: string) =>
+    agregar({ id: uid('it'), tipo: 'material', descripcion, unidad: 'Un', cantidad: 1, vuMO: 0, vuMaterial: 0, proveedorId: null, cantInstalada: null })
+
   const editarOtro = (clave: OtroCosto['clave'], fn: (o: OtroCosto) => void) =>
     editarVersion(proyectoId, (v) => {
       const o = v.otrosCostos.find((x) => x.clave === clave)
@@ -108,7 +137,9 @@ export function TablaSeccion({ proyectoId, seccion, otrosCostos, vistaCliente, p
             !bloqueada && (
               // El kit trae materiales y su instalación: se ofrece junto al punto donde se empieza a armar la cotización.
               <div className="flex flex-wrap items-center gap-2">
-                <AgregarEnLinea tipo="material" onAgregar={agregar} />
+                <Button variant="secondary" icon={<Plus />} onClick={() => setEligiendo(true)}>
+                  Agregar material
+                </Button>
                 <Button size="md" variant="ghost" icon={<Boxes />} onClick={onAgregarKit} className="text-brand-800 hover:bg-brand-50 hover:text-brand-900">
                   Agregar kit
                 </Button>
@@ -188,6 +219,16 @@ export function TablaSeccion({ proyectoId, seccion, otrosCostos, vistaCliente, p
         </dl>
       </footer>
 
+      {eligiendo && (
+        <SelectorMaterialesModal
+          onClose={() => setEligiendo(false)}
+          onAgregar={agregarMateriales}
+          yaAgregados={materiales.flatMap((m) => (m.materialId ? [m.materialId] : []))}
+          etiquetaYa="Ya está en la cotización"
+          permitirRepetir
+          onCrearLibre={crearMaterialLibre}
+        />
+      )}
       {itemParaNuevoProveedor && (
         <NuevoProveedorModal
           onClose={() => setItemParaNuevoProveedor(null)}
