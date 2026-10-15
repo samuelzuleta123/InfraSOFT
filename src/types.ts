@@ -9,7 +9,10 @@ export interface Cliente {
   nit: string
   direccion: string
   ciudad: string
+  /** Persona con quien se habla en el cliente. */
   contacto?: string
+  telefono?: string
+  correo?: string
 }
 
 export interface Proveedor {

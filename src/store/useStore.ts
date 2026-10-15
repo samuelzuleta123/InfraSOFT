@@ -70,6 +70,7 @@ interface State {
   cerrarVisor: () => void
   crearProyecto: (datos: NuevoProyecto) => string
   crearCliente: (c: Omit<Cliente, 'id'>) => string
+  editarCliente: (id: string, c: Omit<Cliente, 'id'>) => void
   crearProveedor: (p: Omit<Proveedor, 'id'>) => string
   crearMaterial: (m: Omit<Material, 'id'>, precio?: { proveedorId: string; precioLista: number; descuentoPct: number | null }) => string
 
@@ -94,6 +95,17 @@ interface State {
 }
 
 const clonar = <T,>(x: T): T => JSON.parse(JSON.stringify(x))
+
+/** Datos del cliente sin espacios sobrantes; los de contacto vacíos no se guardan. */
+const limpiarCliente = (c: Omit<Cliente, 'id'>): Omit<Cliente, 'id'> => ({
+  nombre: c.nombre.trim(),
+  nit: c.nit.trim(),
+  direccion: c.direccion.trim(),
+  ciudad: c.ciudad.trim(),
+  contacto: c.contacto?.trim() || undefined,
+  telefono: c.telefono?.trim() || undefined,
+  correo: c.correo?.trim() || undefined,
+})
 
 /**
  * Datos de prueba al cargar: toda foto sin imagen propia recibe una foto genérica según su título.
@@ -197,10 +209,16 @@ export const useStore = create<State>()(
     crearCliente: (c) => {
       const id = uid('cli')
       set((s) => {
-        s.clientes.push({ ...c, id, nombre: c.nombre.trim(), nit: c.nit.trim(), direccion: c.direccion.trim(), ciudad: c.ciudad.trim() })
+        s.clientes.push({ ...limpiarCliente(c), id })
       })
       return id
     },
+
+    editarCliente: (id, c) =>
+      set((s) => {
+        const i = s.clientes.findIndex((x) => x.id === id)
+        if (i >= 0) s.clientes[i] = { ...limpiarCliente(c), id }
+      }),
 
     crearProveedor: (p) => {
       const id = uid('prv')

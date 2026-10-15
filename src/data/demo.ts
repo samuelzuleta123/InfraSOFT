@@ -25,12 +25,12 @@ const E = 'prv-edv'
 const R = 'prv-rg'
 
 export const clientesDemo: Cliente[] = [
-  { id: 'cli-esmeralda', nombre: 'Agroindustrial La Esmeralda S.A.S.', nit: '900.418.226-3', direccion: 'Km 4 vía Santa Rosa – Chinchiná', ciudad: 'Santa Rosa de Cabal, Risaralda' },
-  { id: 'cli-ejeandino', nombre: 'Distribuidora Eje Andino S.A.S.', nit: '901.237.554-1', direccion: 'Parque industrial La Romelia, bodega 7', ciudad: 'Dosquebradas, Risaralda' },
-  { id: 'cli-mirador', nombre: 'Hotel Mirador del Otún S.A.S.', nit: '900.982.310-6', direccion: 'Avenida del Río # 32-18', ciudad: 'Pereira, Risaralda' },
-  { id: 'cli-santalucia', nombre: 'Centro Médico Santa Lucía IPS', nit: '901.055.871-9', direccion: 'Carrera 12 # 18-40', ciudad: 'Pereira, Risaralda' },
-  { id: 'cli-cerritos', nombre: 'Conjunto Residencial Torres de Cerritos', nit: '900.736.402-5', direccion: 'Vía Cerritos km 6', ciudad: 'Pereira, Risaralda' },
-  { id: 'cli-alpes', nombre: 'Colegio Campestre Los Alpes', nit: '891.409.663-0', direccion: 'Vereda La Florida, km 2', ciudad: 'Pereira, Risaralda' },
+  { id: 'cli-esmeralda', nombre: 'Agroindustrial La Esmeralda S.A.S.', nit: '900.418.226-3', direccion: 'Km 4 vía Santa Rosa – Chinchiná', ciudad: 'Santa Rosa de Cabal, Risaralda', contacto: 'Andrés Gómez · Coordinador de sistemas', telefono: '300 000 0012', correo: 'sistemas@laesmeralda.example' },
+  { id: 'cli-ejeandino', nombre: 'Distribuidora Eje Andino S.A.S.', nit: '901.237.554-1', direccion: 'Parque industrial La Romelia, bodega 7', ciudad: 'Dosquebradas, Risaralda', contacto: 'Luisa Fernanda Ríos · Jefe administrativa', telefono: '300 000 0013', correo: 'administracion@ejeandino.example' },
+  { id: 'cli-mirador', nombre: 'Hotel Mirador del Otún S.A.S.', nit: '900.982.310-6', direccion: 'Avenida del Río # 32-18', ciudad: 'Pereira, Risaralda', contacto: 'Jorge Ocampo · Gerente de operaciones', telefono: '300 000 0014', correo: 'operaciones@hotelmirador.example' },
+  { id: 'cli-santalucia', nombre: 'Centro Médico Santa Lucía IPS', nit: '901.055.871-9', direccion: 'Carrera 12 # 18-40', ciudad: 'Pereira, Risaralda', contacto: 'Diana Marcela Toro · Líder de TI', telefono: '300 000 0015', correo: 'ti@santalucia.example' },
+  { id: 'cli-cerritos', nombre: 'Conjunto Residencial Torres de Cerritos', nit: '900.736.402-5', direccion: 'Vía Cerritos km 6', ciudad: 'Pereira, Risaralda', contacto: 'Mauricio Salazar · Administrador', telefono: '300 000 0016', correo: 'administracion@torrescerritos.example' },
+  { id: 'cli-alpes', nombre: 'Colegio Campestre Los Alpes', nit: '891.409.663-0', direccion: 'Vereda La Florida, km 2', ciudad: 'Pereira, Risaralda', contacto: 'Paula Andrea Cardona · Coordinadora de compras', telefono: '300 000 0017', correo: 'compras@colegiolosalpes.example' },
 ]
 
 // ── Constructores ──────────────────────────────────────────────────────

@@ -7,6 +7,9 @@ export const clientes: Cliente[] = [
     nit: '891.400.378-8',
     direccion: 'Paraje La Marina, Vía Pereira-Cartago',
     ciudad: 'Puerto Caldas, Risaralda',
+    contacto: 'Carolina Restrepo · Jefe de mantenimiento eléctrico',
+    telefono: '300 000 0011',
+    correo: 'mantenimiento@papelesnacionales.example',
   },
 ]
 

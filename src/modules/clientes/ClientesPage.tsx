@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Building2, ChevronRight, Cpu, Plus, Search } from 'lucide-react'
-import { Badge, Button, Card, Drawer, EmptyState, Field, Input, Modal, PageHeader, Tabs } from '@/components/ui'
+import { Building2, ChevronRight, Cpu, Mail, Pencil, Phone, Plus, Search, User } from 'lucide-react'
+import { Button, Card, Drawer, EmptyState, PageHeader, Tabs } from '@/components/ui'
 import { AdjuntoChip, EtapaBadge, FechaTexto } from '@/components/dominio'
 import { resumen, versionVigente } from '@/lib/calc'
 import { cn } from '@/lib/cn'
@@ -9,6 +9,7 @@ import { money, pct } from '@/lib/format'
 import { filasRentabilidad, totalizar } from '@/lib/rentabilidad'
 import { useStore } from '@/store/useStore'
 import { NuevoProyectoModal } from '@/modules/proyectos/NuevoProyectoModal'
+import { ClienteModal } from './CamposCliente'
 
 const thc = 'px-4 py-3 text-left text-xs font-semibold tracking-wide text-slate-500 uppercase whitespace-nowrap'
 
@@ -21,7 +22,7 @@ export function ClientesPage() {
   const rent = useMemo(() => filasRentabilidad(proyectos), [proyectos])
 
   const filas = clientes
-    .filter((c) => !q.trim() || `${c.nombre} ${c.nit} ${c.ciudad}`.toLowerCase().includes(q.trim().toLowerCase()))
+    .filter((c) => !q.trim() || `${c.nombre} ${c.nit} ${c.ciudad} ${c.contacto ?? ''} ${c.correo ?? ''}`.toLowerCase().includes(q.trim().toLowerCase()))
     .map((c) => {
       const ps = proyectos.filter((p) => p.clienteId === c.id)
       const t = totalizar(rent.filter((f) => f.proyecto.clienteId === c.id))
@@ -48,7 +49,7 @@ export function ClientesPage() {
               type="search"
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Buscar por nombre, NIT o ciudad"
+              placeholder="Buscar nombre, NIT, contacto o correo"
               aria-label="Buscar cliente"
               className="h-9 w-full rounded-md border border-slate-300 pr-3 pl-9 text-sm placeholder:text-slate-500 hover:border-slate-400 focus:border-brand-700 focus:ring-2 focus:ring-brand-600/25 focus:outline-none"
             />
@@ -83,6 +84,9 @@ export function ClientesPage() {
                         <div className="num text-xs text-slate-500">
                           NIT {f.c.nit} · {f.c.ciudad}
                         </div>
+                        {(f.c.contacto || f.c.correo) && (
+                          <div className="mt-0.5 text-xs text-slate-500">{[f.c.contacto, f.c.correo].filter(Boolean).join(' · ')}</div>
+                        )}
                       </div>
                     </div>
                   </td>
@@ -118,7 +122,7 @@ export function ClientesPage() {
         </div>
       </Card>
       {abierto && <FichaCliente clienteId={abierto} onClose={() => setAbierto(null)} />}
-      {nuevo && <NuevoClienteModal onClose={() => setNuevo(false)} onCreado={setAbierto} />}
+      {nuevo && <ClienteModal onClose={() => setNuevo(false)} onGuardado={setAbierto} />}
     </>
   )
 }
@@ -130,6 +134,7 @@ function FichaCliente({ clienteId, onClose }: { clienteId: string; onClose: () =
   const todos = useStore((s) => s.proyectos)
   const [tab, setTab] = useState<Pestana>('proyectos')
   const [nuevoProyecto, setNuevoProyecto] = useState(false)
+  const [editando, setEditando] = useState(false)
   if (!cliente) return null
   const proyectos = todos.filter((p) => p.clienteId === clienteId).sort((a, b) => b.creado.localeCompare(a.creado))
   const t = totalizar(filasRentabilidad(proyectos))
@@ -153,6 +158,16 @@ function FichaCliente({ clienteId, onClose }: { clienteId: string; onClose: () =
           </Button>
         }
       >
+        <section aria-label="Contacto" className="flex items-start justify-between gap-4 border-b border-slate-200 px-6 py-4">
+          <dl className="min-w-0 space-y-1.5 text-sm">
+            <DatoContacto icono={<User />} etiqueta="Persona de contacto" valor={cliente.contacto} />
+            <DatoContacto icono={<Phone />} etiqueta="Teléfono" valor={cliente.telefono} href={cliente.telefono && `tel:${cliente.telefono.replace(/\s/g, '')}`} />
+            <DatoContacto icono={<Mail />} etiqueta="Correo electrónico" valor={cliente.correo} href={cliente.correo && `mailto:${cliente.correo}`} />
+          </dl>
+          <Button size="sm" variant="ghost" icon={<Pencil />} onClick={() => setEditando(true)} className="-mr-2 shrink-0">
+            Editar datos
+          </Button>
+        </section>
         <dl className="grid grid-cols-3 divide-x divide-slate-200 border-b border-slate-200">
           <div className="px-6 py-4">
             <dt className="text-xs text-slate-500">Proyectos</dt>
@@ -248,57 +263,29 @@ function FichaCliente({ clienteId, onClose }: { clienteId: string; onClose: () =
         )}
       </Drawer>
       {nuevoProyecto && <NuevoProyectoModal clienteInicial={clienteId} onClose={() => setNuevoProyecto(false)} />}
+      {editando && <ClienteModal cliente={cliente} onClose={() => setEditando(false)} />}
     </>
   )
 }
 
-function NuevoClienteModal({ onClose, onCreado }: { onClose: () => void; onCreado: (id: string) => void }) {
-  const crearCliente = useStore((s) => s.crearCliente)
-  const notificar = useStore((s) => s.notificar)
-  const [c, setC] = useState({ nombre: '', nit: '', direccion: '', ciudad: '' })
+function DatoContacto({ icono, etiqueta, valor, href }: { icono: React.ReactNode; etiqueta: string; valor?: string; href?: string }) {
   return (
-    <Modal
-      open
-      onClose={onClose}
-      size="sm"
-      title="Nuevo cliente"
-      footer={
-        <>
-          <Button variant="ghost" onClick={onClose}>
-            Cancelar
-          </Button>
-          <Button
-            variant="primary"
-            disabled={!c.nombre.trim() || !c.nit.trim()}
-            onClick={() => {
-              const id = crearCliente(c)
-              notificar(`Cliente ${c.nombre} creado`)
-              onClose()
-              onCreado(id)
-            }}
-          >
-            Crear cliente
-          </Button>
-        </>
-      }
-    >
-      <div className="space-y-4">
-        <Field label="Razón social" htmlFor="ncl-nom">
-          <Input id="ncl-nom" autoFocus value={c.nombre} onChange={(e) => setC({ ...c, nombre: e.target.value })} />
-        </Field>
-        <Field label="NIT" htmlFor="ncl-nit">
-          <Input id="ncl-nit" value={c.nit} onChange={(e) => setC({ ...c, nit: e.target.value })} placeholder="000.000.000-0" />
-        </Field>
-        <Field label="Dirección" htmlFor="ncl-dir" optional>
-          <Input id="ncl-dir" value={c.direccion} onChange={(e) => setC({ ...c, direccion: e.target.value })} />
-        </Field>
-        <Field label="Ciudad" htmlFor="ncl-ciu" optional>
-          <Input id="ncl-ciu" value={c.ciudad} onChange={(e) => setC({ ...c, ciudad: e.target.value })} />
-        </Field>
-      </div>
-      <Badge tone="neutral" className="mt-4">
-        Los proyectos se asocian al cliente desde “Nuevo proyecto”.
-      </Badge>
-    </Modal>
+    <div className="flex items-center gap-2.5">
+      <dt className="shrink-0 text-slate-400 [&>svg]:size-4" title={etiqueta}>
+        {icono}
+        <span className="sr-only">{etiqueta}</span>
+      </dt>
+      <dd className="m-0 min-w-0 truncate">
+        {!valor ? (
+          <span className="text-slate-400">Sin {etiqueta.toLowerCase()}</span>
+        ) : href ? (
+          <a href={href} className="text-brand-800 hover:text-brand-900 hover:underline">
+            {valor}
+          </a>
+        ) : (
+          <span className="text-slate-900">{valor}</span>
+        )}
+      </dd>
+    </div>
   )
 }

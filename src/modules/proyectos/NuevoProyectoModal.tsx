@@ -5,6 +5,7 @@ import { Button, Field, Input, Modal, Select } from '@/components/ui'
 import { cn } from '@/lib/cn'
 import { HOY } from '@/lib/format'
 import { useStore } from '@/store/useStore'
+import { CamposCliente, clienteValido as datosClienteValidos, clienteVacio, type DatosCliente } from '@/modules/clientes/CamposCliente'
 import { aLevantamiento, FormLevantamiento, levantamientoVacio } from './FormLevantamiento'
 
 const PASOS = ['Cliente', 'Proyecto', 'Levantamiento'] as const
@@ -20,11 +21,11 @@ export function NuevoProyectoModal({ onClose, clienteInicial }: { onClose: () =>
 
   const [modoCliente, setModoCliente] = useState<'existente' | 'nuevo'>('existente')
   const [clienteId, setClienteId] = useState(clienteInicial ?? '')
-  const [nuevoCliente, setNuevoCliente] = useState({ nombre: '', nit: '', direccion: '', ciudad: '' })
+  const [nuevoCliente, setNuevoCliente] = useState<DatosCliente>(clienteVacio)
   const [datos, setDatos] = useState({ nombre: '', sede: '', responsable: 'Coordinación técnica Infrasoft' })
   const [lev, setLev] = useState(() => levantamientoVacio(HOY))
 
-  const clienteValido = modoCliente === 'existente' ? !!clienteId : !!nuevoCliente.nombre.trim() && !!nuevoCliente.nit.trim()
+  const clienteValido = modoCliente === 'existente' ? !!clienteId : datosClienteValidos(nuevoCliente)
   const proyectoValido = !!datos.nombre.trim() && !!datos.sede.trim()
   const puedeSeguir = [clienteValido, proyectoValido, true][paso]
 
@@ -103,20 +104,7 @@ export function NuevoProyectoModal({ onClose, clienteInicial }: { onClose: () =>
               </Select>
             </Field>
           ) : (
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Razón social" htmlFor="nc-nom">
-                <Input id="nc-nom" value={nuevoCliente.nombre} onChange={(e) => setNuevoCliente({ ...nuevoCliente, nombre: e.target.value })} />
-              </Field>
-              <Field label="NIT" htmlFor="nc-nit">
-                <Input id="nc-nit" value={nuevoCliente.nit} onChange={(e) => setNuevoCliente({ ...nuevoCliente, nit: e.target.value })} placeholder="000.000.000-0" />
-              </Field>
-              <Field label="Dirección" htmlFor="nc-dir" optional>
-                <Input id="nc-dir" value={nuevoCliente.direccion} onChange={(e) => setNuevoCliente({ ...nuevoCliente, direccion: e.target.value })} />
-              </Field>
-              <Field label="Ciudad" htmlFor="nc-ciu" optional>
-                <Input id="nc-ciu" value={nuevoCliente.ciudad} onChange={(e) => setNuevoCliente({ ...nuevoCliente, ciudad: e.target.value })} />
-              </Field>
-            </div>
+            <CamposCliente valor={nuevoCliente} onChange={setNuevoCliente} prefijo="nc" />
           )}
         </div>
       )}
