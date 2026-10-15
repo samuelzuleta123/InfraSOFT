@@ -67,7 +67,7 @@ export function BitacoraTab({ proyecto }: { proyecto: Proyecto }) {
           </h2>
           {v.secciones.map((s) => (
             <div key={s.id}>
-              <h3 className="mb-2 text-xs font-semibold tracking-wide text-slate-500 uppercase">{s.nombre}</h3>
+              {v.secciones.length > 1 && <h3 className="mb-2 text-xs font-semibold tracking-wide text-slate-500 uppercase">{s.nombre}</h3>}
               <ul className="space-y-2">
                 {s.items.map((i) => (
                   <ItemObra key={i.id} proyectoId={proyecto.id} item={i} />

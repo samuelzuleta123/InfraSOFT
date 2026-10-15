@@ -2,24 +2,24 @@ import { useState, type KeyboardEvent, type ReactNode } from 'react'
 import { Boxes, Package, Trash2, Wrench } from 'lucide-react'
 import { Badge, Button, IconButton, NumberInput } from '@/components/ui'
 import { NuevoProveedorModal } from '@/modules/catalogo/NuevosModales'
-import { esMaterial, itemMaterial, itemMO, itemSubtotal, totalesSeccion, type ItemCliente } from '@/lib/calc'
+import { esMaterial, itemMaterial, itemMO, itemSubtotal, totalesSeccion, totalOtroCosto, type ItemCliente } from '@/lib/calc'
 import { cn } from '@/lib/cn'
 import { ultimaCompra, type CompraMaterial } from '@/lib/historico'
 import { money, moneyUnit, r3, uid } from '@/lib/format'
 import { nombreProveedor, useStore } from '@/store/useStore'
-import type { ItemCotizacion, Seccion, Unidad, VersionCotizacion } from '@/types'
+import type { ItemCotizacion, OtroCosto, Seccion, Unidad } from '@/types'
 import { FuentePrecio, SelectorPrecio } from './SelectorPrecio'
 import { AgregarEnLinea } from './AgregarEnLinea'
 
 interface Props {
   proyectoId: string
+  /** La cotización es una sola lista de ítems; se guarda como la única sección de la versión. */
   seccion: Seccion
-  numeroInicial: number
+  otrosCostos: OtroCosto[]
   vistaCliente: boolean
   preciosCliente?: ItemCliente[]
   totalCliente?: number
   onAgregarKit: () => void
-  soloSeccion: boolean
   bloqueada?: boolean
   /** Compras reales de otros proyectos; se calcula una vez en el cotizador. */
   historico: CompraMaterial[]
@@ -38,10 +38,10 @@ const tieneMOUnida = (i: ItemCotizacion) => i.vuMO > 0 || i.descripcionMO !== un
 
 type FilaMO = { clave: string; item: ItemCotizacion; unida: boolean }
 
-export function TablaSeccion({ proyectoId, seccion, numeroInicial, vistaCliente, preciosCliente, totalCliente, onAgregarKit, soloSeccion, bloqueada, historico }: Props) {
+export function TablaSeccion({ proyectoId, seccion, otrosCostos, vistaCliente, preciosCliente, totalCliente, onAgregarKit, bloqueada, historico }: Props) {
   const editarVersion = useStore((s) => s.editarVersion)
   const t = totalesSeccion(seccion)
-  const [confirmar, setConfirmar] = useState(false)
+  const totalOtros = otrosCostos.reduce((a, o) => a + totalOtroCosto(o), 0)
   const [itemParaNuevoProveedor, setItemParaNuevoProveedor] = useState<string | null>(null)
 
   const materiales = seccion.items.filter(esMaterial)
@@ -52,20 +52,23 @@ export function TablaSeccion({ proyectoId, seccion, numeroInicial, vistaCliente,
   const pendientes =
     materiales.filter((i) => i.vuMaterial <= 0 || !i.proveedorId).length + filasMO.filter((f) => !f.unida && f.item.vuMO <= 0).length
 
-  const conSeccion = (fn: (s: Seccion, v: VersionCotizacion) => void) =>
-    editarVersion(proyectoId, (v) => {
-      const s = v.secciones.find((x) => x.id === seccion.id)
-      if (s) fn(s, v)
-    })
-
   const agregar = (item: ItemCotizacion) => {
-    conSeccion((s) => void s.items.push(item))
+    editarVersion(proyectoId, (v) => {
+      if (!v.secciones.length) v.secciones.push({ id: seccion.id, nombre: 'Ítems', items: [] })
+      v.secciones[0].items.push(item)
+    })
     // El evento que agrega es discreto: React ya pintó la fila cuando corre el timeout.
     setTimeout(() => {
       const el = document.getElementById(`cant-${item.id}`) as HTMLInputElement | null
       el?.focus()
     }, 0)
   }
+
+  const editarOtro = (clave: OtroCosto['clave'], fn: (o: OtroCosto) => void) =>
+    editarVersion(proyectoId, (v) => {
+      const o = v.otrosCostos.find((x) => x.clave === clave)
+      if (o) fn(o)
+    })
 
   // Enter baja al mismo campo de la fila siguiente, como en la hoja de Excel que reemplaza.
   const bajarConEnter = (e: KeyboardEvent<HTMLElement>) => {
@@ -77,116 +80,113 @@ export function TablaSeccion({ proyectoId, seccion, numeroInicial, vistaCliente,
     campos[campos.indexOf(el as HTMLInputElement) + 1]?.focus()
   }
 
-  return (
-    <section className="rounded-lg border border-slate-200 bg-white shadow-xs" aria-label={`Sección ${seccion.nombre}`}>
-      <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-t-lg border-b border-slate-200 px-4 py-3">
-        {vistaCliente ? (
-          <h3 className="text-[15px] font-semibold text-slate-900">{seccion.nombre}</h3>
-        ) : (
-          <input
-            value={seccion.nombre}
-            onChange={(e) => conSeccion((s) => void (s.nombre = e.target.value))}
-            aria-label="Nombre de la sección"
-            className="-ml-1.5 min-w-0 flex-1 rounded-md border border-transparent px-1.5 py-1 text-[15px] font-semibold text-slate-900 hover:border-slate-300 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/25 focus:outline-none"
-          />
-        )}
-        <div className="flex items-center gap-4">
-          {!vistaCliente && !bloqueada && seccion.items.length > 0 && (
-            pendientes > 0 ? (
-              <Badge tone="warn" dot>
-                {pendientes} {pendientes === 1 ? 'ítem pendiente' : 'ítems pendientes'}
-              </Badge>
-            ) : (
-              <Badge tone="ok" dot>
-                Precios completos
-              </Badge>
-            )
-          )}
-          <div className="text-right leading-tight">
-            <span className="block text-xs text-slate-500">Total sección</span>
-            <span className="num text-base font-semibold text-slate-900">{money(vistaCliente ? totalCliente : t.subtotal)}</span>
-          </div>
-          {!vistaCliente && !soloSeccion && !bloqueada && (
-            confirmar ? (
-              <span className="flex items-center gap-1">
-                <Button size="sm" variant="danger" onClick={() => editarVersion(proyectoId, (v) => void (v.secciones = v.secciones.filter((x) => x.id !== seccion.id)))}>
-                  Eliminar sección
-                </Button>
-                <Button size="sm" variant="ghost" onClick={() => setConfirmar(false)}>
-                  Cancelar
-                </Button>
-              </span>
-            ) : (
-              <IconButton label="Eliminar sección" onClick={() => setConfirmar(true)}>
-                <Trash2 />
-              </IconButton>
-            )
-          )}
-        </div>
-      </header>
-
-      {vistaCliente ? (
+  if (vistaCliente)
+    return (
+      <section className="rounded-lg border border-slate-200 bg-white shadow-xs" aria-label="Ítems de la propuesta">
         <div className="overflow-x-auto">
-          <TablaCliente items={preciosCliente ?? []} numeroInicial={numeroInicial} />
+          <TablaCliente items={preciosCliente ?? []} numeroInicial={1} />
         </div>
-      ) : (
-        <>
-          <TarjetasItems items={seccion.items} numeroInicial={numeroInicial} />
-          <div className="hidden md:block" onKeyDown={bajarConEnter}>
-            <Bloque
-              icono={<Package />}
-              titulo="Materiales"
-              ayuda="lo que se compra"
-              precio="Costo unitario"
-              vacio="Sin materiales."
-              conProveedor
-              pie={!bloqueada && <AgregarEnLinea tipo="material" onAgregar={agregar} />}
-            >
-              {materiales.map((item) => (
-                <FilaMaterial
-                  key={item.id}
-                  proyectoId={proyectoId}
-                  item={item}
-                  bloqueada={bloqueada}
-                  // En una versión bloqueada no aplica: compararía lo ya vendido con compras posteriores.
-                  compra={bloqueada ? undefined : ultimaCompra(historico, item.materialId, proyectoId)}
-                  onNuevoProveedor={() => setItemParaNuevoProveedor(item.id)}
-                />
-              ))}
-            </Bloque>
-            <Bloque
-              icono={<Wrench />}
-              titulo="Mano de obra"
-              ayuda="lo que cobra Infrasoft"
-              precio="Valor unitario"
-              vacio="Sin mano de obra."
-              pie={!bloqueada && <AgregarEnLinea tipo="mo" onAgregar={agregar} />}
-              separado
-            >
-              {filasMO.map((f) => (
-                <FilaManoObra key={f.clave} proyectoId={proyectoId} seccionId={seccion.id} fila={f} materiales={materiales} bloqueada={bloqueada} />
-              ))}
-            </Bloque>
-          </div>
-        </>
-      )}
-
-      {!vistaCliente && (
-        <footer className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 rounded-b-lg border-t border-slate-200 bg-slate-50 px-4 py-2.5">
-          {!bloqueada ? (
-            <Button size="sm" variant="ghost" icon={<Boxes />} onClick={onAgregarKit} className="-ml-1 text-brand-800 hover:bg-brand-50 hover:text-brand-900">
-              Agregar kit
-            </Button>
-          ) : (
-            <span />
-          )}
-          <dl className="num flex flex-wrap items-baseline gap-x-6 gap-y-1 text-[13px]">
-            <Total etiqueta="Materiales" valor={t.material} />
-            <Total etiqueta="Mano de obra" valor={t.mo} />
-            <Total etiqueta="Total sección" valor={t.subtotal} fuerte />
-          </dl>
+        <footer className="flex justify-end gap-3 rounded-b-lg border-t border-slate-200 bg-slate-50 px-4 py-2.5 text-[13px]">
+          <span className="text-slate-500">Valor total</span>
+          <span className="num font-semibold text-slate-900">{money(totalCliente)}</span>
         </footer>
-      )}
+      </section>
+    )
+
+  return (
+    <section className="rounded-lg border border-slate-200 bg-white shadow-xs" aria-label="Ítems de la cotización">
+      <TarjetasItems items={seccion.items} numeroInicial={1} />
+      <div className="hidden md:block" onKeyDown={bajarConEnter}>
+        <Bloque
+          icono={<Package />}
+          titulo="Materiales"
+          ayuda="lo que se compra"
+          precio="Costo unitario"
+          vacio="Sin materiales. Búscalos en el catálogo o agrega un kit."
+          conProveedor
+          pie={
+            !bloqueada && (
+              // El kit trae materiales y su instalación: se ofrece junto al punto donde se empieza a armar la cotización.
+              <div className="flex flex-wrap items-center gap-2">
+                <AgregarEnLinea tipo="material" onAgregar={agregar} />
+                <Button size="md" variant="ghost" icon={<Boxes />} onClick={onAgregarKit} className="text-brand-800 hover:bg-brand-50 hover:text-brand-900">
+                  Agregar kit
+                </Button>
+              </div>
+            )
+          }
+        >
+          {materiales.map((item) => (
+            <FilaMaterial
+              key={item.id}
+              proyectoId={proyectoId}
+              item={item}
+              bloqueada={bloqueada}
+              // En una versión bloqueada no aplica: compararía lo ya vendido con compras posteriores.
+              compra={bloqueada ? undefined : ultimaCompra(historico, item.materialId, proyectoId)}
+              onNuevoProveedor={() => setItemParaNuevoProveedor(item.id)}
+            />
+          ))}
+        </Bloque>
+        <Bloque
+          icono={<Wrench />}
+          titulo="Mano de obra y otros costos"
+          ayuda="lo que cobra Infrasoft y los gastos del proyecto"
+          precio="Valor unitario"
+          vacio="Sin mano de obra."
+          pie={!bloqueada && <AgregarEnLinea tipo="mo" onAgregar={agregar} />}
+          despues={
+            <>
+              <p className="mt-3 border-t border-dashed border-slate-200 px-4 pt-3 pb-1 text-xs font-semibold tracking-wide text-slate-500 uppercase">Otros costos</p>
+              {otrosCostos.map((o) => (
+                <div key={o.clave} className={cn(rejilla, 'items-start py-1.5 transition-colors hover:bg-slate-50/70')}>
+                  <p className="px-2 py-[7px] text-[13px] text-slate-900">{o.nombre}</p>
+                  <NumberInput data-col="cant" value={o.cantidad} onChange={(n) => editarOtro(o.clave, (x) => void (x.cantidad = n ?? 0))} aria-label={`Cantidad de ${o.nombre}`} inputClassName={campo} />
+                  <NumberInput
+                    data-col="precio"
+                    value={o.valorUnitario || null}
+                    allowEmpty
+                    prefix="$"
+                    placeholder="0"
+                    onChange={(n) => editarOtro(o.clave, (x) => void (x.valorUnitario = n ?? 0))}
+                    aria-label={`Valor unitario de ${o.nombre}`}
+                    inputClassName={campo}
+                  />
+                  <div className={cn('num pt-[7px] text-right text-[13px] font-medium', totalOtroCosto(o) ? 'text-slate-900' : 'text-slate-400')}>{money(totalOtroCosto(o))}</div>
+                  <div />
+                </div>
+              ))}
+            </>
+          }
+          separado
+        >
+          {filasMO.map((f) => (
+            <FilaManoObra key={f.clave} proyectoId={proyectoId} seccionId={seccion.id} fila={f} materiales={materiales} bloqueada={bloqueada} />
+          ))}
+        </Bloque>
+      </div>
+
+      <footer className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 rounded-b-lg border-t border-slate-200 bg-slate-50 px-4 py-2.5">
+        {!bloqueada && seccion.items.length > 0 ? (
+          pendientes > 0 ? (
+            <Badge tone="warn" dot>
+              {pendientes} {pendientes === 1 ? 'ítem sin precio o proveedor' : 'ítems sin precio o proveedor'}
+            </Badge>
+          ) : (
+            <Badge tone="ok" dot>
+              Precios completos
+            </Badge>
+          )
+        ) : (
+          <span />
+        )}
+        <dl className="num flex flex-wrap items-baseline gap-x-6 gap-y-1 text-[13px]">
+          <Total etiqueta="Materiales" valor={t.material} />
+          <Total etiqueta="Mano de obra" valor={t.mo} />
+          <Total etiqueta="Otros costos" valor={totalOtros} />
+          <Total etiqueta="Costo total" valor={t.subtotal + totalOtros} fuerte />
+        </dl>
+      </footer>
 
       {itemParaNuevoProveedor && (
         <NuevoProveedorModal
@@ -207,7 +207,7 @@ function Total({ etiqueta, valor, fuerte }: { etiqueta: string; valor: number; f
   )
 }
 
-function Bloque({ icono, titulo, ayuda, precio, vacio, pie, separado, conProveedor, children }: { icono: ReactNode; titulo: string; ayuda: string; precio: string; vacio: string; pie: ReactNode; separado?: boolean; conProveedor?: boolean; children: ReactNode[] }) {
+function Bloque({ icono, titulo, ayuda, precio, vacio, pie, despues, separado, conProveedor, children }: { icono: ReactNode; titulo: string; ayuda: string; precio: string; vacio: string; pie: ReactNode; despues?: ReactNode; separado?: boolean; conProveedor?: boolean; children: ReactNode[] }) {
   return (
     <div role="group" aria-label={titulo} className={cn('pb-3', separado && 'border-t border-slate-200')}>
       <div className={cn(conProveedor ? rejillaMaterial : rejilla, 'items-end pt-3.5 pb-1.5 text-xs font-semibold tracking-wide text-slate-500 uppercase')}>
@@ -224,6 +224,7 @@ function Bloque({ icono, titulo, ayuda, precio, vacio, pie, separado, conProveed
       </div>
       {children.length > 0 ? <div>{children}</div> : <p className="px-4 py-2 text-[13px] text-slate-500">{vacio}</p>}
       {pie && <div className="px-4 pt-2">{pie}</div>}
+      {despues}
     </div>
   )
 }

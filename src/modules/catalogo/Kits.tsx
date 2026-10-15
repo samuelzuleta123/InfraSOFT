@@ -4,7 +4,8 @@ import { Badge, Button, Card, EmptyState, Field, IconButton, Input, Modal, Numbe
 import { cn } from '@/lib/cn'
 import { money, r3, uid } from '@/lib/format'
 import { useStore } from '@/store/useStore'
-import type { CategoriaMaterial, Kit, KitItem, Unidad } from '@/types'
+import { SelectorMaterialesModal } from './SelectorMateriales'
+import type { Kit, KitItem, Unidad } from '@/types'
 
 const thc = 'px-4 py-3 text-left text-xs font-semibold tracking-wide text-slate-500 uppercase whitespace-nowrap'
 
@@ -95,24 +96,17 @@ export function KitModal({ kit, onClose, onGuardado }: { kit?: Kit; onClose: () 
   const nombreRepetido = kits.some((k) => k.id !== kit?.id && k.nombre.trim().toLowerCase() === nombre.trim().toLowerCase())
   const filasInvalidas = filas.filter((f) => !f.descripcion.trim() || f.cantidad <= 0).length
   const valido = nombre.trim() && !nombreRepetido && filas.length > 0 && filasInvalidas === 0
-  const categorias = [...new Set(materiales.map((m) => m.categoria))] as CategoriaMaterial[]
 
   const cambiar = (clave: string, cambios: Partial<KitItem>) => setFilas((fs) => fs.map((f) => (f.clave === clave ? { ...f, ...cambios } : f)))
-  const agregarMaterial = (materialId: string) => {
-    const m = materiales.find((x) => x.id === materialId)
-    if (m)
-      setFilas((fs) => [
-        ...fs,
-        {
-          clave: uid('ki'),
-          materialId: m.id,
-          descripcion: m.descripcion,
-          unidad: m.unidad,
-          cantidad: 1,
-          vuMO: 0,
-        },
-      ])
-  }
+  const [eligiendo, setEligiendo] = useState(false)
+  const agregarMateriales = (ids: string[]) =>
+    setFilas((fs) => [
+      ...fs,
+      ...ids.flatMap((id) => {
+        const m = materiales.find((x) => x.id === id)
+        return m ? [{ clave: uid('ki'), materialId: m.id, descripcion: m.descripcion, unidad: m.unidad, cantidad: 1, vuMO: 0 }] : []
+      }),
+    ])
 
   const guardar = () => {
     const id = kit?.id ?? uid('kit')
@@ -255,20 +249,9 @@ export function KitModal({ kit, onClose, onGuardado }: { kit?: Kit; onClose: () 
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        <Select value="" onChange={(e) => agregarMaterial(e.target.value)} aria-label="Agregar material del catálogo" className="w-full sm:w-80">
-          <option value="">+ Agregar material del catálogo…</option>
-          {categorias.map((c) => (
-            <optgroup key={c} label={c}>
-              {materiales
-                .filter((m) => m.categoria === c)
-                .map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.descripcion} · {m.codigo}
-                  </option>
-                ))}
-            </optgroup>
-          ))}
-        </Select>
+        <Button variant="secondary" icon={<Plus />} onClick={() => setEligiendo(true)}>
+          Agregar material del catálogo
+        </Button>
         <Button
           variant="ghost"
           icon={<Hammer />}
@@ -289,6 +272,13 @@ export function KitModal({ kit, onClose, onGuardado }: { kit?: Kit; onClose: () 
         </Button>
         {filasInvalidas > 0 && <span className="text-[13px] text-amber-800">Cada línea necesita descripción y cantidad mayor que 0.</span>}
       </div>
+      {eligiendo && (
+        <SelectorMaterialesModal
+          onClose={() => setEligiendo(false)}
+          onAgregar={agregarMateriales}
+          yaAgregados={filas.flatMap((f) => (f.materialId ? [f.materialId] : []))}
+        />
+      )}
     </Modal>
   )
 }

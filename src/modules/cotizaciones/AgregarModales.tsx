@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom'
 import { Boxes, Pencil, Plus, Search } from 'lucide-react'
 import { Badge, Button, EmptyState, Field, Modal, NumberInput, Select } from '@/components/ui'
 import { KitModal } from '@/modules/catalogo/Kits'
-import { precioNeto } from '@/lib/calc'
+import { precioNeto, versionActiva } from '@/lib/calc'
+import { cn } from '@/lib/cn'
 import { moneyUnit, uid } from '@/lib/format'
 import { useStore } from '@/store/useStore'
 import type { ItemCotizacion, Material, PrecioProveedor } from '@/types'
@@ -107,11 +108,16 @@ export function AgregarItemModal({ open, onClose, proyectoId, seccionId }: { ope
   )
 }
 
-export function AgregarKitModal({ open, onClose, proyectoId, seccionId }: { open: boolean; onClose: () => void; proyectoId: string; seccionId: string | null }) {
+const normal = (s: string) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim()
+/** Un ítem del kit ya está en la cotización si hay otro con el mismo nombre y la misma cantidad; si algo difiere, se agrega aparte. */
+const yaEsta = (existentes: ItemCotizacion[], i: ItemCotizacion) => existentes.some((e) => normal(e.descripcion) === normal(i.descripcion) && e.cantidad === i.cantidad)
+
+export function AgregarKitModal({ open, onClose, proyectoId }: { open: boolean; onClose: () => void; proyectoId: string }) {
   const { kits, materiales, precios, editarVersion, notificar } = useStore()
+  const proyecto = useStore((s) => s.proyectos.find((x) => x.id === proyectoId))
+  const existentes = proyecto ? versionActiva(proyecto).secciones.flatMap((x) => x.items) : []
   const [kitId, setKitId] = useState(kits[0]?.id ?? '')
   const [puntos, setPuntos] = useState<number | null>(1)
-  const [destino, setDestino] = useState<'actual' | 'nueva'>('nueva')
   const [editor, setEditor] = useState<'nuevo' | 'editar' | null>(null)
   const kit = kits.find((k) => k.id === kitId) ?? kits[0]
   const n = puntos ?? 0
@@ -124,13 +130,16 @@ export function AgregarKitModal({ open, onClose, proyectoId, seccionId }: { open
     return { ...base, descripcion: ki.descripcion }
   })
 
+  const nuevos = items.filter((i) => !yaEsta(existentes, i))
+  const repetidos = items.length - nuevos.length
+
   const confirmar = () => {
     if (!kit || n <= 0) return
     editarVersion(proyectoId, (v) => {
-      if (destino === 'nueva' || !seccionId) v.secciones.push({ id: uid('sec'), nombre: `${kit.nombre} (${n})`, items })
-      else v.secciones.find((s) => s.id === seccionId)?.items.push(...items)
+      if (!v.secciones.length) v.secciones.push({ id: uid('sec'), nombre: 'Ítems', items: [] })
+      v.secciones[0].items.push(...nuevos)
     })
-    notificar(`Kit “${kit.nombre}” × ${n} agregado`)
+    notificar(`Kit “${kit.nombre}” × ${n}: ${nuevos.length} ítem${nuevos.length === 1 ? '' : 's'} agregado${nuevos.length === 1 ? '' : 's'}${repetidos ? `, ${repetidos} ya estaba${repetidos === 1 ? '' : 'n'}` : ''}`)
     onClose()
   }
 
@@ -141,7 +150,7 @@ export function AgregarKitModal({ open, onClose, proyectoId, seccionId }: { open
         onClose={onClose}
         size="lg"
         title="Agregar kit"
-        description="Un kit es un grupo de ítems predefinido. Las cantidades se multiplican por el número de unidades."
+        description="Sus materiales y su mano de obra se suman a la cotización. Lo que ya esté con el mismo nombre y la misma cantidad no se repite."
         footer={
           <>
             <Link to="/catalogo?tab=kits" className="mr-auto self-center text-[13px] font-medium text-brand-800 hover:text-brand-900 hover:underline">
@@ -150,8 +159,8 @@ export function AgregarKitModal({ open, onClose, proyectoId, seccionId }: { open
             <Button variant="ghost" onClick={onClose}>
               Cancelar
             </Button>
-            <Button variant="primary" onClick={confirmar} disabled={!kit || n <= 0}>
-              Agregar {items.length} ítems
+            <Button variant="primary" onClick={confirmar} disabled={!kit || n <= 0 || nuevos.length === 0}>
+              {nuevos.length === 0 ? 'Todo ya está en la cotización' : `Agregar ${nuevos.length} ítem${nuevos.length === 1 ? '' : 's'}`}
             </Button>
           </>
         }
@@ -169,7 +178,7 @@ export function AgregarKitModal({ open, onClose, proyectoId, seccionId }: { open
           />
         ) : (
           <>
-            <div className="grid gap-4 sm:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Kit" htmlFor="kit">
                 <Select id="kit" value={kit?.id ?? ''} onChange={(e) => setKitId(e.target.value)}>
                   {kits.map((k) => (
@@ -181,14 +190,6 @@ export function AgregarKitModal({ open, onClose, proyectoId, seccionId }: { open
               </Field>
               <Field label="Cantidad de puntos" htmlFor="puntos">
                 <NumberInput id="puntos" value={puntos} onChange={setPuntos} allowEmpty decimals={0} />
-              </Field>
-              <Field label="Agregar en" htmlFor="destino">
-                <Select id="destino" value={destino} onChange={(e) => setDestino(e.target.value as 'actual' | 'nueva')}>
-                  <option value="nueva">Nueva sección</option>
-                  <option value="actual" disabled={!seccionId}>
-                    Sección actual
-                  </option>
-                </Select>
               </Field>
             </div>
             <div className="mt-3 flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
@@ -213,13 +214,13 @@ export function AgregarKitModal({ open, onClose, proyectoId, seccionId }: { open
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {items.map((i) => (
-                  <tr key={i.id}>
+                  <tr key={i.id} className={cn(yaEsta(existentes, i) && 'text-slate-400 [&_td]:text-slate-400')}>
                     <td className="py-2 text-slate-900">{i.descripcion}</td>
                     <td className="num py-2 text-right">
                       {i.cantidad.toLocaleString('es-CO')} {i.unidad}
                     </td>
                     <td className="num py-2 pl-3 text-right">{moneyUnit(i.vuMO)}</td>
-                    <td className="py-2 pl-3">{i.proveedorId ? <Badge tone="ok">Precio cargado</Badge> : i.materialId ? <Badge tone="warn">Elegir en tabla</Badge> : <Badge>Solo mano de obra</Badge>}</td>
+                    <td className="py-2 pl-3">{yaEsta(existentes, i) ? <Badge>Ya está, no se repite</Badge> : i.proveedorId ? <Badge tone="ok">Precio cargado</Badge> : i.materialId ? <Badge tone="warn">Elegir en tabla</Badge> : <Badge>Solo mano de obra</Badge>}</td>
                   </tr>
                 ))}
               </tbody>

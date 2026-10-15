@@ -1,4 +1,4 @@
-import { useId, useMemo, useRef, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { Plus } from 'lucide-react'
 import { esMaterial, precioNeto } from '@/lib/calc'
 import { cn } from '@/lib/cn'
@@ -9,6 +9,8 @@ import type { ItemCotizacion, Unidad } from '@/types'
 interface Sugerencia {
   clave: string
   titulo: string
+  /** Texto extra para buscar (código del material). */
+  busca?: string
   detalle: string
   crear: () => ItemCotizacion
 }
@@ -39,6 +41,7 @@ export function AgregarEnLinea({ tipo, onAgregar }: { tipo: 'material' | 'mo'; o
         return {
           clave: m.id,
           titulo: m.descripcion,
+          busca: `${m.codigo} ${m.categoria}`,
           detalle: pm.length ? `${pm.length} proveedor${pm.length === 1 ? '' : 'es'} · desde ${moneyUnit(precioNeto(mejor))}` : 'Sin precio en catálogo',
           crear: () => ({
             id: uid('it'),
@@ -73,7 +76,8 @@ export function AgregarEnLinea({ tipo, onAgregar }: { tipo: 'material' | 'mo'; o
   const texto = q.trim()
   const lista = useMemo(() => {
     const t = normal(texto)
-    const filtradas = base.filter((s) => !t || normal(s.titulo).includes(t)).slice(0, 8)
+    // Todas las coincidencias, con scroll: cortar la lista escondía materiales sin decir que había más.
+    const filtradas = base.filter((s) => !t || normal(`${s.titulo} ${s.busca ?? ''}`).includes(t))
     if (!texto) return filtradas
     const libre: Sugerencia = {
       clave: '__libre__',
@@ -83,6 +87,11 @@ export function AgregarEnLinea({ tipo, onAgregar }: { tipo: 'material' | 'mo'; o
     }
     return [...filtradas, libre]
   }, [base, texto, tipo])
+
+  // Con flechas, la opción activa se mantiene visible dentro de la lista con scroll.
+  useEffect(() => {
+    if (abierto) document.getElementById(`${listaId}-${activo}`)?.scrollIntoView({ block: 'nearest' })
+  }, [activo, abierto, listaId])
 
   const elegir = (s: Sugerencia) => {
     onAgregar(s.crear())
@@ -128,7 +137,12 @@ export function AgregarEnLinea({ tipo, onAgregar }: { tipo: 'material' | 'mo'; o
         className="h-9 w-full rounded-md border border-dashed border-slate-300 bg-transparent pr-3 pl-8 text-sm text-slate-900 transition-colors placeholder:font-medium placeholder:text-brand-800 hover:border-brand-400 hover:bg-brand-50/40 focus:border-solid focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-500/25 focus:outline-none"
       />
       {abierto && lista.length > 0 && (
-        <ul id={listaId} role="listbox" className="absolute bottom-full left-0 z-30 mb-1.5 max-h-80 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white p-1 shadow-xl">
+        <ul id={listaId} role="listbox" className="absolute bottom-full left-0 z-30 mb-1.5 max-h-96 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white p-1 shadow-xl">
+          <li role="presentation" className="px-2.5 pt-1.5 pb-1 text-xs text-slate-500">
+            {texto
+              ? `${lista.length - 1} de ${base.length} coinciden`
+              : `${base.length} ${tipo === 'material' ? 'materiales en el catálogo' : 'tipos de mano de obra usados antes'} · escribe para filtrar`}
+          </li>
           {lista.map((s, k) => (
             <li
               key={s.clave}

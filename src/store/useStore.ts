@@ -94,12 +94,23 @@ interface State {
 
 const clonar = <T,>(x: T): T => JSON.parse(JSON.stringify(x))
 
+/**
+ * La cotización ya no se divide en secciones: cada versión tiene una sola lista de ítems (materiales y mano de obra).
+ * Las versiones con varias secciones se unen conservando el orden de los ítems.
+ */
+const unificarSecciones = (lista: Proyecto[]) => {
+  for (const p of lista)
+    for (const v of p.cotizacion.versiones)
+      if (v.secciones.length !== 1) v.secciones = [{ id: v.secciones[0]?.id ?? uid('sec'), nombre: 'Ítems', items: v.secciones.flatMap((x) => x.items) }]
+  return lista
+}
+
 /** Funciones de deshacer de los avisos activos (no se guardan en el estado). */
 const deshaceres = new Map<string, () => void>()
 
 export const useStore = create<State>()(
   immer((set, get) => ({
-    proyectos: clonar([...proyectos, ...proyectosDemo]),
+    proyectos: unificarSecciones(clonar([...proyectos, ...proyectosDemo])),
     clientes: clonar([...clientes, ...clientesDemo]),
     proveedores: clonar(proveedores),
     materiales: clonar(materiales),
@@ -155,7 +166,7 @@ export const useStore = create<State>()(
                 id: vid,
                 nombre: 'v1',
                 creada: HOY,
-                secciones: [{ id: uid('sec'), nombre: 'Sección 1', items: [] }],
+                secciones: [{ id: uid('sec'), nombre: 'Ítems', items: [] }],
                 otrosCostos: [
                   { clave: 'siso', nombre: 'SG-SST', cantidad: 0, valorUnitario: 0 },
                   { clave: 'polizas', nombre: 'Pólizas', cantidad: 0, valorUnitario: 0 },

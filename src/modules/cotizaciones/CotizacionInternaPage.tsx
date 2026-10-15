@@ -88,11 +88,13 @@ export function CotizacionInternaPage() {
             const t = totalesSeccion(s)
             return (
               <tbody key={s.id}>
-                <tr className="bg-slate-50">
-                  <td colSpan={9} className="py-1.5 pl-1 font-semibold text-slate-900">
-                    {s.nombre}
-                  </td>
-                </tr>
+                {v.secciones.length > 1 && (
+                  <tr className="bg-slate-50">
+                    <td colSpan={9} className="py-1.5 pl-1 font-semibold text-slate-900">
+                      {s.nombre}
+                    </td>
+                  </tr>
+                )}
                 {s.items.map((i) => (
                   <tr key={i.id} className="border-b border-slate-100 align-top">
                     <td className="num py-1 pr-1.5 text-slate-400">{n++}</td>
@@ -110,7 +112,7 @@ export function CotizacionInternaPage() {
                 ))}
                 <tr className="border-b border-slate-300 font-semibold">
                   <td colSpan={4} className="py-1 px-1.5 text-right text-slate-500">
-                    Total sección
+                    Total ítems
                   </td>
                   <td className={td}>{money(t.mo)}</td>
                   <td />

@@ -2,18 +2,18 @@ import { useState } from 'react'
 import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { BarraDocumento, HojaCarta, MembreteInfrasoft, PieInfrasoft } from '@/components/Documento'
 import { Alert, Select } from '@/components/ui'
-import { preciosCliente, versionActiva } from '@/lib/calc'
+import { esMaterial, preciosCliente, versionActiva } from '@/lib/calc'
 import { HOY, fecha, money, moneyUnit } from '@/lib/format'
 import { useCliente, useProyecto } from '@/store/useStore'
 
-type Nivel = 'total' | 'secciones' | 'items'
+type Nivel = 'total' | 'items'
 type TipoDoc = 'cotizacion' | 'precotizacion'
 
 export function CotizacionPdfPage() {
   const { id } = useParams()
   const proyecto = useProyecto(id)
   const cliente = useCliente(proyecto?.clienteId)
-  const [nivel, setNivel] = useState<Nivel>('secciones')
+  const [nivel, setNivel] = useState<Nivel>('items')
   // La precotización es el estimado rápido que se envía antes de confirmar precios con los proveedores.
   const [params] = useSearchParams()
   const [tipo, setTipo] = useState<TipoDoc>(params.get('tipo') === 'precotizacion' ? 'precotizacion' : 'cotizacion')
@@ -48,7 +48,6 @@ export function CotizacionPdfPage() {
         </label>
         <Select id="nivel" value={nivel} onChange={(e) => setNivel(e.target.value as Nivel)} className="w-auto!">
           <option value="total">Solo valor total</option>
-          <option value="secciones">Totales por sección</option>
           <option value="items">Ítems sin costos internos</option>
         </Select>
       </BarraDocumento>
@@ -107,30 +106,6 @@ export function CotizacionPdfPage() {
               <span className="num text-lg font-semibold text-slate-900">{money(pc.total)}</span>
             </div>
           )}
-          {nivel === 'secciones' && (
-            <table className="mt-2 w-full border-collapse">
-              <thead>
-                <tr className="border-b border-slate-300 text-[11px] tracking-wider text-slate-500 uppercase">
-                  <th className="py-2 text-left font-semibold">Capítulo</th>
-                  <th className="py-2 text-right font-semibold">Valor</th>
-                </tr>
-              </thead>
-              <tbody>
-                {pc.secciones.map((s) => (
-                  <tr key={s.seccion.id} className="border-b border-slate-200">
-                    <td className="py-2">{s.seccion.nombre}</td>
-                    <td className="num py-2 text-right">{money(s.total)}</td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr>
-                  <td className="pt-3 font-semibold">Valor total</td>
-                  <td className="num pt-3 text-right text-base font-semibold text-slate-900">{money(pc.total)}</td>
-                </tr>
-              </tfoot>
-            </table>
-          )}
           {nivel === 'items' && (
             <table className="mt-2 w-full border-collapse text-[12px]">
               <thead>
@@ -143,15 +118,12 @@ export function CotizacionPdfPage() {
                   <th className="py-2 text-right font-semibold">V. total</th>
                 </tr>
               </thead>
-              {pc.secciones.map((s) => (
-                <tbody key={s.seccion.id}>
-                  <tr className="bg-slate-50">
-                    <td colSpan={5} className="py-1.5 pl-1 font-semibold text-slate-900">
-                      {s.seccion.nombre}
-                    </td>
-                    <td className="num py-1.5 text-right font-semibold">{money(s.total)}</td>
-                  </tr>
-                  {s.items.map((ic) => (
+              <tbody>
+                {pc.secciones
+                  .flatMap((s) => s.items)
+                  // Materiales primero y luego mano de obra, en el mismo orden en que se arman en el cotizador.
+                  .sort((a, b) => Number(esMaterial(b.item)) - Number(esMaterial(a.item)))
+                  .map((ic) => (
                     <tr key={ic.item.id} className="border-b border-slate-100">
                       <td className="num py-1.5 pr-2 text-slate-400">{n++}</td>
                       <td className="py-1.5">{ic.item.descripcion}</td>
@@ -161,8 +133,7 @@ export function CotizacionPdfPage() {
                       <td className="num py-1.5 text-right">{money(ic.total)}</td>
                     </tr>
                   ))}
-                </tbody>
-              ))}
+              </tbody>
               <tfoot>
                 <tr>
                   <td colSpan={5} className="pt-3 font-semibold">
