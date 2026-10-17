@@ -419,7 +419,7 @@ export function useHistoricoCompras() {
   return useMemo(() => historicoCompras(proyectos, ordenes, facturas), [proyectos, ordenes, facturas])
 }
 
-export function nombreProveedor(proveedores: Proveedor[], id: string | null | undefined) {
-  if (!id) return 'Sin asignar'
-  return proveedores.find((p) => p.id === id)?.nombre ?? 'Sin asignar'
+export function nombreProveedor(proveedores: Proveedor[], id: string | null | undefined, vacio = 'Sin asignar') {
+  if (!id) return vacio
+  return proveedores.find((p) => p.id === id)?.nombre ?? vacio
 }

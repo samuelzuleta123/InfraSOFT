@@ -28,7 +28,7 @@ export function VencimientosWidget({ compacto }: { compacto?: boolean }) {
                 <div className="text-xs text-slate-500 uppercase">{dias < 0 ? 'días venc.' : 'días'}</div>
               </div>
               <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-medium text-slate-900">{nombreProveedor(proveedores, f.proveedorId)}</div>
+                <div className="truncate text-sm font-medium text-slate-900">{nombreProveedor(proveedores, f.proveedorId, 'Sin proveedor')}</div>
                 <div className="text-xs text-slate-500">
                   {f.numero} · <span className="whitespace-nowrap">vence <FechaTexto iso={f.vencimiento} /></span>
                 </div>
