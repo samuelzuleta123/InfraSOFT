@@ -20,7 +20,7 @@ export interface DocExpediente {
 }
 
 export function documentosProyecto(p: Proyecto, ordenes: OrdenCompra[], facturas: FacturaProveedor[], proveedores: Proveedor[]): DocExpediente[] {
-  const prov = (id: string) => proveedores.find((x) => x.id === id)?.nombre ?? ''
+  const prov = (id: string | null) => (id ? (proveedores.find((x) => x.id === id)?.nombre ?? '') : 'Sin proveedor')
   const docs: DocExpediente[] = []
   for (const v of p.cotizacion.versiones)
     docs.push({
@@ -104,7 +104,7 @@ export interface Evento {
 export function historialProyecto(p: Proyecto, ordenes: OrdenCompra[], facturas: FacturaProveedor[], proveedores: Proveedor[]): Evento[] {
   const docs = documentosProyecto(p, ordenes, facturas, proveedores)
   const doc = (id: string) => docs.find((d) => d.id === id)
-  const prov = (id: string) => proveedores.find((x) => x.id === id)?.nombre ?? ''
+  const prov = (id: string | null) => (id ? (proveedores.find((x) => x.id === id)?.nombre ?? '') : 'Sin proveedor')
   const ev: Evento[] = [{ fecha: p.creado, tipo: 'proyecto', titulo: 'Proyecto creado', detalle: `${p.codigo} · ${p.sede}` }]
   if (p.levantamiento)
     ev.push({

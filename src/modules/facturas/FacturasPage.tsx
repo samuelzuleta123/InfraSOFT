@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { Inbox, Link2, Plus, ReceiptText } from 'lucide-react'
+import { Inbox, Link2, ReceiptText } from 'lucide-react'
 import { Badge, Button, Card, CardHeader, DL, EmptyState, Modal, PageHeader, Tabs, td, th } from '@/components/ui'
 import { AdjuntoChip, FechaTexto } from '@/components/dominio'
 import { totalFactura } from '@/lib/calc'
@@ -10,7 +10,7 @@ import { nombreProveedor, useStore } from '@/store/useStore'
 import type { FacturaProveedor } from '@/types'
 import { VencimientosWidget } from './VencimientosWidget'
 import { ComparacionOC } from './ComparacionOC'
-import { AsociarModal, RegistrarFacturaModal } from './FacturaModales'
+import { AsociarModal, VincularFacturaModal } from './FacturaModales'
 
 export function FacturasPage() {
   const facturas = useStore((s) => s.facturas)
@@ -20,7 +20,7 @@ export function FacturasPage() {
     const f = facturas.find((x) => x.id === params.get('f'))
     return f && f.proyectoId ? 'proyecto' : 'sin'
   })
-  const [registrar, setRegistrar] = useState(false)
+  const [vincular, setVincular] = useState(false)
   const [asociar, setAsociar] = useState<string | null>(null)
   const detalleId = params.get('f')
   const sinAsignar = facturas.filter((f) => !f.proyectoId)
@@ -34,8 +34,8 @@ export function FacturasPage() {
         title="Facturas de proveedores"
         description="Registro de facturas recibidas (PDF y XML como adjuntos). Asócialas a un proyecto y a su orden de compra para comparar valores."
         actions={
-          <Button variant="primary" icon={<Plus />} onClick={() => setRegistrar(true)}>
-            Registrar factura
+          <Button variant="primary" icon={<Link2 />} onClick={() => setVincular(true)}>
+            Vincular factura
           </Button>
         }
       />
@@ -84,7 +84,7 @@ export function FacturasPage() {
 
       {detalleId && <DetalleFactura id={detalleId} onClose={() => abrir(null)} onAsociar={(id) => setAsociar(id)} />}
       {asociar && <AsociarModal facturaId={asociar} onClose={() => setAsociar(null)} onDone={() => setTab('proyecto')} />}
-      {registrar && <RegistrarFacturaModal onClose={() => setRegistrar(false)} onCreada={(asociada) => setTab(asociada ? 'proyecto' : 'sin')} />}
+      {vincular && <VincularFacturaModal onClose={() => setVincular(false)} onVinculada={() => setTab('proyecto')} />}
     </>
   )
 }
@@ -119,7 +119,7 @@ function TablaFacturas({ facturas, onAbrir, onAsociar }: { facturas: FacturaProv
                 <td className={td}>
                   <button onClick={() => onAbrir(f.id)} className="text-left">
                     <span className="block font-medium text-brand-800 hover:underline">{f.numero}</span>
-                    <span className="block text-xs text-slate-500">{nombreProveedor(proveedores, f.proveedorId)}</span>
+                    <span className="block text-xs text-slate-500">{nombreProveedor(proveedores, f.proveedorId, 'Sin proveedor')}</span>
                   </button>
                 </td>
                 <td className={cn(td, 'text-slate-600')}>
@@ -172,7 +172,7 @@ function DetalleFactura({ id, onClose, onAsociar }: { id: string; onClose: () =>
       onClose={onClose}
       size="lg"
       title={`Factura ${f.numero}`}
-      description={nombreProveedor(proveedores, f.proveedorId)}
+      description={nombreProveedor(proveedores, f.proveedorId, 'Sin proveedor')}
       footer={
         <>
           <Button

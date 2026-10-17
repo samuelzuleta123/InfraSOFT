@@ -164,7 +164,8 @@ export interface LineaFactura {
 
 export interface FacturaProveedor {
   id: string
-  proveedorId: string
+  /** null en facturas menores sin proveedor registrado. */
+  proveedorId: string | null
   numero: string
   fecha: ISODate
   vencimiento: ISODate

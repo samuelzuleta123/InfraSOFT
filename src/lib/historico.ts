@@ -68,7 +68,7 @@ export function historicoCompras(proyectos: Proyecto[], ordenes: OrdenCompra[], 
         const materialId = materialDeItem(proyectos, oc.proyectoId, lo.itemId)
         if (!materialId) continue
         facturadas.add(lo.id)
-        compras.push({ materialId, fecha: f.fecha, proveedorId: f.proveedorId, proyectoId: oc.proyectoId, ocConsecutivo: oc.consecutivo, factura: f.numero, cantidad: lf.cantidad, precio: lf.precioUnitario, precioOC: lo.precioUnitario })
+        compras.push({ materialId, fecha: f.fecha, proveedorId: f.proveedorId ?? oc.proveedorId, proyectoId: oc.proyectoId, ocConsecutivo: oc.consecutivo, factura: f.numero, cantidad: lf.cantidad, precio: lf.precioUnitario, precioOC: lo.precioUnitario })
       }
     // Lo ordenado y aún sin factura también cuenta como referencia de precio.
     for (const lo of oc.lineas) {
