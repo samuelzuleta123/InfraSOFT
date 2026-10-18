@@ -3,10 +3,10 @@ import { Link } from 'react-router-dom'
 import { CopyPlus, Eye, FileText } from 'lucide-react'
 import { Alert, Button, Card, CardHeader, Field, NumberInput, Textarea, Toggle, Input } from '@/components/ui'
 import { EstadoCotBadge } from '@/components/dominio'
-import { precioCuadrable, preciosCliente, resumen, siguienteNombreVersion, todosLosItems, versionActiva } from '@/lib/calc'
+import { preciosCliente, resumen, siguienteNombreVersion, todosLosItems, versionActiva } from '@/lib/calc'
 import { itemsSinProveedor } from '@/lib/compras'
 import { compararConUltimaCompra, posibleErrorDeCeros, textoVariacion, UMBRAL_VARIACION_PRECIO } from '@/lib/historico'
-import { money, moneySigned, moneyUnit } from '@/lib/format'
+import { money, moneyUnit } from '@/lib/format'
 import { useHistoricoCompras, useStore } from '@/store/useStore'
 import type { Proyecto } from '@/types'
 import { TablaSeccion } from './TablaSeccion'
@@ -35,8 +35,6 @@ export function CotizadorTab({ proyecto }: { proyecto: Proyecto }) {
   const cerrado = proyecto.etapa >= 4
   const bloqueada = cerrado || v.estado === 'aprobada' || v.estado === 'rechazada'
   const fijarPrecioFinal = (n: number | null) => editarVersion(proyecto.id, (ver) => void (ver.precioFinal = n))
-  // Si el precio no se puede repartir exacto al peso, se sugiere el más cercano que sí.
-  const sugerido = cliente.cuadra ? null : precioCuadrable(v)
 
   return (
     <div>
@@ -64,13 +62,13 @@ export function CotizadorTab({ proyecto }: { proyecto: Proyecto }) {
         <div className="flex flex-wrap items-center gap-2">
           <Toggle checked={vistaCliente} onChange={setVistaCliente} labelOff="Vista interna" label="Vista cliente" />
           {v.estado === 'borrador' && (
-            <Link to={`/proyectos/${proyecto.id}/cotizacion/pdf?tipo=precotizacion`} className="inline-flex h-9 items-center gap-2 rounded-md border border-slate-300 bg-white px-3.5 text-sm font-medium text-slate-700 shadow-sm transition-colors hover:bg-slate-50">
+            <Link to={`/proyectos/${proyecto.id}/cotizacion/pdf?tipo=precotizacion${vistaCliente ? '' : '&vista=interna'}`} className="inline-flex h-9 items-center gap-2 rounded-md border border-slate-300 bg-white px-3.5 text-sm font-medium text-slate-700 shadow-sm transition-colors hover:bg-slate-50">
               <FileText className="size-4" aria-hidden />
               Precotización
             </Link>
           )}
           <Link
-            to={`/proyectos/${proyecto.id}/cotizacion/pdf`}
+            to={`/proyectos/${proyecto.id}/cotizacion/pdf${vistaCliente ? '' : '?vista=interna'}`}
             className="inline-flex h-9 items-center gap-2 rounded-md bg-brand-800 px-3.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-brand-700"
           >
             <FileText className="size-4" aria-hidden />
@@ -89,24 +87,6 @@ export function CotizadorTab({ proyecto }: { proyecto: Proyecto }) {
           {cerrado
             ? 'La cotización queda como registro de lo vendido. Las cantidades reales se registran en Ejecución y se comparan en la liquidación.'
             : 'Para cambiar precios, cantidades o proveedores crea una nueva versión; la anterior se conserva tal como se envió.'}
-        </Alert>
-      )}
-      {!cliente.cuadra && !bloqueada && (
-        <Alert
-          tone="warn"
-          className="mb-4"
-          title={`El precio ${money(cliente.total)} no se puede repartir exacto entre los ítems`}
-          action={
-            sugerido !== null ? (
-              <Button size="sm" onClick={() => fijarPrecioFinal(sugerido)} className="shrink-0 self-center">
-                Usar {money(sugerido)}
-              </Button>
-            ) : undefined
-          }
-        >
-          {sugerido !== null
-            ? `Con valores unitarios de 3 decimales, las cantidades de esta cotización no llegan exactamente a ese total. ${money(sugerido)} sí cuadra al peso (${moneySigned(sugerido - cliente.total)}).`
-            : 'Agrega ítems con cantidad para repartir el precio.'}
         </Alert>
       )}
       {!vistaCliente && !bloqueada && preciosFuera.length > 0 && (

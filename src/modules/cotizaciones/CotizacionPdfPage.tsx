@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { BarraDocumento, HojaCarta, MembreteInfrasoft, PieInfrasoft } from '@/components/Documento'
-import { Alert, Select } from '@/components/ui'
-import { esMaterial, preciosCliente, versionActiva } from '@/lib/calc'
-import { HOY, fecha, money, moneyUnit } from '@/lib/format'
+import { Select } from '@/components/ui'
+import { esMaterial, itemSubtotal, preciosCliente, resumen, todosLosItems, totalOtroCosto, versionActiva } from '@/lib/calc'
+import { HOY, fecha, money, moneyUnit, pct } from '@/lib/format'
 import { useCliente, useProyecto } from '@/store/useStore'
 
 type Nivel = 'listado' | 'items' | 'total'
@@ -13,9 +13,13 @@ export function CotizacionPdfPage() {
   const { id } = useParams()
   const proyecto = useProyecto(id)
   const cliente = useCliente(proyecto?.clienteId)
-  const [nivel, setNivel] = useState<Nivel>('listado')
-  // La precotización es el estimado rápido que se envía antes de confirmar precios con los proveedores.
   const [params] = useSearchParams()
+  // Desde la vista cliente (y el expediente) el documento sale como lo recibe el cliente: listado y valor total, sin opciones.
+  // Desde la vista interna se elige entre ítems con valor unitario y solo valor total.
+  const interna = params.get('vista') === 'interna'
+  const [nivelInterno, setNivel] = useState<Exclude<Nivel, 'listado'>>('items')
+  const nivel: Nivel = interna ? nivelInterno : 'listado'
+  // La precotización es el estimado rápido que se envía antes de confirmar precios con los proveedores.
   const [tipo, setTipo] = useState<TipoDoc>(params.get('tipo') === 'precotizacion' ? 'precotizacion' : 'cotizacion')
   const nav = useNavigate()
   const { state } = useLocation()
@@ -23,6 +27,14 @@ export function CotizacionPdfPage() {
 
   const v = versionActiva(proyecto)
   const pc = preciosCliente(v)
+  // Vista interna con ítems: unitarios a costo (material + instalación), sin inflar, y las líneas que llevan al total.
+  const r = resumen(v)
+  const itemsCosto = todosLosItems(v).sort((a, b) => Number(esMaterial(b)) - Number(esMaterial(a)))
+  const subtotalItems = itemsCosto.reduce((a, i) => a + itemSubtotal(i), 0)
+  const otrosCostos = v.otrosCostos.filter((o) => totalOtroCosto(o) > 0)
+  const ajustes = Math.round(r.ajustesReales)
+  // La ganancia cierra la cuenta al peso: lo que queda del precio después de costos y ajustes.
+  const ganancia = pc.total - subtotalItems - r.otros - ajustes
   const fechaDoc = v.historial.find((h) => h.estado === 'enviada')?.fecha ?? v.creada
   const precot = tipo === 'precotizacion'
   let n = 1
@@ -41,30 +53,37 @@ export function CotizacionPdfPage() {
         >
           <option value="precotizacion">Precotización</option>
           <option value="cotizacion">Cotización</option>
-          <option value="interna">Interna (con costos)</option>
+          {interna && <option value="interna">Interna (con costos)</option>}
         </Select>
-        <label htmlFor="nivel" className="text-[13px] font-medium text-slate-600">
-          Nivel de detalle
-        </label>
-        <Select id="nivel" value={nivel} onChange={(e) => setNivel(e.target.value as Nivel)} className="w-auto!">
-          <option value="listado">Listado y valor total</option>
-          <option value="items">Ítems con valor unitario</option>
-          <option value="total">Solo valor total</option>
-        </Select>
+        {interna && (
+          <>
+            <label htmlFor="nivel" className="text-[13px] font-medium text-slate-600">
+              Nivel de detalle
+            </label>
+            <Select id="nivel" value={nivelInterno} onChange={(e) => setNivel(e.target.value as Exclude<Nivel, 'listado'>)} className="w-auto!">
+              <option value="items">Ítems con valor unitario</option>
+              <option value="total">Solo valor total</option>
+            </Select>
+          </>
+        )}
       </BarraDocumento>
 
-      {nivel === 'items' && !pc.cuadra && (
-        <div className="no-print mx-auto mt-4 max-w-[8.5in] px-4">
-          <Alert tone="danger" title="Este documento no cuadra al peso">
-            La suma de los ítems no da exactamente {money(pc.total)}. Vuelve al cotizador y usa el precio final sugerido antes de enviarlo.
-          </Alert>
-        </div>
-      )}
       <HojaCarta>
         <header className="flex flex-wrap items-start justify-between gap-6 border-b-2 border-brand-500 pb-5">
           <MembreteInfrasoft />
+          {interna && (
+            <div className="flex-1 self-center text-center">
+              <div className="inline-block rounded border-2 border-red-700 px-4 py-1.5 text-red-700">
+                <div className="text-base leading-tight font-bold tracking-[0.2em] uppercase">Interna</div>
+                <div className="text-[9px] font-semibold tracking-wider uppercase">No entregar al cliente</div>
+              </div>
+            </div>
+          )}
           <div className="text-right">
-            <div className="text-[11px] font-semibold tracking-wider text-slate-500 uppercase">{precot ? 'Precotización' : 'Cotización'}</div>
+            <div className="text-[11px] font-semibold tracking-wider text-slate-500 uppercase">
+              {precot ? 'Precotización' : 'Cotización'}
+              {interna && ' interna'}
+            </div>
             <div className="num text-lg font-semibold text-slate-900">
               {precot && 'PRE-'}
               {proyecto.cotizacion.consecutivo}-{v.nombre.toUpperCase()}
@@ -163,27 +182,56 @@ export function CotizacionPdfPage() {
                 </tr>
               </thead>
               <tbody>
-                {pc.secciones
-                  .flatMap((s) => s.items)
-                  // Materiales primero y luego mano de obra, en el mismo orden en que se arman en el cotizador.
-                  .sort((a, b) => Number(esMaterial(b.item)) - Number(esMaterial(a.item)))
-                  .map((ic) => (
-                    <tr key={ic.item.id} className="border-b border-slate-100">
-                      <td className="num py-1.5 pr-2 text-slate-400">{n++}</td>
-                      <td className="py-1.5">{ic.item.descripcion}</td>
-                      <td className="py-1.5 px-2">{ic.item.unidad}</td>
-                      <td className="num py-1.5 px-2 text-right">{ic.item.cantidad.toLocaleString('es-CO')}</td>
-                      <td className="num py-1.5 px-2 text-right">{moneyUnit(ic.unitario)}</td>
-                      <td className="num py-1.5 text-right">{money(ic.total)}</td>
-                    </tr>
-                  ))}
+                {itemsCosto.map((i) => (
+                  <tr key={i.id} className="border-b border-slate-100">
+                    <td className="num py-1.5 pr-2 text-slate-400">{n++}</td>
+                    <td className="py-1.5">{i.descripcion}</td>
+                    <td className="py-1.5 px-2">{i.unidad}</td>
+                    <td className="num py-1.5 px-2 text-right">{i.cantidad.toLocaleString('es-CO')}</td>
+                    <td className="num py-1.5 px-2 text-right">{moneyUnit(i.vuMaterial + i.vuMO)}</td>
+                    <td className="num py-1.5 text-right">{money(itemSubtotal(i))}</td>
+                  </tr>
+                ))}
               </tbody>
               <tfoot>
-                <tr>
-                  <td colSpan={5} className="pt-3 font-semibold">
+                <tr className="border-t border-slate-300">
+                  <td />
+                  <td colSpan={4} className="pt-2.5 pb-1">
+                    Subtotal ítems (material e instalación)
+                  </td>
+                  <td className="num pt-2.5 pb-1 text-right">{money(subtotalItems)}</td>
+                </tr>
+                {r.otros > 0 && (
+                  <tr>
+                    <td />
+                    <td colSpan={4} className="py-1">
+                      Otros costos ({otrosCostos.map((o) => o.nombre).join(', ')})
+                    </td>
+                    <td className="num py-1 text-right">{money(r.otros)}</td>
+                  </tr>
+                )}
+                {ajustes > 0 && (
+                  <tr>
+                    <td />
+                    <td colSpan={4} className="py-1">
+                      Otros ajustes ({pct(r.ajustesPct)}: comisiones, retenciones o impuestos)
+                    </td>
+                    <td className="num py-1 text-right">{money(ajustes)}</td>
+                  </tr>
+                )}
+                <tr className="bg-brand-50">
+                  <td />
+                  <td colSpan={4} className="py-1.5 font-semibold text-brand-900">
+                    Ganancia Infrasoft
+                  </td>
+                  <td className={`num py-1.5 text-right font-semibold ${ganancia < 0 ? 'text-red-700' : 'text-brand-900'}`}>{money(ganancia)}</td>
+                </tr>
+                <tr className="border-t-2 border-brand-500">
+                  <td />
+                  <td colSpan={4} className="pt-2.5 font-semibold">
                     Valor total
                   </td>
-                  <td className="num pt-3 text-right text-base font-semibold text-slate-900">{money(pc.total)}</td>
+                  <td className="num pt-2.5 text-right text-base font-semibold text-slate-900">{money(pc.total)}</td>
                 </tr>
               </tfoot>
             </table>
