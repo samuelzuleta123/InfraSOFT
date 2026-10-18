@@ -4,6 +4,7 @@ import { FotoPlaceholder } from '@/components/dominio'
 import { fecha, HOY } from '@/lib/format'
 import type { Proyecto } from '@/types'
 import { useCliente, useProyecto } from '@/store/useStore'
+import { fraseGarantia } from '@/lib/observaciones'
 
 function Encabezado({ titulo, proyecto }: { titulo: string; proyecto: Proyecto }) {
   return (
@@ -50,7 +51,7 @@ export function InformeEntregaPage() {
 
         <section className="mt-6">
           <h2 className="text-[11px] font-semibold tracking-wider text-slate-500 uppercase">Trabajos realizados</h2>
-          <p className="mt-1 text-justify">{proyecto.cotizacion.alcance}</p>
+          <p className="mt-1 text-justify whitespace-pre-line">{proyecto.entrega.trabajosRealizados || proyecto.cotizacion.alcance}</p>
         </section>
 
         {fotos.length > 0 && (
@@ -130,9 +131,9 @@ export function ActaEntregaPage() {
           )}
           .
         </p>
-        <p className="mt-4 text-justify">{proyecto.cotizacion.alcance}</p>
+        <p className="mt-4 text-justify whitespace-pre-line">{e.trabajosRealizados || proyecto.cotizacion.alcance}</p>
         <p className="mt-4 text-justify">
-          El cliente declara que los trabajos fueron revisados y se encuentran en funcionamiento.{e.garantia && <> {e.garantia}</>}
+          El cliente declara que los trabajos fueron revisados y se encuentran en funcionamiento.{e.garantia.trim() && <> {fraseGarantia(e.garantia)}</>}
         </p>
         <div className="mt-6">
           <div className="text-[11px] font-semibold tracking-wider text-slate-500 uppercase">Observaciones</div>
