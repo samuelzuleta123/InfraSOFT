@@ -164,8 +164,42 @@ export function ProyectoDetalle() {
           </>
         )}
       </div>
+      <NavegacionTabs proyectoId={proyecto.id} tab={tab as TabId} etapa={proyecto.etapa} />
       {avanzar && <AvanzarEtapaModal proyecto={proyecto} destino={siguiente} onClose={() => setAvanzar(false)} onAvanzado={() => nav(`/proyectos/${proyecto.id}/${tabDeEtapa[siguiente]}`)} />}
     </div>
+  )
+}
+
+/** Anterior / siguiente al final de cada pestaña: lo mismo que ←/→, sin volver arriba. */
+function NavegacionTabs({ proyectoId, tab, etapa }: { proyectoId: string; tab: TabId; etapa: Etapa }) {
+  const i = TABS.findIndex((t) => t.id === tab)
+  const anterior = TABS[i - 1]
+  const siguiente = TABS[i + 1]
+  const bloqueada = (t: TabId) => (etapaDeTab[t] ?? 0) > etapa
+  return (
+    <nav aria-label="Pestañas del proyecto" className="mt-8 flex items-center justify-between gap-3 border-t border-slate-200 pt-4">
+      {anterior ? (
+        <Link
+          to={`/proyectos/${proyectoId}/${anterior.id}`}
+          className="inline-flex h-9 items-center gap-1.5 rounded-md px-2.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
+        >
+          <ChevronLeft className="size-4" aria-hidden />
+          {anterior.label}
+        </Link>
+      ) : (
+        <span />
+      )}
+      {siguiente && (
+        <Link
+          to={`/proyectos/${proyectoId}/${siguiente.id}`}
+          className="inline-flex h-9 items-center gap-1.5 rounded-md bg-brand-800 px-3.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-brand-700"
+        >
+          {bloqueada(siguiente.id) && <Lock className="size-3.5" aria-hidden />}
+          Siguiente: {siguiente.label}
+          <ChevronRight className="size-4" aria-hidden />
+        </Link>
+      )}
+    </nav>
   )
 }
 
