@@ -1,4 +1,5 @@
 import type { OrdenCompra, VersionCotizacion } from '@/types'
+import { esMaterial } from './calc'
 import { HOY, uid } from './format'
 
 /** Una OC por cada proveedor asignado en la cotización. Solo se compra el material (la mano de obra es propia). */
@@ -35,6 +36,19 @@ export function generarOrdenes(
     })
   }
   return [...porProveedor.values()]
+}
+
+/** Materiales a los que les falta proveedor o costo: sin ambos no se puede enviar la cotización ni comprarlos. */
+export function materialesIncompletos(v: VersionCotizacion) {
+  const materiales = v.secciones.flatMap((s) => s.items).filter(esMaterial)
+  const sinProveedor = materiales.filter((i) => !i.proveedorId)
+  const sinPrecio = materiales.filter((i) => i.vuMaterial <= 0)
+  const total = materiales.filter((i) => !i.proveedorId || i.vuMaterial <= 0).length
+  const partes = [
+    sinProveedor.length && `${sinProveedor.length} sin proveedor`,
+    sinPrecio.length && `${sinPrecio.length} sin precio`,
+  ].filter(Boolean)
+  return { total, resumen: partes.join(' y ') }
 }
 
 /** Ítems con material pero sin proveedor: no entran en ninguna OC. */

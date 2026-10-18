@@ -4,7 +4,7 @@ import { CopyPlus, Eye, FileText } from 'lucide-react'
 import { Alert, Button, Card, CardHeader, Field, NumberInput, Textarea, Toggle, Input } from '@/components/ui'
 import { EstadoCotBadge } from '@/components/dominio'
 import { preciosCliente, resumen, siguienteNombreVersion, todosLosItems, versionActiva } from '@/lib/calc'
-import { itemsSinProveedor } from '@/lib/compras'
+import { materialesIncompletos } from '@/lib/compras'
 import { compararConUltimaCompra, posibleErrorDeCeros, textoVariacion, UMBRAL_VARIACION_PRECIO } from '@/lib/historico'
 import { money, moneyUnit } from '@/lib/format'
 import { useHistoricoCompras, useStore } from '@/store/useStore'
@@ -25,7 +25,7 @@ export function CotizadorTab({ proyecto }: { proyecto: Proyecto }) {
   const v = versionActiva(proyecto)
   const r = resumen(v)
   const cliente = preciosCliente(v)
-  const pendientes = itemsSinProveedor(v)
+  const incompletos = materialesIncompletos(v)
   const historico = useHistoricoCompras()
   const preciosFuera = todosLosItems(v).flatMap((item) => {
     const c = compararConUltimaCompra(historico, item, proyecto.id)
@@ -105,9 +105,9 @@ export function CotizadorTab({ proyecto }: { proyecto: Proyecto }) {
           </p>
         </Alert>
       )}
-      {!vistaCliente && !bloqueada && pendientes.length > 0 && (
-        <Alert tone="warn" className="mb-4" title={`${pendientes.length} ítem${pendientes.length === 1 ? '' : 's'} con material sin proveedor`}>
-          Elige el proveedor de cada material en la columna Proveedor: así se carga su precio neto. Sin proveedor no se puede enviar la cotización ni generar su orden de compra.
+      {!vistaCliente && !bloqueada && incompletos.total > 0 && (
+        <Alert tone="warn" className="mb-4" title={`Materiales incompletos: ${incompletos.resumen}`}>
+          Elige el proveedor de cada material en la columna Proveedor (así se carga su precio neto) y completa el costo si el catálogo no lo tiene. Sin proveedor y precio no se puede enviar la cotización ni generar su orden de compra.
         </Alert>
       )}
 

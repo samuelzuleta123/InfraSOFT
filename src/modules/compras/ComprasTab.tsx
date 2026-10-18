@@ -4,7 +4,7 @@ import { Check, CopyPlus, FileText, Lock, Pencil, RefreshCw, Send, ShoppingCart,
 import { Alert, Badge, Button, Card, CardHeader, DL, EmptyState, Field, Input, Modal, NumberInput, Select, Textarea } from '@/components/ui'
 import { AdjuntoChip, EstadoCotBadge, FechaTexto, SubirArchivo, nombreEstadoCot } from '@/components/dominio'
 import { resumen, siguienteNombreVersion, totalCotizadoOC, totalLineaOC, totalOC, versionVigente } from '@/lib/calc'
-import { generarOrdenes, itemsSinProveedor } from '@/lib/compras'
+import { generarOrdenes, itemsSinProveedor, materialesIncompletos } from '@/lib/compras'
 import { cn } from '@/lib/cn'
 import { HOY, money, moneySigned } from '@/lib/format'
 import { nombreProveedor, useStore } from '@/store/useStore'
@@ -45,8 +45,8 @@ function EstadoCotizacionCard({ proyecto }: { proyecto: Proyecto }) {
   const faltaMotivo = confirmar === 'rechazada' && !motivoFinal
   const activa = proyecto.cotizacion.versiones.find((v) => v.id === proyecto.cotizacion.versionActivaId)!
   const abierta = proyecto.etapa < 4 && (activa.estado === 'borrador' || activa.estado === 'enviada')
-  // Sin proveedor no hay a quién comprarle: una vez enviada la versión ya no se puede editar, así que se exige antes.
-  const sinProveedor = activa.estado === 'borrador' ? itemsSinProveedor(activa) : []
+  // Sin proveedor o sin costo no hay qué comprar: una vez enviada la versión ya no se edita, así que se exige antes.
+  const incompletos = activa.estado === 'borrador' ? materialesIncompletos(activa) : { total: 0, resumen: '' }
 
   // Solo las respuestas que tienen sentido desde el estado actual.
   const acciones: { estado: EstadoCotizacion; label: string; icon: React.ReactNode; variant: 'primary' | 'secondary' | 'danger' }[] =
@@ -134,25 +134,25 @@ function EstadoCotizacionCard({ proyecto }: { proyecto: Proyecto }) {
                   key={a.estado}
                   variant={a.variant}
                   icon={a.icon}
-                  disabled={a.estado === 'enviada' && sinProveedor.length > 0}
+                  disabled={a.estado === 'enviada' && incompletos.total > 0}
                   onClick={() => (a.estado === 'enviada' ? registrar(a.estado) : setConfirmar(a.estado))}
                 >
                   {a.label}
                 </Button>
               ))}
             </div>
-            {sinProveedor.length > 0 && (
+            {incompletos.total > 0 && (
               <Alert
                 tone="warn"
                 className="mt-3"
-                title={sinProveedor.length === 1 ? '1 material sin proveedor' : `${sinProveedor.length} materiales sin proveedor`}
+                title={`Materiales incompletos: ${incompletos.resumen}`}
                 action={
                   <Link to={`/proyectos/${proyecto.id}/cotizacion`} className="shrink-0 self-center text-[13px] font-medium text-amber-900 underline">
-                    Asignar en el cotizador
+                    Completar en el cotizador
                   </Link>
                 }
               >
-                Asígnalos antes de enviar: después la cotización queda en solo lectura y sin proveedor no se pueden generar las órdenes de compra.
+                Complétalos antes de enviar: después la cotización queda en solo lectura y sin proveedor ni precio no se pueden generar las órdenes de compra.
               </Alert>
             )}
           </div>
