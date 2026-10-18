@@ -121,7 +121,7 @@ export function ActaEntregaPage() {
         <Encabezado titulo="Acta de conformidad" proyecto={proyecto} />
         <h1 className="mt-8 text-center text-base font-semibold tracking-wide text-slate-900 uppercase">Acta de entrega y recibo a satisfacción</h1>
         <p className="mt-6 text-justify">
-          En Puerto Caldas, a la fecha {fechaEntrega}, {cliente.nombre}, identificada con NIT {cliente.nit}, recibe a satisfacción por parte de Infrasoft Services S.A.S. los trabajos
+          En {cliente.ciudad}, a la fecha {fechaEntrega}, {cliente.nombre}, identificada con NIT {cliente.nit}, recibe a satisfacción por parte de Infrasoft Services S.A.S. los trabajos
           correspondientes al proyecto <strong>“{proyecto.nombre}”</strong>
           {proyecto.ocCliente && (
             <>
