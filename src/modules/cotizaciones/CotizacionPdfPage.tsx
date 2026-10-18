@@ -94,18 +94,26 @@ export function CotizacionPdfPage() {
         <header className="flex flex-wrap items-start justify-between gap-6 border-b-2 border-brand-500 pb-5">
           <MembreteInfrasoft />
           {(interna || respuesta) && (
-            <div className="flex flex-1 flex-col items-center gap-2 self-center text-center">
-              {respuesta && (
-                <div className={`inline-block rounded border-2 px-4 py-1.5 ${respuesta.estado === 'aprobada' ? 'border-emerald-700 text-emerald-700' : 'border-red-700 text-red-700'}`}>
-                  <div className="text-base leading-tight font-bold tracking-[0.2em] uppercase">{respuesta.estado === 'aprobada' ? 'Aprobada' : 'Rechazada'}</div>
-                  <div className="num text-[9px] font-semibold tracking-wider uppercase">Por el cliente · {fecha(respuesta.fecha)}</div>
-                </div>
-              )}
-              {interna && (
+            <div className="flex flex-1 justify-center self-center text-center">
+              {interna ? (
+                // Un solo sello en la versión interna: es para la empresa, así que la respuesta del cliente también se imprime.
                 <div className="inline-block rounded border-2 border-red-700 px-4 py-1.5 text-red-700">
                   <div className="text-base leading-tight font-bold tracking-[0.2em] uppercase">Interna</div>
                   <div className="text-[9px] font-semibold tracking-wider uppercase">No entregar al cliente</div>
+                  {respuesta && (
+                    <div className="num mt-1 border-t border-red-700/30 pt-1 text-[9px] font-semibold tracking-wider uppercase">
+                      {respuesta.estado === 'aprobada' ? 'Aprobada' : 'Rechazada'} por el cliente · {fecha(respuesta.fecha)}
+                    </div>
+                  )}
                 </div>
+              ) : (
+                respuesta && (
+                  // Dato para la empresa: se ve en pantalla, pero el PDF que recibe el cliente sale limpio.
+                  <div className={`no-print inline-block rounded border-2 px-4 py-1.5 ${respuesta.estado === 'aprobada' ? 'border-emerald-700 text-emerald-700' : 'border-red-700 text-red-700'}`}>
+                    <div className="text-base leading-tight font-bold tracking-[0.2em] uppercase">{respuesta.estado === 'aprobada' ? 'Aprobada' : 'Rechazada'}</div>
+                    <div className="num text-[9px] font-semibold tracking-wider uppercase">Por el cliente · {fecha(respuesta.fecha)}</div>
+                  </div>
+                )
               )}
             </div>
           )}
