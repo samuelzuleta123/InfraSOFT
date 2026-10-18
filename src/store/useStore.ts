@@ -6,7 +6,7 @@ import { facturasProveedor, ordenesCompra } from '@/data/compras'
 import { proyectos } from '@/data/proyectos'
 import { fotoGenerica } from '@/data/fotosGenericas'
 import { clientesDemo, facturasDemo, ordenesDemo, proyectosDemo } from '@/data/demo'
-import { precioNeto, versionActiva, versionVigente } from '@/lib/calc'
+import { precioNeto, siguienteNombreVersion, versionActiva, versionVigente } from '@/lib/calc'
 import { formatoConsecutivoOC, generarOrdenes } from '@/lib/compras'
 import { historicoCompras } from '@/lib/historico'
 import { HOY, uid } from '@/lib/format'
@@ -84,6 +84,8 @@ interface State {
   /** Guarda en el catálogo el precio digitado de un material en un proveedor que todavía no lo tenía. */
   guardarPrecioDigitado: (materialId: string, proveedorId: string, precio: number) => void
   nuevaVersion: (proyectoId: string) => void
+  /** Borra una versión de la cotización; si era la activa, queda activa la última que quede. */
+  eliminarVersion: (proyectoId: string, versionId: string) => void
   cambiarEstadoCotizacion: (proyectoId: string, versionId: string, estado: EstadoCotizacion, fecha?: string) => void
   generarOCs: (proyectoId: string) => number
   /** Crea el kit si su id no existe; si existe, lo reemplaza. */
@@ -298,7 +300,7 @@ export const useStore = create<State>()(
         const base = versionActiva(p)
         const copia: VersionCotizacion = clonar(base)
         copia.id = uid('ver')
-        copia.nombre = `v${p.cotizacion.versiones.length + 1}`
+        copia.nombre = siguienteNombreVersion(p)
         copia.creada = HOY
         copia.estado = 'borrador'
         copia.historial = [{ estado: 'borrador', fecha: HOY }]
@@ -311,6 +313,14 @@ export const useStore = create<State>()(
         }
         p.cotizacion.versiones.push(copia)
         p.cotizacion.versionActivaId = copia.id
+      }),
+
+    eliminarVersion: (proyectoId, versionId) =>
+      set((s) => {
+        const p = s.proyectos.find((x) => x.id === proyectoId)
+        if (!p || p.cotizacion.versiones.length < 2) return
+        p.cotizacion.versiones = p.cotizacion.versiones.filter((v) => v.id !== versionId)
+        if (p.cotizacion.versionActivaId === versionId) p.cotizacion.versionActivaId = p.cotizacion.versiones.at(-1)!.id
       }),
 
     cambiarEstadoCotizacion: (proyectoId, versionId, estado, fecha = HOY) =>

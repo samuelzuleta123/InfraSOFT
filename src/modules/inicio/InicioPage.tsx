@@ -78,7 +78,8 @@ export function InicioPage() {
                   <div className="h-full rounded-full bg-brand-700 transition-[width] duration-300" style={{ width: `${(e.proyectos.length / max) * 100}%` }} />
                 </div>
                 {e.proyectos.length > 0 && (
-                  <div className="mt-1 truncate text-xs text-slate-500">
+                  // Se desliza de lado para leer todos los códigos sin cortarlos.
+                  <div className="mt-1 overflow-x-auto pb-1 text-xs whitespace-nowrap text-slate-500">
                     {e.proyectos.map((p, i) => (
                       <span key={p.id}>
                         {i > 0 && ', '}

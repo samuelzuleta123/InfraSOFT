@@ -1,17 +1,18 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { CopyPlus, Eye, FileText } from 'lucide-react'
-import { Alert, Button, Card, CardHeader, Field, NumberInput, Select, Textarea, Toggle, Input } from '@/components/ui'
+import { Alert, Button, Card, CardHeader, Field, NumberInput, Textarea, Toggle, Input } from '@/components/ui'
 import { EstadoCotBadge } from '@/components/dominio'
-import { precioCuadrable, preciosCliente, resumen, todosLosItems, versionActiva } from '@/lib/calc'
+import { precioCuadrable, preciosCliente, resumen, siguienteNombreVersion, todosLosItems, versionActiva } from '@/lib/calc'
 import { itemsSinProveedor } from '@/lib/compras'
 import { compararConUltimaCompra, posibleErrorDeCeros, textoVariacion, UMBRAL_VARIACION_PRECIO } from '@/lib/historico'
-import { fecha, money, moneySigned, moneyUnit } from '@/lib/format'
+import { money, moneySigned, moneyUnit } from '@/lib/format'
 import { useHistoricoCompras, useStore } from '@/store/useStore'
 import type { Proyecto } from '@/types'
 import { TablaSeccion } from './TablaSeccion'
 import { ResumenBarra, ResumenPanel } from './ResumenPanel'
 import { AgregarKitModal } from './AgregarModales'
+import { SelectorVersion } from './SelectorVersion'
 
 export function CotizadorTab({ proyecto }: { proyecto: Proyecto }) {
   const editarVersion = useStore((s) => s.editarVersion)
@@ -45,22 +46,7 @@ export function CotizadorTab({ proyecto }: { proyecto: Proyecto }) {
           <label htmlFor="version" className="text-[13px] font-medium text-slate-600">
             Versión
           </label>
-          <Select
-            id="version"
-            value={v.id}
-            onChange={(e) =>
-              editarProyecto(proyecto.id, (p) => {
-                p.cotizacion.versionActivaId = e.target.value
-              })
-            }
-            className="h-9 w-auto! min-w-36"
-          >
-            {proyecto.cotizacion.versiones.map((x) => (
-              <option key={x.id} value={x.id}>
-                {x.nombre} · {fecha(x.creada)}
-              </option>
-            ))}
-          </Select>
+          <SelectorVersion proyecto={proyecto} cerrado={cerrado} />
           <EstadoCotBadge estado={v.estado} />
           <Button
             size="md"
@@ -69,7 +55,7 @@ export function CotizadorTab({ proyecto }: { proyecto: Proyecto }) {
             title={cerrado ? 'El proyecto ya está en entrega o cierre' : undefined}
             onClick={() => {
               nuevaVersion(proyecto.id)
-              notificar(`Se creó la versión v${proyecto.cotizacion.versiones.length + 1} a partir de ${v.nombre}`)
+              notificar(`Se creó la versión ${siguienteNombreVersion(proyecto)} a partir de ${v.nombre}`)
             }}
           >
             Nueva versión
