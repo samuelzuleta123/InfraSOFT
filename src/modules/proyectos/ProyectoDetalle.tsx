@@ -11,7 +11,7 @@ import type { Etapa } from '@/types'
 import { LevantamientoTab } from './LevantamientoTab'
 import { DocumentosTab } from './DocumentosTab'
 import { HistorialTab } from './HistorialTab'
-import { AvanzarEtapaModal, chequeosEtapa, type Chequeo } from './AvanzarEtapaModal'
+import { AvanzarEtapaModal, chequeosEtapa, useAvanzarEtapa, type Chequeo } from './AvanzarEtapaModal'
 import { CotizadorTab } from '@/modules/cotizaciones/CotizadorTab'
 import { ComprasTab } from '@/modules/compras/ComprasTab'
 import { BitacoraTab } from '@/modules/ejecucion/BitacoraTab'
@@ -42,6 +42,7 @@ export function ProyectoDetalle() {
   const cliente = useCliente(proyecto?.clienteId)
   const nav = useNavigate()
   const [avanzar, setAvanzar] = useState(false)
+  const avanzarEtapa = useAvanzarEtapa()
   const ordenes = useStore((s) => s.ordenes)
   // ←/→ en cualquier parte de la página pasan a la pestaña anterior o siguiente.
   useFlechas((tecla, e) => {
@@ -69,6 +70,13 @@ export function ProyectoDetalle() {
   const chequeos = proyecto.etapa < 5 ? chequeosEtapa(proyecto, siguiente, ordenes.filter((o) => o.proyectoId === proyecto.id).length) : []
   // Si falta un requisito obligatorio, avanzar deja de ser la acción principal y lo dice.
   const bloqueos = chequeos.filter((c) => c.bloquea && !c.ok).length
+  // Con todo listo no hay nada que confirmar: avanza de una vez (queda Deshacer). El modal solo aparece si falta algo.
+  const pedirAvance = () => {
+    if (proyecto.etapa >= 5) return
+    if (chequeos.some((c) => !c.ok)) return setAvanzar(true)
+    avanzarEtapa(proyecto, siguiente)
+    nav(`/proyectos/${proyecto.id}/${tabDeEtapa[siguiente]}`)
+  }
 
   return (
     <div>
@@ -106,7 +114,7 @@ export function ProyectoDetalle() {
             <Button
               variant={bloqueos ? 'secondary' : 'primary'}
               icon={<ChevronRight />}
-              onClick={() => setAvanzar(true)}
+              onClick={pedirAvance}
               className="hidden sm:inline-flex"
               title={bloqueos ? 'Hay requisitos obligatorios pendientes para pasar de etapa' : undefined}
             >
@@ -130,7 +138,7 @@ export function ProyectoDetalle() {
             Etapa {proyecto.etapa} de 5
           </span>
           {proyecto.etapa < 5 && (
-            <button type="button" onClick={() => setAvanzar(true)} className="-my-2 px-1 py-2 text-xs font-medium text-brand-800 underline">
+            <button type="button" onClick={pedirAvance} className="-my-2 px-1 py-2 text-xs font-medium text-brand-800 underline">
               Avanzar{bloqueos > 0 && ` · ${bloqueos} pendiente${bloqueos === 1 ? '' : 's'}`}
             </button>
           )}
@@ -150,7 +158,7 @@ export function ProyectoDetalle() {
 
       <div className="mt-6">
         {tabBloqueada ? (
-          <EtapaBloqueada etapaTab={etapaTab} etapa={proyecto.etapa} esSiguiente={etapaTab === siguiente} bloqueos={bloqueos} onAvanzar={() => setAvanzar(true)} />
+          <EtapaBloqueada etapaTab={etapaTab} etapa={proyecto.etapa} esSiguiente={etapaTab === siguiente} bloqueos={bloqueos} onAvanzar={pedirAvance} />
         ) : (
           <>
         {tab === 'levantamiento' && <LevantamientoTab proyecto={proyecto} />}

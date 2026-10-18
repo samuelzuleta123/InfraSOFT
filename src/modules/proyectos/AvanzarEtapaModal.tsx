@@ -82,18 +82,26 @@ export function chequeosEtapa(p: Proyecto, destino: Etapa, ocsProyecto: number):
   }
 }
 
-export function AvanzarEtapaModal({ proyecto, destino, onClose, onAvanzado }: { proyecto: Proyecto; destino: Etapa; onClose: () => void; onAvanzado: () => void }) {
-  const ordenes = useStore((s) => s.ordenes)
+/** Pasa el proyecto a la etapa destino con opción de deshacer. */
+export function useAvanzarEtapa() {
   const editarProyecto = useStore((s) => s.editarProyecto)
   const notificar = useStore((s) => s.notificar)
+  return (proyecto: Proyecto, destino: Etapa) => {
+    const anterior = proyecto.etapa
+    editarProyecto(proyecto.id, (p) => void (p.etapa = destino))
+    notificar(`${proyecto.codigo} pasó a ${nombreEtapa(destino).toLowerCase()}`, 'ok', () => editarProyecto(proyecto.id, (p) => void (p.etapa = anterior)))
+  }
+}
+
+export function AvanzarEtapaModal({ proyecto, destino, onClose, onAvanzado }: { proyecto: Proyecto; destino: Etapa; onClose: () => void; onAvanzado: () => void }) {
+  const ordenes = useStore((s) => s.ordenes)
+  const avanzarEtapa = useAvanzarEtapa()
   const chequeos = chequeosEtapa(proyecto, destino, ordenes.filter((o) => o.proyectoId === proyecto.id).length)
   const bloqueado = chequeos.some((c) => c.bloquea && !c.ok)
   const pendientes = chequeos.filter((c) => !c.ok).length
 
   const avanzar = () => {
-    const anterior = proyecto.etapa
-    editarProyecto(proyecto.id, (p) => void (p.etapa = destino))
-    notificar(`${proyecto.codigo} pasó a ${nombreEtapa(destino).toLowerCase()}`, 'ok', () => editarProyecto(proyecto.id, (p) => void (p.etapa = anterior)))
+    avanzarEtapa(proyecto, destino)
     onAvanzado()
     onClose()
   }
