@@ -86,7 +86,7 @@ interface VersionSpec {
   secciones: [string, ItemCotizacion[]][]
   otros: OtroCosto[]
   precioFinal: number | null
-  historial: [CambioEstado['estado'], string][]
+  historial: ([CambioEstado['estado'], string] | [CambioEstado['estado'], string, Pick<CambioEstado, 'motivo' | 'nota'>])[]
 }
 
 interface ProyectoSpec {
@@ -129,7 +129,7 @@ function construir(spec: ProyectoSpec): Proyecto {
       ajustesPct: null,
       precioFinal: v.precioFinal,
       estado: v.historial.at(-1)![0],
-      historial: v.historial.map(([estado, fecha]) => ({ estado, fecha })),
+      historial: v.historial.map(([estado, fecha, rechazo]) => ({ estado, fecha, ...rechazo })),
     }
   })
   const vigente = versiones.find((v) => v.estado === 'aprobada') ?? versiones.at(-1)!
@@ -437,7 +437,7 @@ const specs: ProyectoSpec[] = [
         ],
         otros: otros(1),
         precioFinal: 8_200_000,
-        historial: [['borrador', '2026-09-07'], ['enviada', '2026-09-08'], ['rechazada', '2026-09-15']],
+        historial: [['borrador', '2026-09-07'], ['enviada', '2026-09-08'], ['rechazada', '2026-09-15', { motivo: 'Sin presupuesto', nota: 'Pidió reducir el alcance a 12 puntos.' }]],
       },
       {
         nombre: 'v2',

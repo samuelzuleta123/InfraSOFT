@@ -107,7 +107,7 @@ function TarjetaDoc({ d }: { d: DocExpediente }) {
 
   return (
     <article className="group flex flex-col">
-      <button type="button" onClick={accion} className="relative block aspect-[3/4] overflow-hidden rounded-md border border-slate-200 bg-white text-left shadow-xs transition-shadow hover:shadow-md focus-visible:ring-2 focus-visible:ring-brand-500" aria-label={`Abrir ${d.tipo} ${d.numero}`}>
+      <button type="button" onClick={accion} className="relative block aspect-[3/4] overflow-hidden rounded-md border border-slate-200 bg-white text-left shadow-xs transition-shadow hover:shadow-md focus-visible:ring-2 focus-visible:ring-brand-500" aria-label={`Abrir ${d.tipo} ${d.numero}${d.destacado ? ` de ${d.destacado}` : ''}`}>
         {d.contexto?.tipo === 'foto' ? (
           <span className="absolute inset-0">
             <FotoPlaceholder foto={{ titulo: '', tono: d.contexto.tono, url: d.contexto.url }} className="h-full aspect-auto rounded-none" />
@@ -116,10 +116,13 @@ function TarjetaDoc({ d }: { d: DocExpediente }) {
           <>
             <span className={cn('absolute inset-x-0 top-0 h-1.5', franja)} aria-hidden />
             <span className="absolute inset-x-4 top-5 flex items-center gap-1.5 text-xs font-semibold tracking-wider text-slate-500 uppercase">
-              <Icono className="size-3" aria-hidden />
-              {d.tipo}
+              <Icono className="size-3 shrink-0" aria-hidden />
+              <span className="truncate" title={d.tipo}>
+                {d.tipo}
+              </span>
             </span>
-            <span className="absolute inset-x-4 top-10 bottom-10" aria-hidden>
+            {d.destacado && <span className="absolute inset-x-4 top-10 line-clamp-2 text-[13px] leading-snug font-semibold text-slate-900">{d.destacado}</span>}
+            <span className={cn('absolute inset-x-4 bottom-10', d.destacado ? 'top-[5.25rem]' : 'top-10')} aria-hidden>
               <MiniPagina tipo={d.tipo} />
             </span>
             {d.valor !== undefined && <span className="num absolute right-4 bottom-4 text-xs font-semibold text-slate-700">{money(d.valor)}</span>}
@@ -129,7 +132,6 @@ function TarjetaDoc({ d }: { d: DocExpediente }) {
         <span className="absolute inset-0 flex items-center justify-center bg-slate-900/0 text-xs font-medium text-white opacity-0 transition group-hover:bg-slate-900/40 group-hover:opacity-100">{d.ruta ? 'Abrir documento' : 'Vista previa'}</span>
       </button>
       <div className="mt-2 min-w-0">
-        <div className="truncate text-xs font-medium text-slate-500">{d.tipo}</div>
         <div className="truncate text-[13px] font-medium text-slate-900" title={d.numero}>
           {d.numero}
         </div>

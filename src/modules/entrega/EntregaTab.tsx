@@ -1,11 +1,15 @@
+import { useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
-import { Check, FileSignature, FileText, Printer, Truck } from 'lucide-react'
-import { Alert, Badge, Card, CardHeader, Field, Input } from '@/components/ui'
+import { Check, FileSignature, FileText, ImagePlus, Printer, Truck, X } from 'lucide-react'
+import { Alert, Badge, Card, CardHeader, Field, Input, Textarea } from '@/components/ui'
 import { AdjuntoChip, FotoPlaceholder, SubirArchivo } from '@/components/dominio'
 import { cn } from '@/lib/cn'
-import { HOY } from '@/lib/format'
+import { HOY, uid } from '@/lib/format'
 import { useStore } from '@/store/useStore'
 import type { Proyecto } from '@/types'
+
+/** Número de una remisión para comparar y ordenar: solo los dígitos ("No. 286" → 286). */
+const numeroRemision = (r: string) => Number(r.replace(/\D/g, '')) || 0
 
 export function EntregaTab({ proyecto }: { proyecto: Proyecto }) {
   const editarProyecto = useStore((s) => s.editarProyecto)
@@ -13,13 +17,47 @@ export function EntregaTab({ proyecto }: { proyecto: Proyecto }) {
   const e = proyecto.entrega
   const editar = (fn: (en: Proyecto['entrega']) => void) => editarProyecto(proyecto.id, (p) => fn(p.entrega))
   const seleccionadas = new Set(e.fotosSeleccionadas)
+  const inputFotos = useRef<HTMLInputElement>(null)
+  // Las fotos del trabajo terminado se suben aquí y quedan marcadas para el informe.
+  const agregarFotos = (archivos: File[]) =>
+    editarProyecto(proyecto.id, (p) => {
+      for (const f of archivos) {
+        const id = uid('f')
+        p.fotos.push({ id, titulo: f.name.replace(/\.[^.]+$/, ''), etapa: 'entrega', tono: 150, url: URL.createObjectURL(f) })
+        p.entrega.fotosSeleccionadas.push(id)
+      }
+    })
+  const quitarFoto = (id: string) =>
+    editarProyecto(proyecto.id, (p) => {
+      p.fotos = p.fotos.filter((f) => f.id !== id)
+      p.entrega.fotosSeleccionadas = p.entrega.fotosSeleccionadas.filter((x) => x !== id)
+    })
+  const proyectos = useStore((s) => s.proyectos)
+  const otros = proyectos.filter((p) => p.id !== proyecto.id && p.entrega.remision.trim())
+  // Sugerencia: el consecutivo sigue al mayor registrado en cualquier proyecto; se puede cambiar si el talonario va en otro número.
+  const ultima = Math.max(0, ...otros.map((p) => numeroRemision(p.entrega.remision)))
+  const sugerida = ultima ? String(ultima + 1) : ''
+  const repetida = e.remision.trim() ? otros.find((p) => numeroRemision(p.entrega.remision) === numeroRemision(e.remision) && numeroRemision(e.remision) > 0) : undefined
+  // Las fechas arrancan en hoy y quedan guardadas, para que lo que se ve sea lo que sale en los documentos; se pueden cambiar, también a futuro.
+  // Solo al abrir la pestaña: si se borra el número a propósito o para escribir otro, no se vuelve a llenar.
+  const precargado = useRef('')
+  useEffect(() => {
+    if (precargado.current === proyecto.id) return
+    precargado.current = proyecto.id
+    editarProyecto(proyecto.id, (p) => {
+      p.entrega.fechaEntrega ??= HOY
+      p.entrega.fechaRemision ??= HOY
+      if (!p.entrega.remision) p.entrega.remision = sugerida
+      p.entrega.trabajosRealizados ??= p.cotizacion.alcance
+    })
+  }, [proyecto.id, sugerida, editarProyecto])
 
   return (
     <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
       <Card>
         <CardHeader
           title="Informe de entrega"
-          description="Selecciona las fotos que van en el informe y adjunta la certificación."
+          description="Sube las fotos del trabajo terminado, elige cuáles van en el informe y adjunta la certificación."
           actions={
             <>
               <Link
@@ -50,30 +88,86 @@ export function EntregaTab({ proyecto }: { proyecto: Proyecto }) {
             {proyecto.fotos.map((f) => {
               const sel = seleccionadas.has(f.id)
               return (
-                <button
-                  key={f.id}
-                  type="button"
-                  aria-pressed={sel}
-                  onClick={() => editar((en) => void (en.fotosSeleccionadas = sel ? en.fotosSeleccionadas.filter((x) => x !== f.id) : [...en.fotosSeleccionadas, f.id]))}
-                  className={cn('rounded-md text-left ring-offset-2 transition-shadow', sel ? 'ring-2 ring-brand-600' : 'hover:ring-2 hover:ring-slate-300')}
-                >
-                  <FotoPlaceholder foto={f}>
-                    <span
-                      className={cn(
-                        'absolute top-2 right-2 flex size-6 items-center justify-center rounded-full border-2 transition-colors',
-                        sel ? 'border-brand-600 bg-brand-600 text-white' : 'border-white/90 bg-black/20 text-transparent',
-                      )}
-                      aria-hidden
+                <div key={f.id} className="relative">
+                  <button
+                    type="button"
+                    aria-pressed={sel}
+                    onClick={() => editar((en) => void (en.fotosSeleccionadas = sel ? en.fotosSeleccionadas.filter((x) => x !== f.id) : [...en.fotosSeleccionadas, f.id]))}
+                    className={cn('block w-full rounded-md text-left ring-offset-2 transition-shadow', sel ? 'ring-2 ring-brand-600' : 'hover:ring-2 hover:ring-slate-300')}
+                  >
+                    <FotoPlaceholder foto={f}>
+                      <span
+                        className={cn(
+                          'absolute top-2 right-2 flex size-6 items-center justify-center rounded-full border-2 transition-colors',
+                          sel ? 'border-brand-600 bg-brand-600 text-white' : 'border-white/90 bg-black/20 text-transparent',
+                        )}
+                        aria-hidden
+                      >
+                        <Check className="size-3.5" strokeWidth={3} />
+                      </span>
+                    </FotoPlaceholder>
+                  </button>
+                  {f.etapa === 'entrega' && (
+                    <button
+                      type="button"
+                      onClick={() => quitarFoto(f.id)}
+                      aria-label={`Quitar foto ${f.titulo}`}
+                      className="absolute top-2 left-2 flex size-6 cursor-pointer items-center justify-center rounded-full bg-black/45 text-white transition-colors hover:bg-black/65"
                     >
-                      <Check className="size-3.5" strokeWidth={3} />
-                    </span>
-                  </FotoPlaceholder>
-                </button>
+                      <X className="size-3.5" />
+                    </button>
+                  )}
+                </div>
               )
             })}
+            <input
+              ref={inputFotos}
+              type="file"
+              accept="image/*"
+              multiple
+              className="sr-only"
+              tabIndex={-1}
+              onChange={(ev) => {
+                agregarFotos(Array.from(ev.target.files ?? []))
+                ev.target.value = ''
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => inputFotos.current?.click()}
+              className="flex aspect-[4/3] cursor-pointer flex-col items-center justify-center gap-1.5 rounded-md border-2 border-dashed border-slate-300 text-[13px] font-medium text-slate-600 transition-colors hover:border-brand-400 hover:bg-brand-50 hover:text-brand-800"
+            >
+              <ImagePlus className="size-5" aria-hidden />
+              Agregar fotos
+              <span className="text-xs font-normal text-slate-500">Del trabajo terminado</span>
+            </button>
           </div>
 
           <div className="mt-6 grid gap-4 border-t border-slate-200 pt-5 sm:grid-cols-2">
+            <Field
+              label="Trabajos realizados"
+              htmlFor="trabajos"
+              className="sm:col-span-2"
+              hint={
+                (e.trabajosRealizados ?? proyecto.cotizacion.alcance) !== proyecto.cotizacion.alcance ? (
+                  <>
+                    Ajustado frente al alcance cotizado.{' '}
+                    <button type="button" onClick={() => editar((en) => void (en.trabajosRealizados = proyecto.cotizacion.alcance))} className="cursor-pointer font-medium text-brand-800 underline-offset-2 hover:underline">
+                      Volver al alcance cotizado
+                    </button>
+                  </>
+                ) : (
+                  'Arranca con el alcance de la cotización; ajústalo si en obra cambió algo. Va en el informe y en el acta.'
+                )
+              }
+            >
+              <Textarea
+                id="trabajos"
+                value={e.trabajosRealizados ?? proyecto.cotizacion.alcance}
+                onChange={(ev) => editar((en) => void (en.trabajosRealizados = ev.target.value))}
+                className="min-h-20"
+              />
+            </Field>
             <Field label="Certificación adjunta">
               <div className="flex min-h-9 flex-wrap items-center gap-2">
                 {e.certificacion ? (
@@ -83,15 +177,20 @@ export function EntregaTab({ proyecto }: { proyecto: Proyecto }) {
                 )}
               </div>
             </Field>
-            <Field label="Fecha de entrega" htmlFor="fecha-entrega">
-              <Input id="fecha-entrega" type="date" value={e.fechaEntrega ?? ''} onChange={(ev) => editar((en) => void (en.fechaEntrega = ev.target.value || null))} />
+            <Field label="Fecha de entrega" htmlFor="fecha-entrega" hint="Hoy por defecto; cámbiala si la entrega es otro día. Desde aquí corre la garantía.">
+              <Input id="fecha-entrega" type="date" value={e.fechaEntrega ?? HOY} onChange={(ev) => editar((en) => void (en.fechaEntrega = ev.target.value || HOY))} />
             </Field>
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Remisión N.°" htmlFor="remision">
+              <Field
+                label="Remisión N.°"
+                htmlFor="remision"
+                error={repetida && `Ya se usó en ${repetida.codigo}`}
+                hint={ultima ? `Sigue a la ${ultima}; cámbiala si el talonario va en otro número.` : undefined}
+              >
                 <Input id="remision" value={e.remision} onChange={(ev) => editar((en) => void (en.remision = ev.target.value))} placeholder="Ej. 286" />
               </Field>
               <Field label="Fecha de remisión" htmlFor="fecha-remision">
-                <Input id="fecha-remision" type="date" value={e.fechaRemision ?? ''} onChange={(ev) => editar((en) => void (en.fechaRemision = ev.target.value || null))} />
+                <Input id="fecha-remision" type="date" value={e.fechaRemision ?? HOY} onChange={(ev) => editar((en) => void (en.fechaRemision = ev.target.value || HOY))} />
               </Field>
             </div>
             <Field label="Garantía" htmlFor="garantia">

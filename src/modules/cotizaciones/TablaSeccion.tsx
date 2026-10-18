@@ -116,7 +116,7 @@ export function TablaSeccion({ proyectoId, seccion, otrosCostos, vistaCliente, p
           <TablaCliente items={preciosCliente ?? []} numeroInicial={1} />
         </div>
         <footer className="flex justify-end gap-3 rounded-b-lg border-t border-slate-200 bg-slate-50 px-4 py-2.5 text-[13px]">
-          <span className="text-slate-500">Valor total</span>
+          <span className="text-slate-500">Valor total del proyecto</span>
           <span className="num font-semibold text-slate-900">{money(totalCliente)}</span>
         </footer>
       </section>
@@ -456,7 +456,13 @@ function Quitar({ bloqueada, etiqueta, onClick }: { bloqueada?: boolean; etiquet
   )
 }
 
+/** Lo que recibe el cliente: qué se suministra e instala y en qué cantidad, sin precios por ítem. */
 function TablaCliente({ items, numeroInicial }: { items: ItemCliente[]; numeroInicial: number }) {
+  const grupos = [
+    { titulo: 'Materiales y equipos', items: items.filter((ic) => esMaterial(ic.item)) },
+    { titulo: 'Mano de obra y servicios', items: items.filter((ic) => !esMaterial(ic.item)) },
+  ].filter((g) => g.items.length > 0)
+  let n = numeroInicial
   return (
     <table className="w-full text-[13px]">
       <thead className="border-b border-slate-200">
@@ -465,22 +471,25 @@ function TablaCliente({ items, numeroInicial }: { items: ItemCliente[]; numeroIn
           <th className={cn(thBase, 'text-left')}>Descripción</th>
           <th className={cn(thBase, 'w-20 text-left')}>Unidad</th>
           <th className={cn(thBase, 'w-20 text-right')}>Cant.</th>
-          <th className={cn(thBase, 'w-32 text-right')}>V. unitario</th>
-          <th className={cn(thBase, 'w-32 text-right')}>V. total</th>
         </tr>
       </thead>
-      <tbody className="divide-y divide-slate-100">
-        {items.map((ic, idx) => (
-          <tr key={ic.item.id}>
-            <td className="num px-2 py-2 text-slate-500">{numeroInicial + idx}</td>
-            <td className="px-2 py-2 text-slate-900">{ic.item.descripcion}</td>
-            <td className="px-2 py-2 text-slate-600">{ic.item.unidad}</td>
-            <td className={celdaNum}>{ic.item.cantidad.toLocaleString('es-CO')}</td>
-            <td className={celdaNum}>{moneyUnit(ic.unitario)}</td>
-            <td className={cn(celdaNum, 'font-medium text-slate-900')}>{money(ic.total)}</td>
+      {grupos.map((g) => (
+        <tbody key={g.titulo} className="divide-y divide-slate-100">
+          <tr className="bg-slate-50">
+            <td colSpan={4} className="px-2 py-1.5 text-[11px] font-semibold tracking-wide text-slate-600 uppercase">
+              {g.titulo}
+            </td>
           </tr>
-        ))}
-      </tbody>
+          {g.items.map((ic) => (
+            <tr key={ic.item.id}>
+              <td className="num px-2 py-2 text-slate-500">{n++}</td>
+              <td className="px-2 py-2 text-slate-900">{ic.item.descripcion}</td>
+              <td className="px-2 py-2 text-slate-600">{ic.item.unidad}</td>
+              <td className={celdaNum}>{ic.item.cantidad.toLocaleString('es-CO')}</td>
+            </tr>
+          ))}
+        </tbody>
+      ))}
     </table>
   )
 }

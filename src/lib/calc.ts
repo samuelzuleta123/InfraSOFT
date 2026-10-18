@@ -71,7 +71,8 @@ export function resumen(v: VersionCotizacion): Resumen {
   const ajustesSugeridos = base * (ajustesPct / 100)
   const precioSugerido = base + ajustesSugeridos
   const precioVigente = v.precioFinal ?? precioSugerido
-  const ajustesReales = precioVigente * (ajustesPct / 100)
+  // Los ajustes se suman sobre costo + utilidad, así que dentro del precio pesan pct / (100 + pct).
+  const ajustesReales = precioVigente * (ajustesPct / (100 + ajustesPct))
   const utilidadReal = precioVigente - costo - ajustesReales
   return {
     mo,
@@ -247,6 +248,10 @@ export function liquidacion(v: VersionCotizacion) {
 
 export const versionActiva = (p: Proyecto) =>
   p.cotizacion.versiones.find((v) => v.id === p.cotizacion.versionActivaId) ?? p.cotizacion.versiones[0]
+
+/** Nombre de la próxima versión: sigue al número más alto, así no se repite tras borrar una. */
+export const siguienteNombreVersion = (p: Proyecto) =>
+  `v${Math.max(0, ...p.cotizacion.versiones.map((v) => Number(v.nombre.replace(/\D/g, '')) || 0)) + 1}`
 
 /** La versión aprobada manda para compras, ejecución y cierre; si no hay, la activa. */
 export const versionVigente = (p: Proyecto) =>

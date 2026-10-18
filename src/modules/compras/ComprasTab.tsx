@@ -1,10 +1,10 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
-import { Check, FileText, Pencil, RefreshCw, Send, ShoppingCart, X } from 'lucide-react'
-import { Alert, Badge, Button, Card, CardHeader, DL, EmptyState, Field, Input, Modal, NumberInput } from '@/components/ui'
+import { Link, useNavigate } from 'react-router-dom'
+import { Check, CopyPlus, FileText, Lock, Pencil, RefreshCw, Send, ShoppingCart, X } from 'lucide-react'
+import { Alert, Badge, Button, Card, CardHeader, DL, EmptyState, Field, Input, Modal, NumberInput, Select, Textarea } from '@/components/ui'
 import { AdjuntoChip, EstadoCotBadge, FechaTexto, SubirArchivo, nombreEstadoCot } from '@/components/dominio'
-import { resumen, totalCotizadoOC, totalLineaOC, totalOC, versionVigente } from '@/lib/calc'
-import { generarOrdenes, itemsSinProveedor } from '@/lib/compras'
+import { resumen, siguienteNombreVersion, totalCotizadoOC, totalLineaOC, totalOC, versionVigente } from '@/lib/calc'
+import { generarOrdenes, itemsSinProveedor, materialesIncompletos } from '@/lib/compras'
 import { cn } from '@/lib/cn'
 import { HOY, money, moneySigned } from '@/lib/format'
 import { nombreProveedor, useStore } from '@/store/useStore'
@@ -25,14 +25,28 @@ export function ComprasTab({ proyecto }: { proyecto: Proyecto }) {
 
 // ── Estados de la cotización ──────────────────────────────────────────
 
+/** Motivos frecuentes de rechazo; "Otro" pide escribirlo. */
+const MOTIVOS_RECHAZO = ['Precio alto', 'Eligió otro proveedor', 'Sin presupuesto', 'Proyecto aplazado o cancelado', 'Cambio de alcance', 'Tiempo de entrega'] as const
+const OTRO = 'Otro'
+
 function EstadoCotizacionCard({ proyecto }: { proyecto: Proyecto }) {
   const cambiar = useStore((s) => s.cambiarEstadoCotizacion)
   const editarProyecto = useStore((s) => s.editarProyecto)
   const notificar = useStore((s) => s.notificar)
+  const nuevaVersion = useStore((s) => s.nuevaVersion)
+  const nav = useNavigate()
   const [fechaCambio, setFechaCambio] = useState(HOY)
   const [confirmar, setConfirmar] = useState<EstadoCotizacion | null>(null)
+  const [motivo, setMotivo] = useState('')
+  const [otroTexto, setOtroTexto] = useState('')
+  const [nota, setNota] = useState('')
+  const motivoFinal = motivo === OTRO ? otroTexto.trim() : motivo
+  // El rechazo no se registra sin un motivo: es lo que se revisa después para ajustar las propuestas.
+  const faltaMotivo = confirmar === 'rechazada' && !motivoFinal
   const activa = proyecto.cotizacion.versiones.find((v) => v.id === proyecto.cotizacion.versionActivaId)!
   const abierta = proyecto.etapa < 4 && (activa.estado === 'borrador' || activa.estado === 'enviada')
+  // Sin proveedor o sin costo no hay qué comprar: una vez enviada la versión ya no se edita, así que se exige antes.
+  const incompletos = activa.estado === 'borrador' ? materialesIncompletos(activa) : { total: 0, resumen: '', accion: '' }
 
   // Solo las respuestas que tienen sentido desde el estado actual.
   const acciones: { estado: EstadoCotizacion; label: string; icon: React.ReactNode; variant: 'primary' | 'secondary' | 'danger' }[] =
@@ -45,14 +59,20 @@ function EstadoCotizacionCard({ proyecto }: { proyecto: Proyecto }) {
 
   const registrar = (estado: EstadoCotizacion) => {
     const antes = { versiones: JSON.parse(JSON.stringify(proyecto.cotizacion.versiones)), etapa: proyecto.etapa }
-    cambiar(proyecto.id, activa.id, estado, fechaCambio)
+    cambiar(proyecto.id, activa.id, estado, fechaCambio, estado === 'rechazada' ? { motivo: motivoFinal, nota: nota.trim() || undefined } : undefined)
     notificar(`Cotización ${activa.nombre} marcada como ${nombreEstadoCot(estado).toLowerCase()}`, 'ok', () =>
       editarProyecto(proyecto.id, (p) => {
         p.cotizacion.versiones = antes.versiones
         p.etapa = antes.etapa
       }),
     )
+    cerrarConfirmar()
+  }
+  const cerrarConfirmar = () => {
     setConfirmar(null)
+    setMotivo('')
+    setOtroTexto('')
+    setNota('')
   }
 
   return (
@@ -68,7 +88,17 @@ function EstadoCotizacionCard({ proyecto }: { proyecto: Proyecto }) {
                   <EstadoCotBadge estado={v.estado} />
                   {v.id === activa.id && (v.estado === 'borrador' || v.estado === 'enviada') && <span className="text-xs text-slate-500">versión actual</span>}
                 </div>
-                <span className="num text-sm font-medium text-slate-900">{money(resumen(v).precioVigente)}</span>
+                <div className="flex items-center gap-3">
+                  <Link
+                    to={`/proyectos/${proyecto.id}/cotizacion/pdf?version=${v.id}`}
+                    state={{ volver: `/proyectos/${proyecto.id}/compras`, volverTexto: 'Volver a Compras' }}
+                    className="inline-flex items-center gap-1 text-xs font-medium text-brand-800 underline-offset-2 hover:underline"
+                  >
+                    <FileText className="size-3.5" aria-hidden />
+                    Ver PDF
+                  </Link>
+                  <span className="num text-sm font-medium text-slate-900">{money(resumen(v).precioVigente)}</span>
+                </div>
               </div>
               <ol className="mt-2.5 flex flex-wrap gap-x-5 gap-y-1 text-xs text-slate-500">
                 {v.historial.map((h, i) => (
@@ -78,6 +108,15 @@ function EstadoCotizacionCard({ proyecto }: { proyecto: Proyecto }) {
                   </li>
                 ))}
               </ol>
+              {v.historial.map(
+                (h, i) =>
+                  h.motivo && (
+                    <p key={i} className="mt-2 rounded bg-red-50/70 px-2.5 py-1.5 text-xs text-red-900">
+                      <span className="font-medium">Motivo del rechazo:</span> {h.motivo}
+                      {h.nota && <span className="text-red-800/80"> · {h.nota}</span>}
+                    </p>
+                  ),
+              )}
             </li>
           ))}
         </ol>
@@ -91,33 +130,77 @@ function EstadoCotizacionCard({ proyecto }: { proyecto: Proyecto }) {
             </Field>
             <div className="mt-3 flex flex-wrap gap-2">
               {acciones.map((a) => (
-                <Button key={a.estado} variant={a.variant} icon={a.icon} onClick={() => (a.estado === 'enviada' ? registrar(a.estado) : setConfirmar(a.estado))}>
+                <Button
+                  key={a.estado}
+                  variant={a.variant}
+                  icon={a.icon}
+                  disabled={a.estado === 'enviada' && incompletos.total > 0}
+                  onClick={() => (a.estado === 'enviada' ? registrar(a.estado) : setConfirmar(a.estado))}
+                >
                   {a.label}
                 </Button>
               ))}
             </div>
+            {incompletos.total > 0 && (
+              <Alert
+                tone="warn"
+                className="mt-3"
+                title={`Materiales incompletos: ${incompletos.resumen}`}
+                action={
+                  <Link to={`/proyectos/${proyecto.id}/cotizacion`} className="shrink-0 self-center text-[13px] font-medium text-amber-900 underline">
+                    Completar en el cotizador
+                  </Link>
+                }
+              >
+                Complétalos antes de enviar: después la cotización queda en solo lectura y sin proveedor ni precio no se pueden generar las órdenes de compra.
+              </Alert>
+            )}
           </div>
         ) : (
-          <p className="mt-5 border-t border-slate-200 pt-4 text-[13px] text-slate-500">
-            {activa.estado === 'aprobada'
-              ? `${activa.nombre} está aprobada. Si el cliente pide cambios, crea una nueva versión desde el cotizador.`
-              : activa.estado === 'rechazada'
-                ? `${activa.nombre} fue rechazada. Crea una nueva versión desde el cotizador para volver a enviarla.`
-                : 'El proyecto ya está en entrega o cierre.'}
-          </p>
+          <div className="mt-5 flex flex-col items-center gap-3 border-t border-slate-200 pt-4 text-center">
+            <p className="text-[13px] text-slate-500">
+              {activa.estado === 'aprobada'
+                ? `${activa.nombre} está aprobada. Si el cliente pide cambios, crea una nueva versión desde el cotizador.`
+                : activa.estado === 'rechazada'
+                  ? `${activa.nombre} fue rechazada. Crea una nueva versión para ajustarla y volver a enviarla.`
+                  : 'El proyecto ya está en entrega o cierre.'}
+            </p>
+            {/* Una versión rechazada ya no se edita: se sigue negociando en una nueva, que se abre de una vez. */}
+            {activa.estado === 'rechazada' && proyecto.etapa < 4 ? (
+              <Button
+                icon={<CopyPlus />}
+                onClick={() => {
+                  const nombre = siguienteNombreVersion(proyecto)
+                  nuevaVersion(proyecto.id)
+                  notificar(`Se creó la versión ${nombre} a partir de ${activa.nombre}`)
+                  nav(`/proyectos/${proyecto.id}/cotizacion`)
+                }}
+              >
+                Crear {siguienteNombreVersion(proyecto)} en el cotizador
+              </Button>
+            ) : (
+              <Link
+                to={`/proyectos/${proyecto.id}/cotizacion`}
+                className="inline-flex h-9 shrink-0 items-center gap-2 rounded-md border border-slate-300 bg-white px-3.5 text-sm font-medium text-slate-700 shadow-sm transition-colors hover:bg-slate-50"
+              >
+                <FileText className="size-4" aria-hidden />
+                Ir al cotizador
+              </Link>
+            )}
+          </div>
         )}
       </div>
       <Modal
         open={confirmar !== null}
-        onClose={() => setConfirmar(null)}
+        onClose={cerrarConfirmar}
         size="sm"
         title={confirmar === 'aprobada' ? `¿El cliente aprobó la ${activa.nombre}?` : `¿El cliente rechazó la ${activa.nombre}?`}
         footer={
           <>
-            <Button variant="ghost" onClick={() => setConfirmar(null)}>
+            <Button variant="ghost" onClick={cerrarConfirmar}>
               Cancelar
             </Button>
-            <Button variant={confirmar === 'rechazada' ? 'danger' : 'primary'} onClick={() => confirmar && registrar(confirmar)}>
+            <Button variant={confirmar === 'rechazada' ? 'danger' : 'primary'} disabled={faltaMotivo} onClick={() => confirmar && registrar(confirmar)}>
               {confirmar === 'aprobada' ? 'Sí, registrar aprobación' : 'Sí, registrar rechazo'}
             </Button>
           </>
@@ -128,6 +211,31 @@ function EstadoCotizacionCard({ proyecto }: { proyecto: Proyecto }) {
             ? `La ${activa.nombre} por ${money(resumen(activa).precioVigente)} queda aprobada con fecha ${fechaCambio.split('-').reverse().join('/')}, el proyecto pasa a compras y la cotización queda en solo lectura.`
             : `La ${activa.nombre} queda como rechazada con fecha ${fechaCambio.split('-').reverse().join('/')}. Para seguir negociando crea una nueva versión desde el cotizador.`}
         </p>
+        {confirmar === 'rechazada' && (
+          <div className="mt-4 space-y-3">
+            <Field label="¿Por qué la rechazó?" htmlFor="motivo-rechazo">
+              <Select id="motivo-rechazo" value={motivo} onChange={(e) => setMotivo(e.target.value)}>
+                <option value="" disabled>
+                  Elige un motivo
+                </option>
+                {MOTIVOS_RECHAZO.map((m) => (
+                  <option key={m} value={m}>
+                    {m}
+                  </option>
+                ))}
+                <option value={OTRO}>Otro…</option>
+              </Select>
+            </Field>
+            {motivo === OTRO && (
+              <Field label="Escribe el motivo" htmlFor="motivo-otro">
+                <Input id="motivo-otro" autoFocus value={otroTexto} onChange={(e) => setOtroTexto(e.target.value)} placeholder="Ej. El cliente decidió hacerlo con personal propio" />
+              </Field>
+            )}
+            <Field label="Comentario (opcional)" htmlFor="nota-rechazo">
+              <Textarea id="nota-rechazo" value={nota} onChange={(e) => setNota(e.target.value)} placeholder="Ej. La competencia ofreció 10 % menos" className="min-h-16" />
+            </Field>
+          </div>
+        )}
       </Modal>
     </Card>
   )
@@ -146,6 +254,9 @@ function OCClienteCard({ proyecto }: { proyecto: Proyecto }) {
   const valorActual = editando ? form.valor : (oc?.valor ?? 0)
   const diferencia = valorActual - cotizado
   const hayValor = editando ? form.valor > 0 : !!oc
+  // La OC llega después de que el cliente aprueba: antes no hay valor comprometido que registrar.
+  const aprobada = proyecto.cotizacion.versiones.some((v) => v.estado === 'aprobada')
+  const bloqueada = !aprobada && !oc
 
   const guardar = () => {
     editarProyecto(proyecto.id, (p) => {
@@ -169,61 +280,70 @@ function OCClienteCard({ proyecto }: { proyecto: Proyecto }) {
           ) : undefined
         }
       />
-      <div className="space-y-4 p-5">
-        {editando ? (
-          <>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Número de OC" htmlFor="oc-num">
-                <Input id="oc-num" value={form.numero} onChange={(e) => setForm({ ...form, numero: e.target.value })} placeholder="Ej. LOC-0081930" />
-              </Field>
-              <Field label="Fecha" htmlFor="oc-fecha">
-                <Input id="oc-fecha" type="date" value={form.fecha} onChange={(e) => setForm({ ...form, fecha: e.target.value })} />
-              </Field>
-              <Field label="Valor" htmlFor="oc-valor">
-                <NumberInput id="oc-valor" value={form.valor || null} allowEmpty decimals={0} prefix="$" onChange={(n) => setForm({ ...form, valor: n ?? 0 })} />
-              </Field>
-              <Field label="Adjunto">
-                <div className="flex min-h-9 flex-wrap items-center gap-2">
-                  {form.adjunto ? <AdjuntoChip adjunto={form.adjunto} onRemove={() => setForm({ ...form, adjunto: null })} /> : <SubirArchivo accept=".pdf,image/*" onFile={(a) => setForm({ ...form, adjunto: a })} />}
-                </div>
-              </Field>
-            </div>
-          </>
-        ) : (
-          oc && (
-            <DL
-              items={[
-                ['Número', <span className="font-semibold">{oc.numero}</span>],
-                ['Fecha', <FechaTexto iso={oc.fecha} />],
-                ['Valor', <span className="num font-semibold">{money(oc.valor)}</span>],
-                ['Adjunto', oc.adjunto ? <AdjuntoChip adjunto={oc.adjunto} contexto={{ tipo: 'ocCliente', proyectoId: proyecto.id }} /> : <span className="text-slate-500">Sin adjunto</span>],
-              ]}
-            />
-          )
-        )}
-
-        {hayValor &&
-          (diferencia === 0 ? (
-            <Alert tone="ok" title="El valor coincide con lo cotizado" />
+      {bloqueada ? (
+        <EmptyState
+          icon={<Lock />}
+          title="Se habilita cuando el cliente apruebe"
+          description="La orden de compra del cliente llega después de la aprobación. Registra primero la aprobación en Estado de la cotización."
+          className="py-10"
+        />
+      ) : (
+        <div className="space-y-4 p-5">
+          {editando ? (
+            <>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field label="Número de OC" htmlFor="oc-num">
+                  <Input id="oc-num" value={form.numero} onChange={(e) => setForm({ ...form, numero: e.target.value })} placeholder="Ej. LOC-0081930" />
+                </Field>
+                <Field label="Fecha" htmlFor="oc-fecha">
+                  <Input id="oc-fecha" type="date" value={form.fecha} onChange={(e) => setForm({ ...form, fecha: e.target.value })} />
+                </Field>
+                <Field label="Valor" htmlFor="oc-valor">
+                  <NumberInput id="oc-valor" value={form.valor || null} allowEmpty decimals={0} prefix="$" onChange={(n) => setForm({ ...form, valor: n ?? 0 })} />
+                </Field>
+                <Field label="Adjunto">
+                  <div className="flex min-h-9 flex-wrap items-center gap-2">
+                    {form.adjunto ? <AdjuntoChip adjunto={form.adjunto} onRemove={() => setForm({ ...form, adjunto: null })} /> : <SubirArchivo accept=".pdf,image/*" onFile={(a) => setForm({ ...form, adjunto: a })} />}
+                  </div>
+                </Field>
+              </div>
+            </>
           ) : (
-            <Alert tone="warn" title="El valor de la OC no coincide con el cotizado">
-              OC {money(valorActual)} frente a cotizado {money(cotizado)}: diferencia de <strong className="num">{moneySigned(diferencia)}</strong>. Verifica con el cliente antes de comprar.
-            </Alert>
-          ))}
+            oc && (
+              <DL
+                items={[
+                  ['Número', <span className="font-semibold">{oc.numero}</span>],
+                  ['Fecha', <FechaTexto iso={oc.fecha} />],
+                  ['Valor', <span className="num font-semibold">{money(oc.valor)}</span>],
+                  ['Adjunto', oc.adjunto ? <AdjuntoChip adjunto={oc.adjunto} contexto={{ tipo: 'ocCliente', proyectoId: proyecto.id }} /> : <span className="text-slate-500">Sin adjunto</span>],
+                ]}
+              />
+            )
+          )}
 
-        {editando && (
-          <div className="flex justify-end gap-2">
-            {oc && (
-              <Button variant="ghost" onClick={() => setEditando(false)}>
-                Cancelar
+          {hayValor &&
+            (diferencia === 0 ? (
+              <Alert tone="ok" title="El valor coincide con lo cotizado" />
+            ) : (
+              <Alert tone="warn" title="El valor de la OC no coincide con el cotizado">
+                OC {money(valorActual)} frente a cotizado {money(cotizado)}: diferencia de <strong className="num">{moneySigned(diferencia)}</strong>. Verifica con el cliente antes de comprar.
+              </Alert>
+            ))}
+
+          {editando && (
+            <div className="flex justify-end gap-2">
+              {oc && (
+                <Button variant="ghost" onClick={() => setEditando(false)}>
+                  Cancelar
+                </Button>
+              )}
+              <Button variant="primary" onClick={guardar} disabled={!form.numero.trim() || !form.valor}>
+                Registrar OC
               </Button>
-            )}
-            <Button variant="primary" onClick={guardar} disabled={!form.numero.trim() || !form.valor}>
-              Registrar OC
-            </Button>
-          </div>
-        )}
-      </div>
+            </div>
+          )}
+        </div>
+      )}
     </Card>
   )
 }

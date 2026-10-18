@@ -39,7 +39,7 @@ export function NuevoProyectoModal({ onClose, clienteInicial }: { onClose: () =>
     })
     notificar(`Proyecto “${datos.nombre}” creado. Sigue con la cotización.`)
     onClose()
-    nav(`/proyectos/${id}/levantamiento`)
+    nav(`/proyectos/${id}/cotizacion`)
   }
 
   return (

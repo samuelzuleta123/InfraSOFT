@@ -2,6 +2,7 @@ import { CheckCircle2, CircleAlert, XCircle } from 'lucide-react'
 import { Button, Modal } from '@/components/ui'
 import { nombreEtapa } from '@/components/dominio'
 import { todosLosItems, versionVigente } from '@/lib/calc'
+import { materialesIncompletos } from '@/lib/compras'
 import { cn } from '@/lib/cn'
 import { useStore } from '@/store/useStore'
 import type { Etapa, Proyecto } from '@/types'
@@ -23,9 +24,17 @@ export function chequeosEtapa(p: Proyecto, destino: Etapa, ocsProyecto: number):
   const aprobada = p.cotizacion.versiones.some((x) => x.estado === 'aprobada')
   const items = todosLosItems(v)
   const registrados = items.filter((i) => i.cantInstalada !== null).length
+  const incompletos = materialesIncompletos(v)
   switch (destino) {
     case 2:
       return [
+        {
+          texto: `Materiales con proveedor y precio${incompletos.total ? ` (${incompletos.resumen})` : ''}`,
+          ok: incompletos.total === 0,
+          bloquea: true,
+          ayuda: `${incompletos.accion} Después de enviarla la cotización ya no se edita y sin esto no se pueden generar las órdenes de compra.`,
+          tab: 'cotizacion',
+        },
         {
           texto: 'Cotización enviada al cliente',
           ok: p.cotizacion.versiones.some((x) => x.estado !== 'borrador'),
@@ -73,18 +82,27 @@ export function chequeosEtapa(p: Proyecto, destino: Etapa, ocsProyecto: number):
   }
 }
 
-export function AvanzarEtapaModal({ proyecto, destino, onClose, onAvanzado }: { proyecto: Proyecto; destino: Etapa; onClose: () => void; onAvanzado: () => void }) {
-  const ordenes = useStore((s) => s.ordenes)
+/** Pasa el proyecto a la etapa destino con opción de deshacer; si quedan recomendados sin hacer, el aviso lo dice. */
+export function useAvanzarEtapa() {
   const editarProyecto = useStore((s) => s.editarProyecto)
   const notificar = useStore((s) => s.notificar)
+  return (proyecto: Proyecto, destino: Etapa, recomendados = 0) => {
+    const anterior = proyecto.etapa
+    editarProyecto(proyecto.id, (p) => void (p.etapa = destino))
+    const pendientes = recomendados ? ` · ${recomendados === 1 ? 'queda 1 pendiente recomendado' : `quedan ${recomendados} pendientes recomendados`}` : ''
+    notificar(`${proyecto.codigo} pasó a ${nombreEtapa(destino).toLowerCase()}${pendientes}`, 'ok', () => editarProyecto(proyecto.id, (p) => void (p.etapa = anterior)))
+  }
+}
+
+export function AvanzarEtapaModal({ proyecto, destino, onClose, onAvanzado }: { proyecto: Proyecto; destino: Etapa; onClose: () => void; onAvanzado: () => void }) {
+  const ordenes = useStore((s) => s.ordenes)
+  const avanzarEtapa = useAvanzarEtapa()
   const chequeos = chequeosEtapa(proyecto, destino, ordenes.filter((o) => o.proyectoId === proyecto.id).length)
   const bloqueado = chequeos.some((c) => c.bloquea && !c.ok)
   const pendientes = chequeos.filter((c) => !c.ok).length
 
   const avanzar = () => {
-    const anterior = proyecto.etapa
-    editarProyecto(proyecto.id, (p) => void (p.etapa = destino))
-    notificar(`${proyecto.codigo} pasó a ${nombreEtapa(destino).toLowerCase()}`, 'ok', () => editarProyecto(proyecto.id, (p) => void (p.etapa = anterior)))
+    avanzarEtapa(proyecto, destino)
     onAvanzado()
     onClose()
   }

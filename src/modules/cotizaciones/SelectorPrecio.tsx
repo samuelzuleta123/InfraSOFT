@@ -132,18 +132,15 @@ export function SelectorPrecio({
           )}
           <Grupo titulo={catalogo.length ? 'Otro proveedor · sin precio' : 'Proveedor · sin precio'}>
             <div className="max-h-36 overflow-y-auto">
+              {/* Misma fila que las opciones con precio: si no, parecen texto y no se ve que se pueden elegir. */}
               {otros.map((p) => (
-                <button
+                <Opcion
                   key={p.id}
-                  type="button"
+                  activa={item.proveedorId === p.id}
+                  titulo={corto(p.nombre)}
+                  detalle="Sin precio · lo digitas en la tabla"
                   onClick={() => elegir(p.id)}
-                  className={cn(
-                    'flex w-full cursor-pointer items-center rounded-md px-2.5 py-1.5 text-left hover:bg-slate-50',
-                    item.proveedorId === p.id && 'bg-brand-50 font-medium text-brand-900 hover:bg-brand-50',
-                  )}
-                >
-                  {corto(p.nombre)}
-                </button>
+                />
               ))}
             </div>
           </Grupo>
@@ -210,7 +207,7 @@ function Grupo({ titulo, children }: { titulo: string; children: React.ReactNode
   )
 }
 
-function Opcion({ activa, titulo, detalle, precio, marca, onClick }: { activa: boolean; titulo: string; detalle: string; precio: number; marca?: string; onClick: () => void }) {
+function Opcion({ activa, titulo, detalle, precio, marca, onClick }: { activa: boolean; titulo: string; detalle: string; precio?: number; marca?: string; onClick: () => void }) {
   return (
     <button
       type="button"
@@ -225,7 +222,13 @@ function Opcion({ activa, titulo, detalle, precio, marca, onClick }: { activa: b
         <span className="block truncate text-xs text-slate-500">{detalle}</span>
       </span>
       <span className="text-right">
-        <span className="num block font-semibold text-slate-900">{moneyUnit(precio)}</span>
+        {precio === undefined ? (
+          <span className="block font-medium text-slate-400" aria-hidden>
+            —
+          </span>
+        ) : (
+          <span className="num block font-semibold text-slate-900">{moneyUnit(precio)}</span>
+        )}
         {marca && <span className="block text-[11px] font-semibold text-emerald-700">{marca}</span>}
       </span>
     </button>
