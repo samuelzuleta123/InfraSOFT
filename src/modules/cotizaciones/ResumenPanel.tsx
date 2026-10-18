@@ -20,7 +20,7 @@ export function ResumenPanel({ r, onPrecioFinal, vistaCliente }: { r: Resumen; o
         <div className="text-xs font-semibold tracking-wide text-slate-500 uppercase">Valor de la propuesta</div>
         <div className="num mt-2 text-3xl font-semibold text-slate-900">{money(r.precioVigente)}</div>
         <p className="mt-3 text-[13px] leading-relaxed text-slate-500">
-          Así ve el cliente la cotización: sin proveedores, costos internos ni utilidad. Los valores por ítem reparten el precio cotizado en proporción a cada ítem.
+          Así ve el cliente la cotización: el listado de lo que se suministra e instala, con sus cantidades, y un solo valor total. Sin precios por ítem, proveedores, costos internos ni utilidad.
         </p>
       </aside>
     )

@@ -6,14 +6,14 @@ import { esMaterial, preciosCliente, versionActiva } from '@/lib/calc'
 import { HOY, fecha, money, moneyUnit } from '@/lib/format'
 import { useCliente, useProyecto } from '@/store/useStore'
 
-type Nivel = 'total' | 'items'
+type Nivel = 'listado' | 'items' | 'total'
 type TipoDoc = 'cotizacion' | 'precotizacion'
 
 export function CotizacionPdfPage() {
   const { id } = useParams()
   const proyecto = useProyecto(id)
   const cliente = useCliente(proyecto?.clienteId)
-  const [nivel, setNivel] = useState<Nivel>('items')
+  const [nivel, setNivel] = useState<Nivel>('listado')
   // La precotización es el estimado rápido que se envía antes de confirmar precios con los proveedores.
   const [params] = useSearchParams()
   const [tipo, setTipo] = useState<TipoDoc>(params.get('tipo') === 'precotizacion' ? 'precotizacion' : 'cotizacion')
@@ -47,12 +47,13 @@ export function CotizacionPdfPage() {
           Nivel de detalle
         </label>
         <Select id="nivel" value={nivel} onChange={(e) => setNivel(e.target.value as Nivel)} className="w-auto!">
+          <option value="listado">Listado y valor total</option>
+          <option value="items">Ítems con valor unitario</option>
           <option value="total">Solo valor total</option>
-          <option value="items">Ítems sin costos internos</option>
         </Select>
       </BarraDocumento>
 
-      {!pc.cuadra && (
+      {nivel === 'items' && !pc.cuadra && (
         <div className="no-print mx-auto mt-4 max-w-[8.5in] px-4">
           <Alert tone="danger" title="Este documento no cuadra al peso">
             La suma de los ítems no da exactamente {money(pc.total)}. Vuelve al cotizador y usa el precio final sugerido antes de enviarlo.
@@ -99,6 +100,49 @@ export function CotizacionPdfPage() {
               Valores estimados, sujetos a confirmación de precios con los proveedores y a la visita técnica. Este documento no es una oferta en firme; la cotización
               definitiva se envía una vez confirmados los precios.
             </p>
+          )}
+          {/* Sin precios por ítem: el cliente ve qué recibe y el valor total, sin unitarios que absorban utilidad y otros costos. */}
+          {nivel === 'listado' && (
+            <>
+              <table className="mt-2 w-full border-collapse text-[12px]">
+                <thead>
+                  <tr className="border-b border-slate-300 text-[10px] tracking-wider text-slate-500 uppercase">
+                    <th className="py-2 pr-2 text-left font-semibold">#</th>
+                    <th className="py-2 text-left font-semibold">Descripción</th>
+                    <th className="py-2 px-2 text-left font-semibold">Und.</th>
+                    <th className="py-2 pl-2 text-right font-semibold">Cant.</th>
+                  </tr>
+                </thead>
+                {[
+                  { titulo: 'Materiales y equipos', material: true },
+                  { titulo: 'Mano de obra y servicios', material: false },
+                ].map((g) => {
+                  const items = pc.secciones.flatMap((s) => s.items).filter((ic) => esMaterial(ic.item) === g.material)
+                  if (!items.length) return null
+                  return (
+                    <tbody key={g.titulo}>
+                      <tr className="bg-slate-50">
+                        <td colSpan={4} className="px-1 py-1.5 text-[10px] font-semibold tracking-wider text-slate-600 uppercase">
+                          {g.titulo}
+                        </td>
+                      </tr>
+                      {items.map((ic) => (
+                        <tr key={ic.item.id} className="border-b border-slate-100">
+                          <td className="num py-1.5 pr-2 text-slate-400">{n++}</td>
+                          <td className="py-1.5">{ic.item.descripcion}</td>
+                          <td className="py-1.5 px-2">{ic.item.unidad}</td>
+                          <td className="num py-1.5 pl-2 text-right">{ic.item.cantidad.toLocaleString('es-CO')}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  )
+                })}
+              </table>
+              <div className="mt-4 flex items-baseline justify-between rounded border border-slate-300 px-4 py-3">
+                <span className="font-medium">Valor total del proyecto</span>
+                <span className="num text-lg font-semibold text-slate-900">{money(pc.total)}</span>
+              </div>
+            </>
           )}
           {nivel === 'total' && (
             <div className="mt-2 flex items-baseline justify-between rounded border border-slate-300 px-4 py-3">
