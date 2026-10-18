@@ -144,7 +144,7 @@ export function ProyectoDetalle() {
             }}
           />
         </div>
-        <PendientesEtapa proyectoId={proyecto.id} etapa={proyecto.etapa} cerrado={cerrado} chequeos={chequeos} />
+        <PendientesEtapa proyectoId={proyecto.id} tab={tab as TabId} etapa={proyecto.etapa} cerrado={cerrado} chequeos={chequeos} />
         <Tabs className="px-3" tabs={tabs} value={tab as TabId} onChange={(t) => nav(`/proyectos/${proyecto.id}/${t}`)} />
       </div>
 
@@ -231,14 +231,18 @@ function EtapaBloqueada({ etapaTab, etapa, esSiguiente, bloqueos, onAvanzar }: {
 const nombreTab: Record<Chequeo['tab'], string> = { cotizacion: 'Cotización', compras: 'Compras', ejecucion: 'Ejecución', entrega: 'Entrega', cierre: 'Cierre' }
 
 /** Qué falta para pasar a la siguiente etapa, por qué se pide y dónde se resuelve. Siempre visible bajo el stepper. */
-function PendientesEtapa({ proyectoId, etapa, cerrado, chequeos }: { proyectoId: string; etapa: Etapa; cerrado: boolean; chequeos: Chequeo[] }) {
+/** Requisitos para la siguiente etapa: cada uno se muestra solo en la pestaña donde se resuelve. */
+function PendientesEtapa({ proyectoId, tab, etapa, cerrado, chequeos }: { proyectoId: string; tab: TabId; etapa: Etapa; cerrado: boolean; chequeos: Chequeo[] }) {
   if (cerrado) return null
   // En cierre ya no hay etapa siguiente: lo único pendiente es registrar la factura.
   const lista: Chequeo[] =
     etapa === 5
       ? [{ texto: 'Factura al cliente registrada', ok: false, bloquea: true, ayuda: 'Con la factura registrada el proyecto queda cerrado y entra a la liquidación.', tab: 'cierre' }]
       : chequeos
+  if (!lista.some((c) => c.tab === tab)) return null
   const faltan = lista.filter((c) => !c.ok)
+  const aqui = faltan.filter((c) => c.tab === tab)
+  const otrasTabs = [...new Set(faltan.filter((c) => c.tab !== tab).map((c) => c.tab))]
   const obligatorios = faltan.filter((c) => c.bloquea)
   const destino = etapa === 5 ? 'cerrar el proyecto' : `pasar a ${nombreEtapa((etapa + 1) as Etapa).toLowerCase()}`
   const tono = obligatorios.length ? 'bloqueado' : faltan.length ? 'pendiente' : 'listo'
@@ -254,9 +258,9 @@ function PendientesEtapa({ proyectoId, etapa, cerrado, chequeos }: { proyectoId:
             : `Todo listo para ${destino}.`}
         {lista.length > faltan.length && <span className="font-normal text-slate-500">· {lista.length - faltan.length} de {lista.length} listos</span>}
       </p>
-      {faltan.length > 0 && (
+      {aqui.length > 0 && (
         <ul className="mt-2 grid gap-2 lg:grid-cols-2">
-          {faltan.map((c) => (
+          {aqui.map((c) => (
             <li key={c.texto} className={cn('flex items-start gap-2.5 rounded-md border px-3 py-2', c.bloquea ? 'border-red-200 bg-red-50/60' : 'border-amber-200 bg-amber-50/60')}>
               {c.bloquea ? <XCircle className="mt-0.5 size-4 shrink-0 text-red-700" aria-hidden /> : <CircleAlert className="mt-0.5 size-4 shrink-0 text-amber-600" aria-hidden />}
               <div className="min-w-0 flex-1">
@@ -266,12 +270,23 @@ function PendientesEtapa({ proyectoId, etapa, cerrado, chequeos }: { proyectoId:
                 </p>
                 <p className="mt-0.5 text-xs text-slate-600">{c.ayuda}</p>
               </div>
-              <Link to={`/proyectos/${proyectoId}/${c.tab}`} className="shrink-0 self-center text-xs font-medium text-brand-800 underline-offset-2 hover:underline">
-                Ir a {nombreTab[c.tab]}
-              </Link>
             </li>
           ))}
         </ul>
+      )}
+      {otrasTabs.length > 0 && (
+        <p className="mt-2 text-xs text-slate-600">
+          También falta en{' '}
+          {otrasTabs.map((t, i) => (
+            <span key={t}>
+              {i > 0 && ', '}
+              <Link to={`/proyectos/${proyectoId}/${t}`} className="font-medium text-brand-800 underline-offset-2 hover:underline">
+                {nombreTab[t]}
+              </Link>
+            </span>
+          ))}
+          .
+        </p>
       )}
     </section>
   )
