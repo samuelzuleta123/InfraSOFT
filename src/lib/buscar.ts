@@ -7,7 +7,7 @@ export interface Resultado {
   tab?: string
 }
 
-const normal = (s: string) =>
+export const normal = (s: string) =>
   s
     .toLowerCase()
     .normalize('NFD')
