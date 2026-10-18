@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { Link, Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { BarraDocumento, HojaCarta, MembreteInfrasoft, PieInfrasoft } from '@/components/Documento'
-import { Select } from '@/components/ui'
+import { Alert, Select } from '@/components/ui'
 import { esMaterial, itemSubtotal, preciosCliente, resumen, todosLosItems, totalOtroCosto, versionActiva } from '@/lib/calc'
 import { HOY, fecha, money, moneyUnit, pct } from '@/lib/format'
+import { materialesIncompletos } from '@/lib/compras'
 import { useCliente, useProyecto } from '@/store/useStore'
 
 type Nivel = 'listado' | 'items' | 'total'
@@ -40,6 +41,7 @@ export function CotizacionPdfPage() {
   const ganancia = pc.total - subtotalItems - r.otros - ajustes
   const fechaDoc = v.historial.find((h) => h.estado === 'enviada')?.fecha ?? v.creada
   const precot = tipo === 'precotizacion'
+  const incompletos = materialesIncompletos(v)
   let n = 1
 
   return (
@@ -71,6 +73,23 @@ export function CotizacionPdfPage() {
         )}
       </BarraDocumento>
 
+      {/* Solo en pantalla: con costos en $0 el valor total sale más bajo de lo real. */}
+      {incompletos.total > 0 && (
+        <div className="no-print mx-auto mt-4 max-w-[8.5in] px-4">
+          <Alert
+            tone={precot ? 'warn' : 'danger'}
+            title={`Materiales incompletos: ${incompletos.resumen}. El valor total está por debajo del real.`}
+            action={
+              <Link to={`/proyectos/${proyecto.id}/cotizacion`} className="shrink-0 self-center text-[13px] font-medium underline">
+                Completar en el cotizador
+              </Link>
+            }
+          >
+            {precot ? 'Si la envías así, aclara al cliente que es un estimado parcial. ' : 'No la envíes al cliente hasta completarla. '}
+            {incompletos.accion}
+          </Alert>
+        </div>
+      )}
       <HojaCarta>
         <header className="flex flex-wrap items-start justify-between gap-6 border-b-2 border-brand-500 pb-5">
           <MembreteInfrasoft />
