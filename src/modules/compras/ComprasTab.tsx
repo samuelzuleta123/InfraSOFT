@@ -45,6 +45,8 @@ function EstadoCotizacionCard({ proyecto }: { proyecto: Proyecto }) {
   const faltaMotivo = confirmar === 'rechazada' && !motivoFinal
   const activa = proyecto.cotizacion.versiones.find((v) => v.id === proyecto.cotizacion.versionActivaId)!
   const abierta = proyecto.etapa < 4 && (activa.estado === 'borrador' || activa.estado === 'enviada')
+  // Sin proveedor no hay a quién comprarle: una vez enviada la versión ya no se puede editar, así que se exige antes.
+  const sinProveedor = activa.estado === 'borrador' ? itemsSinProveedor(activa) : []
 
   // Solo las respuestas que tienen sentido desde el estado actual.
   const acciones: { estado: EstadoCotizacion; label: string; icon: React.ReactNode; variant: 'primary' | 'secondary' | 'danger' }[] =
@@ -128,11 +130,31 @@ function EstadoCotizacionCard({ proyecto }: { proyecto: Proyecto }) {
             </Field>
             <div className="mt-3 flex flex-wrap gap-2">
               {acciones.map((a) => (
-                <Button key={a.estado} variant={a.variant} icon={a.icon} onClick={() => (a.estado === 'enviada' ? registrar(a.estado) : setConfirmar(a.estado))}>
+                <Button
+                  key={a.estado}
+                  variant={a.variant}
+                  icon={a.icon}
+                  disabled={a.estado === 'enviada' && sinProveedor.length > 0}
+                  onClick={() => (a.estado === 'enviada' ? registrar(a.estado) : setConfirmar(a.estado))}
+                >
                   {a.label}
                 </Button>
               ))}
             </div>
+            {sinProveedor.length > 0 && (
+              <Alert
+                tone="warn"
+                className="mt-3"
+                title={sinProveedor.length === 1 ? '1 material sin proveedor' : `${sinProveedor.length} materiales sin proveedor`}
+                action={
+                  <Link to={`/proyectos/${proyecto.id}/cotizacion`} className="shrink-0 self-center text-[13px] font-medium text-amber-900 underline">
+                    Asignar en el cotizador
+                  </Link>
+                }
+              >
+                Asígnalos antes de enviar: después la cotización queda en solo lectura y sin proveedor no se pueden generar las órdenes de compra.
+              </Alert>
+            )}
           </div>
         ) : (
           <div className="mt-5 flex flex-col items-center gap-3 border-t border-slate-200 pt-4 text-center">

@@ -2,6 +2,7 @@ import { CheckCircle2, CircleAlert, XCircle } from 'lucide-react'
 import { Button, Modal } from '@/components/ui'
 import { nombreEtapa } from '@/components/dominio'
 import { todosLosItems, versionVigente } from '@/lib/calc'
+import { itemsSinProveedor } from '@/lib/compras'
 import { cn } from '@/lib/cn'
 import { useStore } from '@/store/useStore'
 import type { Etapa, Proyecto } from '@/types'
@@ -23,9 +24,17 @@ export function chequeosEtapa(p: Proyecto, destino: Etapa, ocsProyecto: number):
   const aprobada = p.cotizacion.versiones.some((x) => x.estado === 'aprobada')
   const items = todosLosItems(v)
   const registrados = items.filter((i) => i.cantInstalada !== null).length
+  const sinProveedor = itemsSinProveedor(v).length
   switch (destino) {
     case 2:
       return [
+        {
+          texto: `Materiales con proveedor asignado${sinProveedor ? ` (faltan ${sinProveedor})` : ''}`,
+          ok: sinProveedor === 0,
+          bloquea: true,
+          ayuda: 'Sin proveedor no se pueden generar las órdenes de compra, y después de enviarla la cotización ya no se edita. Asígnalos en la columna Proveedor.',
+          tab: 'cotizacion',
+        },
         {
           texto: 'Cotización enviada al cliente',
           ok: p.cotizacion.versiones.some((x) => x.estado !== 'borrador'),

@@ -107,7 +107,7 @@ export function CotizadorTab({ proyecto }: { proyecto: Proyecto }) {
       )}
       {!vistaCliente && !bloqueada && pendientes.length > 0 && (
         <Alert tone="warn" className="mb-4" title={`${pendientes.length} ítem${pendientes.length === 1 ? '' : 's'} con material sin proveedor`}>
-          Elige el proveedor de cada material en la columna Proveedor: así se carga su precio neto. Los materiales sin proveedor no generan orden de compra.
+          Elige el proveedor de cada material en la columna Proveedor: así se carga su precio neto. Sin proveedor no se puede enviar la cotización ni generar su orden de compra.
         </Alert>
       )}
 
