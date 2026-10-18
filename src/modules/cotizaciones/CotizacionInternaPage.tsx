@@ -30,7 +30,7 @@ export function CotizacionInternaPage() {
           Documento
         </label>
         {/* Mismo selector que la vista previa PDF: elegir otro documento vuelve a ella. */}
-        <Select id="tipo" value="interna" onChange={(e) => nav(`/proyectos/${proyecto.id}/cotizacion/pdf?tipo=${e.target.value}`, { replace: true, state })} className="w-auto!">
+        <Select id="tipo" value="interna" onChange={(e) => nav(`/proyectos/${proyecto.id}/cotizacion/pdf?tipo=${e.target.value}&vista=interna`, { replace: true, state })} className="w-auto!">
           <option value="precotizacion">Precotización</option>
           <option value="cotizacion">Cotización</option>
           <option value="interna">Interna (con costos)</option>

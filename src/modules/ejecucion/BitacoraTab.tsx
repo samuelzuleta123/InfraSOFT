@@ -4,7 +4,7 @@ import { Badge, Button, Card, CardHeader, EmptyState, Field, IconButton, Input, 
 import { AdjuntoChip, FechaTexto, FotoPlaceholder, SemaforoDot, SemaforoEtiqueta, SubirArchivo } from '@/components/dominio'
 import { avanceEjecucion, costoRealItem, itemSubtotal, semaforo, versionVigente } from '@/lib/calc'
 import { cn } from '@/lib/cn'
-import { HOY, money, num, pct, uid } from '@/lib/format'
+import { HOY, money, moneySigned, num, pct, uid } from '@/lib/format'
 import { useStore } from '@/store/useStore'
 import type { Adjunto, ItemCotizacion, Proyecto } from '@/types'
 
@@ -51,6 +51,8 @@ export function BitacoraTab({ proyecto }: { proyecto: Proyecto }) {
             <div className={cn('num mt-0.5 font-semibold', a.semaforo === 'rojo' ? 'text-red-700' : a.semaforo === 'amarillo' ? 'text-amber-700' : 'text-slate-900')}>
               {money(a.real)} <span className="block text-xs font-normal text-slate-500 sm:inline">({pct(ratio, 0)} del presupuesto)</span>
             </div>
+            {/* La resta ya hecha: cuánto se pasa (o ahorra) frente al presupuesto de lo registrado. */}
+            {a.registrados > 0 && <DiferenciaPresupuesto valor={a.real - a.presupuestoRegistrado} />}
           </div>
         </div>
         <div className="hidden flex-wrap gap-x-4 gap-y-1 border-t border-slate-100 px-4 py-2.5 text-xs sm:flex sm:px-5">
@@ -134,15 +136,18 @@ function ItemObra({ proyectoId, item }: { proyectoId: string; item: ItemCotizaci
         <div className="min-w-0 flex-1 text-right text-xs">
           <div className="text-slate-500">Instalado ({item.unidad})</div>
           {real !== null ? (
-            <div className={cn('num font-semibold', estado === 'rojo' ? 'text-red-700' : estado === 'amarillo' ? 'text-amber-700' : 'text-slate-900')}>
-              {money(real)}
-              {item.cantInstalada! - item.cantidad !== 0 && (
-                <span className="ml-1 font-normal">
-                  ({item.cantInstalada! > item.cantidad ? '+' : ''}
-                  {num(item.cantInstalada! - item.cantidad, 2)})
-                </span>
-              )}
-            </div>
+            <>
+              <div className={cn('num font-semibold', estado === 'rojo' ? 'text-red-700' : estado === 'amarillo' ? 'text-amber-700' : 'text-slate-900')}>
+                {money(real)}
+                {item.cantInstalada! - item.cantidad !== 0 && (
+                  <span className="ml-1 font-normal">
+                    ({item.cantInstalada! > item.cantidad ? '+' : ''}
+                    {num(item.cantInstalada! - item.cantidad, 2)} {item.unidad})
+                  </span>
+                )}
+              </div>
+              {real !== presupuesto && <DiferenciaPresupuesto valor={real - presupuesto} />}
+            </>
           ) : (
             <div className="text-slate-500">Sin registrar</div>
           )}
@@ -273,5 +278,15 @@ function Seriales({ proyecto }: { proyecto: Proyecto }) {
         </Field>
       </div>
     </Card>
+  )
+}
+
+/** Real menos presupuesto, con signo: positivo es sobrecosto, negativo es ahorro. */
+function DiferenciaPresupuesto({ valor }: { valor: number }) {
+  if (Math.round(valor) === 0) return <div className="text-xs text-slate-500">Igual al presupuesto</div>
+  return (
+    <div className={cn('num text-xs font-medium', valor > 0 ? 'text-red-700' : 'text-emerald-700')}>
+      {moneySigned(valor)} {valor > 0 ? 'sobre el presupuesto' : 'bajo el presupuesto'}
+    </div>
   )
 }

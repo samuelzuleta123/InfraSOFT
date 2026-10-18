@@ -12,6 +12,11 @@ import { ResultadoProyecto } from './ResultadoProyecto'
 import type { FacturaCliente, FormaPago, Proyecto } from '@/types'
 
 const FORMAS: FormaPago[] = ['Contado', 'Crédito 30 días', 'Crédito 45 días', 'Crédito 60 días']
+const diasDe = (fp: FormaPago) => Number(fp.match(/\d+/)?.[0] ?? 0)
+/** La forma de pago que dicen las condiciones de la cotización ("Forma de pago: crédito 30 días"), si coincide con una conocida. */
+const formaDeCondiciones = (texto: string): FormaPago | undefined =>
+  /contado/i.test(texto) ? 'Contado' : FORMAS.find((x) => x !== 'Contado' && new RegExp(`cr[eé]dito[^.\\n]*?${diasDe(x)}\\s*d[ií]as`, 'i').test(texto))
+const numeroFactura = (n: string) => Number(n.replace(/\D/g, '')) || 0
 
 export function CierreTab({ proyecto }: { proyecto: Proyecto }) {
   return (
@@ -29,10 +34,27 @@ export function CierreTab({ proyecto }: { proyecto: Proyecto }) {
 function FacturaClienteCard({ proyecto }: { proyecto: Proyecto }) {
   const editarProyecto = useStore((s) => s.editarProyecto)
   const notificar = useStore((s) => s.notificar)
+  const proyectos = useStore((s) => s.proyectos)
   const fc = proyecto.facturaCliente
   const precio = Math.round(resumen(versionVigente(proyecto)).precioVigente)
+  // Todo arranca con datos que ya existen; nada se vuelve a digitar salvo que cambie.
+  const otras = proyectos.filter((p) => p.id !== proyecto.id && p.facturaCliente).map((p) => ({ codigo: p.codigo, f: p.facturaCliente! }))
+  const ultima = otras.reduce<(typeof otras)[number] | undefined>((a, b) => (!a || numeroFactura(b.f.numero) > numeroFactura(a.f.numero) ? b : a), undefined)
+  const prefijo = ultima?.f.numero.match(/^\D*/)?.[0] ?? 'FE '
+  const formaInicial = formaDeCondiciones(proyecto.cotizacion.condiciones) ?? 'Crédito 30 días'
   const [editando, setEditando] = useState(!fc)
-  const [f, setF] = useState<FacturaCliente>(fc ?? { numero: '', fecha: HOY, vencimiento: sumarDias(HOY, 30), valorBruto: precio, ivaPct: null, formaPago: 'Crédito 30 días' })
+  const [f, setF] = useState<FacturaCliente>(
+    fc ?? {
+      numero: ultima ? `${prefijo}${numeroFactura(ultima.f.numero) + 1}` : '',
+      fecha: HOY,
+      vencimiento: sumarDias(HOY, diasDe(formaInicial)),
+      // Lo que el cliente se comprometió a pagar en su OC; sin OC, lo cotizado.
+      valorBruto: proyecto.ocCliente?.valor ?? precio,
+      ivaPct: ultima?.f.ivaPct ?? null,
+      formaPago: formaInicial,
+    },
+  )
+  const repetida = f.numero.trim() ? otras.find((o) => numeroFactura(o.f.numero) === numeroFactura(f.numero) && numeroFactura(f.numero) > 0) : undefined
   const actual = editando ? f : fc!
   const iva = actual.valorBruto * ((actual.ivaPct ?? 0) / 100)
 
@@ -62,26 +84,26 @@ function FacturaClienteCard({ proyecto }: { proyecto: Proyecto }) {
       <div className="space-y-4 p-5">
         {editando ? (
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Número" htmlFor="fc-num">
+            <Field label="Número" htmlFor="fc-num" error={repetida && `Ya se usó en ${repetida.codigo}`} hint={ultima ? `Sigue a la ${ultima.f.numero}; cámbialo si el POS va en otro número.` : undefined}>
               <Input id="fc-num" value={f.numero} onChange={(e) => setF({ ...f, numero: e.target.value })} placeholder="Ej. FE 500" />
             </Field>
             <Field label="Forma de pago" htmlFor="fc-fp">
-              <Select id="fc-fp" value={f.formaPago} onChange={(e) => setF({ ...f, formaPago: e.target.value as FormaPago })}>
+              <Select id="fc-fp" value={f.formaPago} onChange={(e) => setF({ ...f, formaPago: e.target.value as FormaPago, vencimiento: sumarDias(f.fecha, diasDe(e.target.value as FormaPago)) })}>
                 {FORMAS.map((x) => (
                   <option key={x}>{x}</option>
                 ))}
               </Select>
             </Field>
             <Field label="Fecha" htmlFor="fc-fecha">
-              <Input id="fc-fecha" type="date" value={f.fecha} onChange={(e) => setF({ ...f, fecha: e.target.value })} />
+              <Input id="fc-fecha" type="date" value={f.fecha} onChange={(e) => setF({ ...f, fecha: e.target.value, vencimiento: e.target.value ? sumarDias(e.target.value, diasDe(f.formaPago)) : f.vencimiento })} />
             </Field>
-            <Field label="Vencimiento" htmlFor="fc-venc">
+            <Field label="Vencimiento" htmlFor="fc-venc" hint="Se calcula con la fecha y la forma de pago.">
               <Input id="fc-venc" type="date" value={f.vencimiento} onChange={(e) => setF({ ...f, vencimiento: e.target.value })} />
             </Field>
-            <Field label="Valor bruto" htmlFor="fc-bruto">
+            <Field label="Valor bruto" htmlFor="fc-bruto" hint={proyecto.ocCliente ? `De la OC del cliente ${proyecto.ocCliente.numero}.` : 'Lo cotizado (no hay OC del cliente registrada).'}>
               <NumberInput id="fc-bruto" value={f.valorBruto || null} allowEmpty decimals={0} prefix="$" onChange={(n) => setF({ ...f, valorBruto: n ?? 0 })} />
             </Field>
-            <Field label="% IVA" htmlFor="fc-iva" hint="Lo digita el usuario. Vacío = 0 %.">
+            <Field label="% IVA" htmlFor="fc-iva" hint={ultima?.f.ivaPct != null ? `El de la última factura (${ultima.f.numero}); cámbialo si aplica otro. Vacío = 0 %.` : 'Lo digita el usuario. Vacío = 0 %.'}>
               <NumberInput id="fc-iva" value={f.ivaPct} allowEmpty suffix="%" placeholder="0" onChange={(n) => setF({ ...f, ivaPct: n })} />
             </Field>
           </div>

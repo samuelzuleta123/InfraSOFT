@@ -88,6 +88,10 @@ export type EstadoCotizacion = 'borrador' | 'enviada' | 'aprobada' | 'rechazada'
 export interface CambioEstado {
   estado: EstadoCotizacion
   fecha: ISODate
+  /** Por qué el cliente rechazó: uno de MOTIVOS_RECHAZO o el texto escrito en "Otro". */
+  motivo?: string
+  /** Comentario opcional sobre el rechazo. */
+  nota?: string
 }
 
 export interface VersionCotizacion {
@@ -198,7 +202,7 @@ export interface SerialEquipo {
 export interface FotoObra {
   id: string
   titulo: string
-  etapa: 'levantamiento' | 'ejecucion'
+  etapa: 'levantamiento' | 'ejecucion' | 'entrega'
   tono: number // para generar el placeholder
   /** Imagen real; sin ella se dibuja el placeholder. */
   url?: string
@@ -222,6 +226,8 @@ export interface Entrega {
   garantia: string
   remision: string
   fechaRemision?: ISODate | null
+  /** Lo que de verdad se ejecutó, para el informe y el acta; arranca con el alcance cotizado. */
+  trabajosRealizados?: string
 }
 
 export interface FacturaCliente {

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { cn } from '@/lib/cn'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { CheckCircle2, ChevronLeft, ChevronRight, CircleAlert, Lock, MapPin, XCircle } from 'lucide-react'
@@ -11,7 +11,7 @@ import type { Etapa } from '@/types'
 import { LevantamientoTab } from './LevantamientoTab'
 import { DocumentosTab } from './DocumentosTab'
 import { HistorialTab } from './HistorialTab'
-import { AvanzarEtapaModal, chequeosEtapa, type Chequeo } from './AvanzarEtapaModal'
+import { AvanzarEtapaModal, chequeosEtapa, useAvanzarEtapa, type Chequeo } from './AvanzarEtapaModal'
 import { CotizadorTab } from '@/modules/cotizaciones/CotizadorTab'
 import { ComprasTab } from '@/modules/compras/ComprasTab'
 import { BitacoraTab } from '@/modules/ejecucion/BitacoraTab'
@@ -42,14 +42,21 @@ export function ProyectoDetalle() {
   const cliente = useCliente(proyecto?.clienteId)
   const nav = useNavigate()
   const [avanzar, setAvanzar] = useState(false)
+  const avanzarEtapa = useAvanzarEtapa()
   const ordenes = useStore((s) => s.ordenes)
+  // Se define más abajo, cuando ya se conocen los requisitos; las flechas lo usan igual que los clics.
+  const irATabRef = useRef<(t: TabId) => void>(() => {})
+  // Llegar a la pestaña de la próxima etapa por URL o al recargar también avanza si no falta nada obligatorio.
+  const alLlegarRef = useRef<() => void>(() => {})
+  const avanzadoRef = useRef('')
+  useEffect(() => alLlegarRef.current(), [tab, proyecto?.etapa])
   // ←/→ en cualquier parte de la página pasan a la pestaña anterior o siguiente.
   useFlechas((tecla, e) => {
     if (!proyecto || (tecla !== 'ArrowLeft' && tecla !== 'ArrowRight')) return
     const i = TABS.findIndex((t) => t.id === tab) + (tecla === 'ArrowRight' ? 1 : -1)
     if (i < 0 || i >= TABS.length) return
     e.preventDefault()
-    nav(`/proyectos/${proyecto.id}/${TABS[i].id}`)
+    irATabRef.current(TABS[i].id)
   })
 
   if (!proyecto) return <Navigate to="/proyectos" replace />
@@ -60,15 +67,40 @@ export function ProyectoDetalle() {
   const siguiente = (proyecto.etapa + 1) as Etapa
   const etapaTab = etapaDeTab[tab as TabId]
   const tabBloqueada = etapaTab !== undefined && etapaTab > proyecto.etapa
-  const tabs = TABS.map((t) => {
-    const e = etapaDeTab[t.id]
-    return e && e > proyecto.etapa
-      ? { id: t.id, label: <span className="inline-flex items-center gap-1.5 text-slate-400" title={`Se habilita en la etapa ${e}`}><Lock className="size-3.5" aria-hidden />{t.label}</span> }
-      : t
-  })
   const chequeos = proyecto.etapa < 5 ? chequeosEtapa(proyecto, siguiente, ordenes.filter((o) => o.proyectoId === proyecto.id).length) : []
   // Si falta un requisito obligatorio, avanzar deja de ser la acción principal y lo dice.
   const bloqueos = chequeos.filter((c) => c.bloquea && !c.ok).length
+  const recomendados = chequeos.filter((c) => !c.bloquea && !c.ok).length
+  // Solo lo obligatorio frena: sin bloqueos avanza de una vez (queda Deshacer) y el aviso menciona los recomendados.
+  const pedirAvance = () => {
+    if (proyecto.etapa >= 5) return
+    if (bloqueos) return setAvanzar(true)
+    avanzarEtapa(proyecto, siguiente, recomendados)
+    nav(`/proyectos/${proyecto.id}/${tabDeEtapa[siguiente]}`)
+  }
+  // La pestaña de la próxima etapa con todo listo no es un bloqueo: entrar a ella avanza el proyecto (con Deshacer).
+  const listoParaAvanzar = proyecto.etapa < 5 && bloqueos === 0
+  const avanzaAlEntrar = (t: TabId) => listoParaAvanzar && etapaDeTab[t] === siguiente
+  const irATab = (t: TabId) => {
+    if (!avanzaAlEntrar(t)) return nav(`/proyectos/${proyecto.id}/${t}`)
+    avanzarEtapa(proyecto, siguiente, recomendados)
+    nav(`/proyectos/${proyecto.id}/${t}`)
+  }
+  irATabRef.current = irATab
+  alLlegarRef.current = () => {
+    const clave = `${proyecto.id}-${proyecto.etapa}`
+    // La clave evita avanzar dos veces por el mismo render (StrictMode ejecuta los efectos dos veces en desarrollo).
+    if (avanzadoRef.current === clave || !avanzaAlEntrar(tab as TabId)) return
+    avanzadoRef.current = clave
+    avanzarEtapa(proyecto, siguiente, recomendados)
+  }
+  const bloqueadaTab = (t: TabId) => (etapaDeTab[t] ?? 0) > proyecto.etapa && !avanzaAlEntrar(t)
+  const tabs = TABS.map((t) => {
+    const e = etapaDeTab[t.id]
+    return e && bloqueadaTab(t.id)
+      ? { id: t.id, label: <span className="inline-flex items-center gap-1.5 text-slate-400" title={`Se habilita en la etapa ${e}`}><Lock className="size-3.5" aria-hidden />{t.label}</span> }
+      : t
+  })
 
   return (
     <div>
@@ -106,7 +138,7 @@ export function ProyectoDetalle() {
             <Button
               variant={bloqueos ? 'secondary' : 'primary'}
               icon={<ChevronRight />}
-              onClick={() => setAvanzar(true)}
+              onClick={pedirAvance}
               className="hidden sm:inline-flex"
               title={bloqueos ? 'Hay requisitos obligatorios pendientes para pasar de etapa' : undefined}
             >
@@ -130,7 +162,7 @@ export function ProyectoDetalle() {
             Etapa {proyecto.etapa} de 5
           </span>
           {proyecto.etapa < 5 && (
-            <button type="button" onClick={() => setAvanzar(true)} className="-my-2 px-1 py-2 text-xs font-medium text-brand-800 underline">
+            <button type="button" onClick={pedirAvance} className="-my-2 px-1 py-2 text-xs font-medium text-brand-800 underline">
               Avanzar{bloqueos > 0 && ` · ${bloqueos} pendiente${bloqueos === 1 ? '' : 's'}`}
             </button>
           )}
@@ -139,18 +171,16 @@ export function ProyectoDetalle() {
           <StepperEtapas
             etapa={proyecto.etapa}
             cerrado={cerrado}
-            onSelect={(e) => {
-              nav(`/proyectos/${proyecto.id}/${tabDeEtapa[e]}`)
-            }}
+            onSelect={(e) => irATab(tabDeEtapa[e])}
           />
         </div>
-        <PendientesEtapa proyectoId={proyecto.id} etapa={proyecto.etapa} cerrado={cerrado} chequeos={chequeos} />
-        <Tabs className="px-3" tabs={tabs} value={tab as TabId} onChange={(t) => nav(`/proyectos/${proyecto.id}/${t}`)} />
+        <PendientesEtapa proyectoId={proyecto.id} tab={tab as TabId} etapa={proyecto.etapa} cerrado={cerrado} chequeos={chequeos} />
+        <Tabs className="px-3" tabs={tabs} value={tab as TabId} onChange={(t) => irATab(t as TabId)} />
       </div>
 
       <div className="mt-6">
         {tabBloqueada ? (
-          <EtapaBloqueada etapaTab={etapaTab} etapa={proyecto.etapa} esSiguiente={etapaTab === siguiente} bloqueos={bloqueos} onAvanzar={() => setAvanzar(true)} />
+          <EtapaBloqueada proyectoId={proyecto.id} etapaTab={etapaTab} etapa={proyecto.etapa} esSiguiente={etapaTab === siguiente} faltan={chequeos.filter((c) => c.bloquea && !c.ok)} onAvanzar={pedirAvance} />
         ) : (
           <>
         {tab === 'levantamiento' && <LevantamientoTab proyecto={proyecto} />}
@@ -164,12 +194,46 @@ export function ProyectoDetalle() {
           </>
         )}
       </div>
+      <NavegacionTabs proyectoId={proyecto.id} tab={tab as TabId} bloqueada={bloqueadaTab} onIr={irATab} />
       {avanzar && <AvanzarEtapaModal proyecto={proyecto} destino={siguiente} onClose={() => setAvanzar(false)} onAvanzado={() => nav(`/proyectos/${proyecto.id}/${tabDeEtapa[siguiente]}`)} />}
     </div>
   )
 }
 
-function EtapaBloqueada({ etapaTab, etapa, esSiguiente, bloqueos, onAvanzar }: { etapaTab: Etapa; etapa: Etapa; esSiguiente: boolean; bloqueos: number; onAvanzar: () => void }) {
+/** Anterior / siguiente al final de cada pestaña: lo mismo que ←/→, sin volver arriba. */
+function NavegacionTabs({ proyectoId, tab, bloqueada, onIr }: { proyectoId: string; tab: TabId; bloqueada: (t: TabId) => boolean; onIr: (t: TabId) => void }) {
+  const i = TABS.findIndex((t) => t.id === tab)
+  const anterior = TABS[i - 1]
+  const siguiente = TABS[i + 1]
+  return (
+    <nav aria-label="Pestañas del proyecto" className="mt-8 flex items-center justify-between gap-3 border-t border-slate-200 pt-4">
+      {anterior ? (
+        <Link
+          to={`/proyectos/${proyectoId}/${anterior.id}`}
+          className="inline-flex h-9 items-center gap-1.5 rounded-md px-2.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
+        >
+          <ChevronLeft className="size-4" aria-hidden />
+          {anterior.label}
+        </Link>
+      ) : (
+        <span />
+      )}
+      {siguiente && (
+        <button
+          type="button"
+          onClick={() => onIr(siguiente.id)}
+          className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-md bg-brand-800 px-3.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-brand-700"
+        >
+          {bloqueada(siguiente.id) && <Lock className="size-3.5" aria-hidden />}
+          Siguiente: {siguiente.label}
+          <ChevronRight className="size-4" aria-hidden />
+        </button>
+      )}
+    </nav>
+  )
+}
+
+function EtapaBloqueada({ proyectoId, etapaTab, etapa, esSiguiente, faltan, onAvanzar }: { proyectoId: string; etapaTab: Etapa; etapa: Etapa; esSiguiente: boolean; faltan: Chequeo[]; onAvanzar: () => void }) {
   return (
     <Card className="mx-auto max-w-xl px-6 py-10 text-center">
       <span className="mx-auto flex size-11 items-center justify-center rounded-full bg-slate-100 text-slate-500">
@@ -178,18 +242,31 @@ function EtapaBloqueada({ etapaTab, etapa, esSiguiente, bloqueos, onAvanzar }: {
       <h2 className="mt-4 text-[15px] font-semibold text-slate-900">Se habilita en la etapa {etapaTab} · {nombreEtapa(etapaTab)}</h2>
       <p className="mt-1.5 text-[13px] text-slate-500">
         El proyecto está en la etapa {etapa} · {nombreEtapa(etapa)}.{' '}
-        {esSiguiente
-          ? etapaTab === 5
-            ? 'Para cerrarlo hay que cargar primero el acta de conformidad firmada por el cliente en Entrega.'
-            : 'Avanza el proyecto cuando la etapa actual esté lista.'
-          : `Primero hay que pasar por ${nombreEtapa((etapa + 1) as Etapa).toLowerCase()}.`}
+        {!esSiguiente ? `Primero hay que pasar por ${nombreEtapa((etapa + 1) as Etapa).toLowerCase()}.` : faltan.length ? 'Para avanzar falta:' : 'No falta nada obligatorio.'}
       </p>
-      {esSiguiente && (
-        <Button variant={bloqueos ? 'secondary' : 'primary'} icon={<ChevronRight />} onClick={onAvanzar} className="mt-5">
-          Avanzar a {nombreEtapa(etapaTab).toLowerCase()}
+      {/* Lo que impide avanzar, con el enlace a donde se resuelve: sin pantallas de paso cuando no falta nada. */}
+      {/* Solo pasa si se deshizo el avance estando aquí: un clic, sin modal. */}
+      {esSiguiente && !faltan.length && (
+        <Button icon={<ChevronRight />} onClick={onAvanzar} className="mt-5">
+          Pasar a {nombreEtapa(etapaTab).toLowerCase()}
         </Button>
       )}
-      {esSiguiente && bloqueos > 0 && <p className="mt-2 text-xs text-slate-500">Revisa arriba qué falta: los obligatorios impiden avanzar.</p>}
+      {esSiguiente && faltan.length > 0 && (
+        <ul className="mt-4 space-y-2 text-left">
+          {faltan.map((c) => (
+            <li key={c.texto} className="flex items-start gap-2.5 rounded-md border border-red-200 bg-red-50/60 px-3 py-2">
+              <XCircle className="mt-0.5 size-4 shrink-0 text-red-700" aria-hidden />
+              <div className="min-w-0 flex-1">
+                <p className="text-[13px] font-medium text-slate-900">{c.texto}</p>
+                <p className="mt-0.5 text-xs text-slate-600">{c.ayuda}</p>
+              </div>
+              <Link to={`/proyectos/${proyectoId}/${c.tab}`} className="shrink-0 self-center text-xs font-medium text-brand-800 underline-offset-2 hover:underline">
+                Ir a {nombreTab[c.tab]}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
     </Card>
   )
 }
@@ -197,14 +274,18 @@ function EtapaBloqueada({ etapaTab, etapa, esSiguiente, bloqueos, onAvanzar }: {
 const nombreTab: Record<Chequeo['tab'], string> = { cotizacion: 'Cotización', compras: 'Compras', ejecucion: 'Ejecución', entrega: 'Entrega', cierre: 'Cierre' }
 
 /** Qué falta para pasar a la siguiente etapa, por qué se pide y dónde se resuelve. Siempre visible bajo el stepper. */
-function PendientesEtapa({ proyectoId, etapa, cerrado, chequeos }: { proyectoId: string; etapa: Etapa; cerrado: boolean; chequeos: Chequeo[] }) {
+/** Requisitos para la siguiente etapa: cada uno se muestra solo en la pestaña donde se resuelve. */
+function PendientesEtapa({ proyectoId, tab, etapa, cerrado, chequeos }: { proyectoId: string; tab: TabId; etapa: Etapa; cerrado: boolean; chequeos: Chequeo[] }) {
   if (cerrado) return null
   // En cierre ya no hay etapa siguiente: lo único pendiente es registrar la factura.
   const lista: Chequeo[] =
     etapa === 5
       ? [{ texto: 'Factura al cliente registrada', ok: false, bloquea: true, ayuda: 'Con la factura registrada el proyecto queda cerrado y entra a la liquidación.', tab: 'cierre' }]
       : chequeos
+  if (!lista.some((c) => c.tab === tab)) return null
   const faltan = lista.filter((c) => !c.ok)
+  const aqui = faltan.filter((c) => c.tab === tab)
+  const otrasTabs = [...new Set(faltan.filter((c) => c.tab !== tab).map((c) => c.tab))]
   const obligatorios = faltan.filter((c) => c.bloquea)
   const destino = etapa === 5 ? 'cerrar el proyecto' : `pasar a ${nombreEtapa((etapa + 1) as Etapa).toLowerCase()}`
   const tono = obligatorios.length ? 'bloqueado' : faltan.length ? 'pendiente' : 'listo'
@@ -220,9 +301,9 @@ function PendientesEtapa({ proyectoId, etapa, cerrado, chequeos }: { proyectoId:
             : `Todo listo para ${destino}.`}
         {lista.length > faltan.length && <span className="font-normal text-slate-500">· {lista.length - faltan.length} de {lista.length} listos</span>}
       </p>
-      {faltan.length > 0 && (
+      {aqui.length > 0 && (
         <ul className="mt-2 grid gap-2 lg:grid-cols-2">
-          {faltan.map((c) => (
+          {aqui.map((c) => (
             <li key={c.texto} className={cn('flex items-start gap-2.5 rounded-md border px-3 py-2', c.bloquea ? 'border-red-200 bg-red-50/60' : 'border-amber-200 bg-amber-50/60')}>
               {c.bloquea ? <XCircle className="mt-0.5 size-4 shrink-0 text-red-700" aria-hidden /> : <CircleAlert className="mt-0.5 size-4 shrink-0 text-amber-600" aria-hidden />}
               <div className="min-w-0 flex-1">
@@ -232,12 +313,23 @@ function PendientesEtapa({ proyectoId, etapa, cerrado, chequeos }: { proyectoId:
                 </p>
                 <p className="mt-0.5 text-xs text-slate-600">{c.ayuda}</p>
               </div>
-              <Link to={`/proyectos/${proyectoId}/${c.tab}`} className="shrink-0 self-center text-xs font-medium text-brand-800 underline-offset-2 hover:underline">
-                Ir a {nombreTab[c.tab]}
-              </Link>
             </li>
           ))}
         </ul>
+      )}
+      {otrasTabs.length > 0 && (
+        <p className="mt-2 text-xs text-slate-600">
+          También falta en{' '}
+          {otrasTabs.map((t, i) => (
+            <span key={t}>
+              {i > 0 && ', '}
+              <Link to={`/proyectos/${proyectoId}/${t}`} className="font-medium text-brand-800 underline-offset-2 hover:underline">
+                {nombreTab[t]}
+              </Link>
+            </span>
+          ))}
+          .
+        </p>
       )}
     </section>
   )

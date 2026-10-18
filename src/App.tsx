@@ -1,4 +1,5 @@
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { BrowserRouter, Navigate, Route, Routes as RouterRoutes } from 'react-router-dom'
+import { withSentryReactRouterV7Routing } from '@sentry/react'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { InicioPage } from '@/modules/inicio/InicioPage'
 import { ProyectosPage } from '@/modules/proyectos/ProyectosPage'
@@ -14,6 +15,9 @@ import { CatalogoPage } from '@/modules/catalogo/CatalogoPage'
 import { VisorDocumento } from '@/components/VisorDocumento'
 import { ClientesPage } from '@/modules/clientes/ClientesPage'
 import { RentabilidadPage } from '@/modules/rentabilidad/RentabilidadPage'
+
+// Nombra las transacciones de Sentry por ruta (/proyectos/:id/:tab) en vez de la URL concreta
+const Routes = withSentryReactRouterV7Routing(RouterRoutes)
 
 export default function App() {
   return (
