@@ -107,7 +107,7 @@ export function CotizadorTab({ proyecto }: { proyecto: Proyecto }) {
       )}
       {!vistaCliente && !bloqueada && incompletos.total > 0 && (
         <Alert tone="warn" className="mb-4" title={`Materiales incompletos: ${incompletos.resumen}`}>
-          Elige el proveedor de cada material en la columna Proveedor (así se carga su precio neto) y completa el costo si el catálogo no lo tiene. Sin proveedor y precio no se puede enviar la cotización ni generar su orden de compra.
+          {incompletos.accion} Mientras falte, no se puede enviar la cotización ni generar su orden de compra.
         </Alert>
       )}
 

@@ -32,7 +32,7 @@ export function chequeosEtapa(p: Proyecto, destino: Etapa, ocsProyecto: number):
           texto: `Materiales con proveedor y precio${incompletos.total ? ` (${incompletos.resumen})` : ''}`,
           ok: incompletos.total === 0,
           bloquea: true,
-          ayuda: 'Sin proveedor ni precio no se pueden generar las órdenes de compra, y después de enviarla la cotización ya no se edita. Complétalos en las columnas Proveedor y Costo unitario.',
+          ayuda: `${incompletos.accion} Después de enviarla la cotización ya no se edita y sin esto no se pueden generar las órdenes de compra.`,
           tab: 'cotizacion',
         },
         {

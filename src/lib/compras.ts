@@ -48,7 +48,14 @@ export function materialesIncompletos(v: VersionCotizacion) {
     sinProveedor.length && `${sinProveedor.length} sin proveedor`,
     sinPrecio.length && `${sinPrecio.length} sin precio`,
   ].filter(Boolean)
-  return { total, resumen: partes.join(' y ') }
+  // Qué hacer, según lo que falte: no hablar de proveedores si todos lo tienen.
+  const accion =
+    sinProveedor.length && sinPrecio.length
+      ? 'Elige el proveedor de cada material (así se carga su precio neto) y digita el costo unitario donde dice "Falta".'
+      : sinProveedor.length
+        ? 'Elige el proveedor de cada material en la columna Proveedor: así se carga su precio neto.'
+        : 'Digita el costo unitario donde dice "Falta": el proveedor elegido no tiene precio de ese material en el catálogo.'
+  return { total, resumen: partes.join(' y '), accion }
 }
 
 /** Ítems con material pero sin proveedor: no entran en ninguna OC. */

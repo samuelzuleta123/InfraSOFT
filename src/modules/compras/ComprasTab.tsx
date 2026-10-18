@@ -46,7 +46,7 @@ function EstadoCotizacionCard({ proyecto }: { proyecto: Proyecto }) {
   const activa = proyecto.cotizacion.versiones.find((v) => v.id === proyecto.cotizacion.versionActivaId)!
   const abierta = proyecto.etapa < 4 && (activa.estado === 'borrador' || activa.estado === 'enviada')
   // Sin proveedor o sin costo no hay qué comprar: una vez enviada la versión ya no se edita, así que se exige antes.
-  const incompletos = activa.estado === 'borrador' ? materialesIncompletos(activa) : { total: 0, resumen: '' }
+  const incompletos = activa.estado === 'borrador' ? materialesIncompletos(activa) : { total: 0, resumen: '', accion: '' }
 
   // Solo las respuestas que tienen sentido desde el estado actual.
   const acciones: { estado: EstadoCotizacion; label: string; icon: React.ReactNode; variant: 'primary' | 'secondary' | 'danger' }[] =
