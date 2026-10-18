@@ -10,7 +10,7 @@ import { money, moneySigned, moneyUnit } from '@/lib/format'
 import { useHistoricoCompras, useStore } from '@/store/useStore'
 import type { Proyecto } from '@/types'
 import { TablaSeccion } from './TablaSeccion'
-import { ResumenBarra, ResumenPanel } from './ResumenPanel'
+import { ResumenBarra } from './ResumenPanel'
 import { AgregarKitModal } from './AgregarModales'
 import { SelectorVersion } from './SelectorVersion'
 
@@ -131,123 +131,115 @@ export function CotizadorTab({ proyecto }: { proyecto: Proyecto }) {
         </Alert>
       )}
 
-      <div className="grid items-start gap-5 min-[1600px]:grid-cols-[minmax(0,1fr)_288px] min-[1600px]:gap-4">
-        <fieldset disabled={bloqueada} className="m-0 min-w-0 space-y-4 border-0 p-0">
-          <TablaSeccion
-            proyectoId={proyecto.id}
-            seccion={v.secciones[0] ?? { id: 'sec-vacia', nombre: 'Ítems', items: [] }}
-            otrosCostos={v.otrosCostos}
-            vistaCliente={vistaCliente}
-            preciosCliente={cliente.secciones.flatMap((s) => s.items)}
-            totalCliente={cliente.total}
-            onAgregarKit={() => setKitAbierto(true)}
-            bloqueada={bloqueada}
-            historico={historico}
-          />
+      <fieldset disabled={bloqueada} className="m-0 min-w-0 space-y-4 border-0 p-0">
+        <TablaSeccion
+          proyectoId={proyecto.id}
+          seccion={v.secciones[0] ?? { id: 'sec-vacia', nombre: 'Ítems', items: [] }}
+          otrosCostos={v.otrosCostos}
+          vistaCliente={vistaCliente}
+          preciosCliente={cliente.secciones.flatMap((s) => s.items)}
+          totalCliente={cliente.total}
+          onAgregarKit={() => setKitAbierto(true)}
+          bloqueada={bloqueada}
+          historico={historico}
+        />
 
-          {!vistaCliente && (
-            <Card>
-              <CardHeader
-                title="Cómo se calcula el precio al cliente"
-                description="Costo total + utilidad + otros ajustes = precio sugerido. Vacío equivale a 0 %; el precio final se puede cambiar abajo."
-              />
-              <div className="grid gap-4 p-5 sm:grid-cols-2">
-                <Field
-                  label="% utilidad"
-                  htmlFor="utilidad"
-                  hint={
-                    <>
-                      Lo que gana Infrasoft. Se calcula sobre el costo total de <span className="num">{money(r.costo)}</span>
-                      {r.utilidadPct > 0 && (
-                        <>
-                          : <span className="num font-medium text-slate-700">{money(r.utilidadSugerida)}</span>
-                        </>
-                      )}
-                      .
-                    </>
-                  }
-                >
-                  <NumberInput
-                    id="utilidad"
-                    value={v.utilidadPct}
-                    allowEmpty
-                    suffix="%"
-                    placeholder="0"
-                    onChange={(n) => editarVersion(proyecto.id, (ver) => void (ver.utilidadPct = n))}
-                  />
-                </Field>
-                <Field
-                  label="% otros ajustes"
-                  htmlFor="ajustes"
-                  hint={
-                    <>
-                      Lo que se descuenta del precio y no es ganancia: comisiones, retenciones o impuestos. Se suma sobre costo + utilidad
-                      {r.ajustesPct > 0 && (
-                        <>
-                          : <span className="num font-medium text-slate-700">{money(r.ajustesSugeridos)}</span>
-                        </>
-                      )}
-                      .
-                    </>
-                  }
-                >
-                  <NumberInput
-                    id="ajustes"
-                    value={v.ajustesPct}
-                    allowEmpty
-                    suffix="%"
-                    placeholder="0"
-                    onChange={(n) => editarVersion(proyecto.id, (ver) => void (ver.ajustesPct = n))}
-                  />
-                </Field>
-              </div>
-              <p className="num flex flex-wrap items-baseline gap-x-2 gap-y-1 border-t border-slate-200 bg-slate-50 px-5 py-3 text-[13px] text-slate-500">
-                <span>Costo {money(r.costo)}</span>
-                <span>+ utilidad {money(r.utilidadSugerida)}</span>
-                <span>+ ajustes {money(r.ajustesSugeridos)}</span>
-                <span>
-                  = precio sugerido <span className="font-semibold text-slate-900">{money(r.precioSugerido)}</span>
-                </span>
-              </p>
-            </Card>
-          )}
-
+        {!vistaCliente && (
           <Card>
-            <CardHeader title="Datos de la propuesta" description="Se imprimen en el PDF que recibe el cliente." actions={<Eye className="size-4 text-slate-500" aria-hidden />} />
-            <div className="grid gap-4 p-5 md:grid-cols-2">
-              <Field label="Descripción del alcance" htmlFor="alcance" className="md:col-span-2">
-                <Textarea
-                  id="alcance"
-                  rows={3}
-                  value={proyecto.cotizacion.alcance}
-                  onChange={(e) => editarProyecto(proyecto.id, (p) => void (p.cotizacion.alcance = e.target.value))}
+            <CardHeader
+              title="Cómo se calcula el precio al cliente"
+              description="Costo total + utilidad + otros ajustes = precio sugerido. Vacío equivale a 0 %; el precio final se puede cambiar abajo."
+            />
+            <div className="grid gap-4 p-5 sm:grid-cols-2">
+              <Field
+                label="% utilidad"
+                htmlFor="utilidad"
+                hint={
+                  <>
+                    Lo que gana Infrasoft. Se calcula sobre el costo total de <span className="num">{money(r.costo)}</span>
+                    {r.utilidadPct > 0 && (
+                      <>
+                        : <span className="num font-medium text-slate-700">{money(r.utilidadSugerida)}</span>
+                      </>
+                    )}
+                    .
+                  </>
+                }
+              >
+                <NumberInput
+                  id="utilidad"
+                  value={v.utilidadPct}
+                  allowEmpty
+                  suffix="%"
+                  placeholder="0"
+                  onChange={(n) => editarVersion(proyecto.id, (ver) => void (ver.utilidadPct = n))}
                 />
               </Field>
-              <Field label="Tiempo de entrega" htmlFor="entrega">
-                <Input
-                  id="entrega"
-                  value={proyecto.cotizacion.tiempoEntrega}
-                  onChange={(e) => editarProyecto(proyecto.id, (p) => void (p.cotizacion.tiempoEntrega = e.target.value))}
-                />
-              </Field>
-              <Field label="Condiciones comerciales" htmlFor="condiciones">
-                <Textarea
-                  id="condiciones"
-                  rows={3}
-                  value={proyecto.cotizacion.condiciones}
-                  onChange={(e) => editarProyecto(proyecto.id, (p) => void (p.cotizacion.condiciones = e.target.value))}
+              <Field
+                label="% otros ajustes"
+                htmlFor="ajustes"
+                hint={
+                  <>
+                    Lo que se descuenta del precio y no es ganancia: comisiones, retenciones o impuestos. Se suma sobre costo + utilidad
+                    {r.ajustesPct > 0 && (
+                      <>
+                        : <span className="num font-medium text-slate-700">{money(r.ajustesSugeridos)}</span>
+                      </>
+                    )}
+                    .
+                  </>
+                }
+              >
+                <NumberInput
+                  id="ajustes"
+                  value={v.ajustesPct}
+                  allowEmpty
+                  suffix="%"
+                  placeholder="0"
+                  onChange={(n) => editarVersion(proyecto.id, (ver) => void (ver.ajustesPct = n))}
                 />
               </Field>
             </div>
+            <p className="num flex flex-wrap items-baseline gap-x-2 gap-y-1 border-t border-slate-200 bg-slate-50 px-5 py-3 text-[13px] text-slate-500">
+              <span>Costo {money(r.costo)}</span>
+              <span>+ utilidad {money(r.utilidadSugerida)}</span>
+              <span>+ ajustes {money(r.ajustesSugeridos)}</span>
+              <span>
+                = precio sugerido <span className="font-semibold text-slate-900">{money(r.precioSugerido)}</span>
+              </span>
+            </p>
           </Card>
-        </fieldset>
+        )}
 
-        <div className="hidden min-[1600px]:sticky min-[1600px]:top-20 min-[1600px]:block">
-          <fieldset disabled={bloqueada} className="m-0 border-0 p-0">
-            <ResumenPanel r={r} vistaCliente={vistaCliente} onPrecioFinal={fijarPrecioFinal} />
-          </fieldset>
-        </div>
-      </div>
+        <Card>
+          <CardHeader title="Datos de la propuesta" description="Se imprimen en el PDF que recibe el cliente." actions={<Eye className="size-4 text-slate-500" aria-hidden />} />
+          <div className="grid gap-4 p-5 md:grid-cols-2">
+            <Field label="Descripción del alcance" htmlFor="alcance" className="md:col-span-2">
+              <Textarea
+                id="alcance"
+                rows={3}
+                value={proyecto.cotizacion.alcance}
+                onChange={(e) => editarProyecto(proyecto.id, (p) => void (p.cotizacion.alcance = e.target.value))}
+              />
+            </Field>
+            <Field label="Tiempo de entrega" htmlFor="entrega">
+              <Input
+                id="entrega"
+                value={proyecto.cotizacion.tiempoEntrega}
+                onChange={(e) => editarProyecto(proyecto.id, (p) => void (p.cotizacion.tiempoEntrega = e.target.value))}
+              />
+            </Field>
+            <Field label="Condiciones comerciales" htmlFor="condiciones">
+              <Textarea
+                id="condiciones"
+                rows={3}
+                value={proyecto.cotizacion.condiciones}
+                onChange={(e) => editarProyecto(proyecto.id, (p) => void (p.cotizacion.condiciones = e.target.value))}
+              />
+            </Field>
+          </div>
+        </Card>
+      </fieldset>
       <fieldset disabled={bloqueada} className="m-0 contents border-0 p-0">
         <ResumenBarra r={r} vistaCliente={vistaCliente} onPrecioFinal={fijarPrecioFinal} />
       </fieldset>
