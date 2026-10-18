@@ -11,6 +11,8 @@ export interface DocExpediente {
   numero: string
   fecha: ISODate | null
   detalle?: string
+  /** A quién corresponde (p. ej. el proveedor): va visible en la miniatura en vez de cortarse en el detalle. */
+  destacado?: string
   valor?: number
   /** Ruta interna (documentos generados por el sistema) o adjunto con vista previa. */
   ruta?: string
@@ -45,7 +47,7 @@ export function documentosProyecto(p: Proyecto, ordenes: OrdenCompra[], facturas
       contexto: { tipo: 'ocCliente', proyectoId: p.id },
     })
   for (const o of ordenes.filter((x) => x.proyectoId === p.id))
-    docs.push({ id: o.id, grupo: 'Compras', tipo: 'OC a proveedor', numero: `OC ${o.consecutivo}`, fecha: o.fecha, detalle: prov(o.proveedorId), valor: totalOC(o), ruta: `/proyectos/${p.id}/oc/${o.id}` })
+    docs.push({ id: o.id, grupo: 'Compras', tipo: 'OC a proveedor', numero: `OC ${o.consecutivo}`, fecha: o.fecha, destacado: prov(o.proveedorId), valor: totalOC(o), ruta: `/proyectos/${p.id}/oc/${o.id}` })
   for (const f of facturas.filter((x) => x.proyectoId === p.id)) {
     const pdf = f.adjuntos.find((a) => a.tipo === 'pdf')
     docs.push({
@@ -54,7 +56,7 @@ export function documentosProyecto(p: Proyecto, ordenes: OrdenCompra[], facturas
       tipo: 'Factura de proveedor',
       numero: f.numero,
       fecha: f.fecha,
-      detalle: prov(f.proveedorId),
+      destacado: prov(f.proveedorId),
       valor: totalFactura(f),
       adjunto: pdf,
       contexto: { tipo: 'facturaProveedor', id: f.id },
