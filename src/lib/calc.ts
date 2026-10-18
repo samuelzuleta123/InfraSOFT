@@ -71,7 +71,8 @@ export function resumen(v: VersionCotizacion): Resumen {
   const ajustesSugeridos = base * (ajustesPct / 100)
   const precioSugerido = base + ajustesSugeridos
   const precioVigente = v.precioFinal ?? precioSugerido
-  const ajustesReales = precioVigente * (ajustesPct / 100)
+  // Los ajustes se suman sobre costo + utilidad, así que dentro del precio pesan pct / (100 + pct).
+  const ajustesReales = precioVigente * (ajustesPct / (100 + ajustesPct))
   const utilidadReal = precioVigente - costo - ajustesReales
   return {
     mo,
