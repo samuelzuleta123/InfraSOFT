@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { cn } from '@/lib/cn'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { CheckCircle2, ChevronLeft, ChevronRight, CircleAlert, Lock, MapPin, XCircle } from 'lucide-react'
@@ -44,13 +44,19 @@ export function ProyectoDetalle() {
   const [avanzar, setAvanzar] = useState(false)
   const avanzarEtapa = useAvanzarEtapa()
   const ordenes = useStore((s) => s.ordenes)
+  // Se define más abajo, cuando ya se conocen los requisitos; las flechas lo usan igual que los clics.
+  const irATabRef = useRef<(t: TabId) => void>(() => {})
+  // Llegar a la pestaña de la próxima etapa por URL o al recargar también avanza si no falta nada obligatorio.
+  const alLlegarRef = useRef<() => void>(() => {})
+  const avanzadoRef = useRef('')
+  useEffect(() => alLlegarRef.current(), [tab, proyecto?.etapa])
   // ←/→ en cualquier parte de la página pasan a la pestaña anterior o siguiente.
   useFlechas((tecla, e) => {
     if (!proyecto || (tecla !== 'ArrowLeft' && tecla !== 'ArrowRight')) return
     const i = TABS.findIndex((t) => t.id === tab) + (tecla === 'ArrowRight' ? 1 : -1)
     if (i < 0 || i >= TABS.length) return
     e.preventDefault()
-    nav(`/proyectos/${proyecto.id}/${TABS[i].id}`)
+    irATabRef.current(TABS[i].id)
   })
 
   if (!proyecto) return <Navigate to="/proyectos" replace />
@@ -61,22 +67,40 @@ export function ProyectoDetalle() {
   const siguiente = (proyecto.etapa + 1) as Etapa
   const etapaTab = etapaDeTab[tab as TabId]
   const tabBloqueada = etapaTab !== undefined && etapaTab > proyecto.etapa
-  const tabs = TABS.map((t) => {
-    const e = etapaDeTab[t.id]
-    return e && e > proyecto.etapa
-      ? { id: t.id, label: <span className="inline-flex items-center gap-1.5 text-slate-400" title={`Se habilita en la etapa ${e}`}><Lock className="size-3.5" aria-hidden />{t.label}</span> }
-      : t
-  })
   const chequeos = proyecto.etapa < 5 ? chequeosEtapa(proyecto, siguiente, ordenes.filter((o) => o.proyectoId === proyecto.id).length) : []
   // Si falta un requisito obligatorio, avanzar deja de ser la acción principal y lo dice.
   const bloqueos = chequeos.filter((c) => c.bloquea && !c.ok).length
-  // Con todo listo no hay nada que confirmar: avanza de una vez (queda Deshacer). El modal solo aparece si falta algo.
+  const recomendados = chequeos.filter((c) => !c.bloquea && !c.ok).length
+  // Solo lo obligatorio frena: sin bloqueos avanza de una vez (queda Deshacer) y el aviso menciona los recomendados.
   const pedirAvance = () => {
     if (proyecto.etapa >= 5) return
-    if (chequeos.some((c) => !c.ok)) return setAvanzar(true)
-    avanzarEtapa(proyecto, siguiente)
+    if (bloqueos) return setAvanzar(true)
+    avanzarEtapa(proyecto, siguiente, recomendados)
     nav(`/proyectos/${proyecto.id}/${tabDeEtapa[siguiente]}`)
   }
+  // La pestaña de la próxima etapa con todo listo no es un bloqueo: entrar a ella avanza el proyecto (con Deshacer).
+  const listoParaAvanzar = proyecto.etapa < 5 && bloqueos === 0
+  const avanzaAlEntrar = (t: TabId) => listoParaAvanzar && etapaDeTab[t] === siguiente
+  const irATab = (t: TabId) => {
+    if (!avanzaAlEntrar(t)) return nav(`/proyectos/${proyecto.id}/${t}`)
+    avanzarEtapa(proyecto, siguiente, recomendados)
+    nav(`/proyectos/${proyecto.id}/${t}`)
+  }
+  irATabRef.current = irATab
+  alLlegarRef.current = () => {
+    const clave = `${proyecto.id}-${proyecto.etapa}`
+    // La clave evita avanzar dos veces por el mismo render (StrictMode ejecuta los efectos dos veces en desarrollo).
+    if (avanzadoRef.current === clave || !avanzaAlEntrar(tab as TabId)) return
+    avanzadoRef.current = clave
+    avanzarEtapa(proyecto, siguiente, recomendados)
+  }
+  const bloqueadaTab = (t: TabId) => (etapaDeTab[t] ?? 0) > proyecto.etapa && !avanzaAlEntrar(t)
+  const tabs = TABS.map((t) => {
+    const e = etapaDeTab[t.id]
+    return e && bloqueadaTab(t.id)
+      ? { id: t.id, label: <span className="inline-flex items-center gap-1.5 text-slate-400" title={`Se habilita en la etapa ${e}`}><Lock className="size-3.5" aria-hidden />{t.label}</span> }
+      : t
+  })
 
   return (
     <div>
@@ -147,18 +171,16 @@ export function ProyectoDetalle() {
           <StepperEtapas
             etapa={proyecto.etapa}
             cerrado={cerrado}
-            onSelect={(e) => {
-              nav(`/proyectos/${proyecto.id}/${tabDeEtapa[e]}`)
-            }}
+            onSelect={(e) => irATab(tabDeEtapa[e])}
           />
         </div>
         <PendientesEtapa proyectoId={proyecto.id} tab={tab as TabId} etapa={proyecto.etapa} cerrado={cerrado} chequeos={chequeos} />
-        <Tabs className="px-3" tabs={tabs} value={tab as TabId} onChange={(t) => nav(`/proyectos/${proyecto.id}/${t}`)} />
+        <Tabs className="px-3" tabs={tabs} value={tab as TabId} onChange={(t) => irATab(t as TabId)} />
       </div>
 
       <div className="mt-6">
         {tabBloqueada ? (
-          <EtapaBloqueada etapaTab={etapaTab} etapa={proyecto.etapa} esSiguiente={etapaTab === siguiente} bloqueos={bloqueos} onAvanzar={pedirAvance} />
+          <EtapaBloqueada proyectoId={proyecto.id} etapaTab={etapaTab} etapa={proyecto.etapa} esSiguiente={etapaTab === siguiente} faltan={chequeos.filter((c) => c.bloquea && !c.ok)} onAvanzar={pedirAvance} />
         ) : (
           <>
         {tab === 'levantamiento' && <LevantamientoTab proyecto={proyecto} />}
@@ -172,18 +194,17 @@ export function ProyectoDetalle() {
           </>
         )}
       </div>
-      <NavegacionTabs proyectoId={proyecto.id} tab={tab as TabId} etapa={proyecto.etapa} />
+      <NavegacionTabs proyectoId={proyecto.id} tab={tab as TabId} bloqueada={bloqueadaTab} onIr={irATab} />
       {avanzar && <AvanzarEtapaModal proyecto={proyecto} destino={siguiente} onClose={() => setAvanzar(false)} onAvanzado={() => nav(`/proyectos/${proyecto.id}/${tabDeEtapa[siguiente]}`)} />}
     </div>
   )
 }
 
 /** Anterior / siguiente al final de cada pestaña: lo mismo que ←/→, sin volver arriba. */
-function NavegacionTabs({ proyectoId, tab, etapa }: { proyectoId: string; tab: TabId; etapa: Etapa }) {
+function NavegacionTabs({ proyectoId, tab, bloqueada, onIr }: { proyectoId: string; tab: TabId; bloqueada: (t: TabId) => boolean; onIr: (t: TabId) => void }) {
   const i = TABS.findIndex((t) => t.id === tab)
   const anterior = TABS[i - 1]
   const siguiente = TABS[i + 1]
-  const bloqueada = (t: TabId) => (etapaDeTab[t] ?? 0) > etapa
   return (
     <nav aria-label="Pestañas del proyecto" className="mt-8 flex items-center justify-between gap-3 border-t border-slate-200 pt-4">
       {anterior ? (
@@ -198,20 +219,21 @@ function NavegacionTabs({ proyectoId, tab, etapa }: { proyectoId: string; tab: T
         <span />
       )}
       {siguiente && (
-        <Link
-          to={`/proyectos/${proyectoId}/${siguiente.id}`}
-          className="inline-flex h-9 items-center gap-1.5 rounded-md bg-brand-800 px-3.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-brand-700"
+        <button
+          type="button"
+          onClick={() => onIr(siguiente.id)}
+          className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-md bg-brand-800 px-3.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-brand-700"
         >
           {bloqueada(siguiente.id) && <Lock className="size-3.5" aria-hidden />}
           Siguiente: {siguiente.label}
           <ChevronRight className="size-4" aria-hidden />
-        </Link>
+        </button>
       )}
     </nav>
   )
 }
 
-function EtapaBloqueada({ etapaTab, etapa, esSiguiente, bloqueos, onAvanzar }: { etapaTab: Etapa; etapa: Etapa; esSiguiente: boolean; bloqueos: number; onAvanzar: () => void }) {
+function EtapaBloqueada({ proyectoId, etapaTab, etapa, esSiguiente, faltan, onAvanzar }: { proyectoId: string; etapaTab: Etapa; etapa: Etapa; esSiguiente: boolean; faltan: Chequeo[]; onAvanzar: () => void }) {
   return (
     <Card className="mx-auto max-w-xl px-6 py-10 text-center">
       <span className="mx-auto flex size-11 items-center justify-center rounded-full bg-slate-100 text-slate-500">
@@ -220,18 +242,31 @@ function EtapaBloqueada({ etapaTab, etapa, esSiguiente, bloqueos, onAvanzar }: {
       <h2 className="mt-4 text-[15px] font-semibold text-slate-900">Se habilita en la etapa {etapaTab} · {nombreEtapa(etapaTab)}</h2>
       <p className="mt-1.5 text-[13px] text-slate-500">
         El proyecto está en la etapa {etapa} · {nombreEtapa(etapa)}.{' '}
-        {esSiguiente
-          ? etapaTab === 5
-            ? 'Para cerrarlo hay que cargar primero el acta de conformidad firmada por el cliente en Entrega.'
-            : 'Avanza el proyecto cuando la etapa actual esté lista.'
-          : `Primero hay que pasar por ${nombreEtapa((etapa + 1) as Etapa).toLowerCase()}.`}
+        {!esSiguiente ? `Primero hay que pasar por ${nombreEtapa((etapa + 1) as Etapa).toLowerCase()}.` : faltan.length ? 'Para avanzar falta:' : 'No falta nada obligatorio.'}
       </p>
-      {esSiguiente && (
-        <Button variant={bloqueos ? 'secondary' : 'primary'} icon={<ChevronRight />} onClick={onAvanzar} className="mt-5">
-          Avanzar a {nombreEtapa(etapaTab).toLowerCase()}
+      {/* Lo que impide avanzar, con el enlace a donde se resuelve: sin pantallas de paso cuando no falta nada. */}
+      {/* Solo pasa si se deshizo el avance estando aquí: un clic, sin modal. */}
+      {esSiguiente && !faltan.length && (
+        <Button icon={<ChevronRight />} onClick={onAvanzar} className="mt-5">
+          Pasar a {nombreEtapa(etapaTab).toLowerCase()}
         </Button>
       )}
-      {esSiguiente && bloqueos > 0 && <p className="mt-2 text-xs text-slate-500">Revisa arriba qué falta: los obligatorios impiden avanzar.</p>}
+      {esSiguiente && faltan.length > 0 && (
+        <ul className="mt-4 space-y-2 text-left">
+          {faltan.map((c) => (
+            <li key={c.texto} className="flex items-start gap-2.5 rounded-md border border-red-200 bg-red-50/60 px-3 py-2">
+              <XCircle className="mt-0.5 size-4 shrink-0 text-red-700" aria-hidden />
+              <div className="min-w-0 flex-1">
+                <p className="text-[13px] font-medium text-slate-900">{c.texto}</p>
+                <p className="mt-0.5 text-xs text-slate-600">{c.ayuda}</p>
+              </div>
+              <Link to={`/proyectos/${proyectoId}/${c.tab}`} className="shrink-0 self-center text-xs font-medium text-brand-800 underline-offset-2 hover:underline">
+                Ir a {nombreTab[c.tab]}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
     </Card>
   )
 }

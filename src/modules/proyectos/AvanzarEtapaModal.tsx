@@ -82,14 +82,15 @@ export function chequeosEtapa(p: Proyecto, destino: Etapa, ocsProyecto: number):
   }
 }
 
-/** Pasa el proyecto a la etapa destino con opción de deshacer. */
+/** Pasa el proyecto a la etapa destino con opción de deshacer; si quedan recomendados sin hacer, el aviso lo dice. */
 export function useAvanzarEtapa() {
   const editarProyecto = useStore((s) => s.editarProyecto)
   const notificar = useStore((s) => s.notificar)
-  return (proyecto: Proyecto, destino: Etapa) => {
+  return (proyecto: Proyecto, destino: Etapa, recomendados = 0) => {
     const anterior = proyecto.etapa
     editarProyecto(proyecto.id, (p) => void (p.etapa = destino))
-    notificar(`${proyecto.codigo} pasó a ${nombreEtapa(destino).toLowerCase()}`, 'ok', () => editarProyecto(proyecto.id, (p) => void (p.etapa = anterior)))
+    const pendientes = recomendados ? ` · ${recomendados === 1 ? 'queda 1 pendiente recomendado' : `quedan ${recomendados} pendientes recomendados`}` : ''
+    notificar(`${proyecto.codigo} pasó a ${nombreEtapa(destino).toLowerCase()}${pendientes}`, 'ok', () => editarProyecto(proyecto.id, (p) => void (p.etapa = anterior)))
   }
 }
 
