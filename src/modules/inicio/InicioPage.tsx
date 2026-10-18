@@ -145,15 +145,15 @@ export function InicioPage() {
             Nuevo proyecto
           </Button>
         </div>
-        <ul className="grid grid-cols-2 border-t border-slate-200 lg:grid-cols-4">
+        <ul className="grid grid-cols-2 border-t border-slate-200 xl:grid-cols-4">
           {cifras.map((c, i) => (
-            <li key={c.etiqueta} className={cn('border-slate-200', i % 2 === 1 && 'border-l', i >= 2 && 'border-t lg:border-t-0', i === 2 && 'lg:border-l')}>
+            <li key={c.etiqueta} className={cn('border-slate-200', i % 2 === 1 && 'border-l', i >= 2 && 'border-t xl:border-t-0', i === 2 && 'xl:border-l')}>
               <Link to={c.to} className="group block h-full px-5 py-5 transition-colors hover:bg-slate-50 sm:px-7">
                 <span className="flex items-center justify-between text-xs font-semibold tracking-wider text-slate-500 uppercase">
                   {c.etiqueta}
                   <ArrowRight className="size-3.5 text-slate-300 transition-colors group-hover:text-slate-600" aria-hidden />
                 </span>
-                <span className="num mt-2 block truncate text-[22px] leading-tight font-semibold tracking-tight text-slate-900 sm:text-[26px]">{c.valor}</span>
+                <span className="num mt-2 block truncate text-[22px] leading-tight font-semibold tracking-tight text-slate-900 sm:text-2xl">{c.valor}</span>
                 <span className="mt-1 block text-xs text-slate-500">{c.detalle}</span>
               </Link>
             </li>
@@ -162,23 +162,23 @@ export function InicioPage() {
       </Card>
       {nuevo && <NuevoProyectoModal onClose={() => setNuevo(false)} />}
 
-      <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-2">
-        {/* A todo el ancho y con los avisos lado a lado: la tarjeta mide lo que sus avisos, sin espacio sobrante. */}
+      <div className="mt-5 grid grid-cols-1 items-start gap-5 lg:grid-cols-2">
+        {/* Tarjetas a su alto natural (items-start) y avisos lado a lado a todo el ancho: ninguna estira un hueco en blanco. */}
         <Card className="lg:col-span-2">
           <CardHeader title="Requiere atención" description={avisos.length ? cuenta(avisos.length, 'asunto pendiente', 'asuntos pendientes') : 'Nada pendiente'} />
           {avisos.length === 0 ? (
             <EmptyState icon={<CheckCircle2 className="text-emerald-600" />} title="Todo al día" description="Sin facturas vencidas, sobrecostos ni pendientes." className="py-8" />
           ) : (
-            <ul className="divide-y divide-slate-100 lg:flex lg:divide-x lg:divide-y-0">
+            <ul className="divide-y divide-slate-100 xl:flex xl:divide-x xl:divide-y-0">
               {avisos.map((a) => (
-                <li key={a.titulo} className="min-w-0 lg:flex-1">
+                <li key={a.titulo} className="min-w-0 xl:flex-1">
                   <Link to={a.to} className="group relative flex h-full items-center gap-4 py-3.5 pr-4 pl-5 hover:bg-slate-50">
                     <span className={cn('absolute inset-y-3.5 left-0 w-0.5 rounded-full', a.tono === 'danger' ? 'bg-red-600' : 'bg-amber-500')} aria-hidden />
-                    <span className={cn('num w-9 shrink-0 text-[26px] leading-none font-semibold', a.tono === 'danger' ? 'text-red-700' : 'text-amber-700')}>{a.n}</span>
+                    <span className={cn('num w-9 shrink-0 text-2xl leading-none font-semibold', a.tono === 'danger' ? 'text-red-700' : 'text-amber-700')}>{a.n}</span>
                     <span className="min-w-0 flex-1">
                       <span className="block text-[13px] font-semibold text-slate-900 group-hover:underline">{a.titulo}</span>
-                      {/* Varios códigos de proyecto no se cortan con "…": se deslizan de lado. */}
-                      <span className="mt-0.5 block overflow-x-auto text-xs leading-snug whitespace-nowrap text-slate-500">{a.detalle}</span>
+                      {/* Sin truncate: el detalle (p. ej. varios códigos de proyecto) baja de línea en vez de cortarse con "…". */}
+                      <span className="mt-0.5 block text-xs leading-snug text-slate-500">{a.detalle}</span>
                     </span>
                     <ChevronRight className="size-4 shrink-0 text-slate-300 transition-colors group-hover:text-slate-700" aria-hidden />
                   </Link>
@@ -198,7 +198,7 @@ export function InicioPage() {
                     <span className="block font-mono text-xs text-slate-400">0{e.n}</span>
                     <span className="block truncate text-[13px] font-medium text-slate-700 group-hover:text-slate-900">{e.corto}</span>
                   </span>
-                  <span className="num block text-right text-2xl leading-none font-semibold text-slate-900 sm:mt-4 sm:text-left sm:text-[28px]">{e.cantidad}</span>
+                  <span className="num block text-right text-2xl leading-none font-semibold text-slate-900 sm:mt-4 sm:text-left">{e.cantidad}</span>
                   <span className="num block w-28 text-right text-xs text-slate-500 sm:mt-1.5 sm:w-auto sm:text-left">{money(e.valor)}</span>
                   <span className="mt-3 hidden h-1 overflow-hidden rounded-full bg-slate-100 sm:block" aria-hidden>
                     <span className="block h-full rounded-full bg-slate-800" style={{ width: `${(e.valor / valorTotal) * 100}%` }} />
@@ -214,7 +214,7 @@ export function InicioPage() {
           {pendientes.length === 0 ? (
             <EmptyState icon={<Inbox />} title="Sin cotizaciones por responder" description="Todas las cotizaciones enviadas tienen respuesta del cliente." className="py-8" />
           ) : (
-            // Cinco filas, como VencimientosWidget compacto, para que las dos tarjetas queden del mismo alto.
+            // Hasta cinco filas, como VencimientosWidget compacto.
             <ul className="divide-y divide-slate-100">
               {pendientes.slice(0, 5).map(({ p, v, dias }) => (
                 <li key={v.id}>
@@ -243,7 +243,7 @@ export function InicioPage() {
 
         <Card className="lg:col-span-2">
           <CardHeader title="Proyectos recientes" description="Los últimos creados" actions={<VerTodo to="/proyectos" />} />
-          <ul className="grid gap-3 px-5 py-4 sm:grid-cols-2 lg:grid-cols-4">
+          <ul className="grid gap-3 px-5 py-4 sm:grid-cols-2 xl:grid-cols-4">
             {recientes.map((p) => {
               const cerrado = !!p.facturaCliente
               return (
