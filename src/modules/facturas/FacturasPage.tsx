@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { Inbox, Link2, ReceiptText } from 'lucide-react'
+import { Link2, ReceiptText } from 'lucide-react'
 import { Badge, Button, Card, CardHeader, DL, EmptyState, Modal, PageHeader, Tabs, td, th } from '@/components/ui'
 import { AdjuntoChip, FechaTexto } from '@/components/dominio'
 import { totalFactura } from '@/lib/calc'
@@ -25,6 +25,8 @@ export function FacturasPage() {
   const detalleId = params.get('f')
   const sinAsignar = facturas.filter((f) => !f.proyectoId)
   const asignadas = facturas.filter((f) => f.proyectoId)
+  // Las facturas nuevas siempre llevan proyecto: "Sin asignar" solo existe mientras queden facturas anteriores sin asociar.
+  const tabVisible = sinAsignar.length > 0 ? tab : 'proyecto'
 
   const abrir = (id: string | null) => setParams(id ? { f: id } : {}, { replace: true })
 
@@ -32,7 +34,7 @@ export function FacturasPage() {
     <>
       <PageHeader
         title="Facturas de proveedores"
-        description="Registro de facturas recibidas (PDF y XML como adjuntos). Asócialas a un proyecto y a su orden de compra para comparar valores."
+        description="Facturas recibidas de los proveedores (PDF y XML como adjuntos), vinculadas a su proyecto y, si aplica, a su orden de compra para comparar valores."
         actions={
           <Button variant="primary" icon={<Link2 />} onClick={() => setVincular(true)}>
             Vincular factura
@@ -43,19 +45,18 @@ export function FacturasPage() {
         <Card>
           <Tabs
             className="px-3"
-            value={tab}
+            value={tabVisible}
             onChange={setTab}
             tabs={[
-              { id: 'sin', label: 'Facturas sin asignar', count: sinAsignar.length },
+              ...(sinAsignar.length > 0 ? [{ id: 'sin' as const, label: 'Facturas sin asignar', count: sinAsignar.length }] : []),
               { id: 'proyecto', label: 'Facturas por proyecto', count: asignadas.length },
             ]}
           />
-          {tab === 'sin' ? (
-            sinAsignar.length === 0 ? (
-              <EmptyState icon={<Inbox />} title="Bandeja al día" description="Todas las facturas recibidas están asociadas a un proyecto." />
-            ) : (
+          {tabVisible === 'sin' ? (
+            <>
+              <p className="px-5 pt-4 text-[13px] text-slate-600">Facturas registradas antes de que el proyecto fuera obligatorio. Asócialas a su proyecto para sacarlas de esta lista.</p>
               <TablaFacturas facturas={sinAsignar} onAbrir={abrir} onAsociar={setAsociar} />
-            )
+            </>
           ) : (
             <div className="divide-y divide-slate-200">
               {proyectos

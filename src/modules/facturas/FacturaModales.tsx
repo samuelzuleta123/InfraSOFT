@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { Button, Field, Input, Modal, NumberInput, Select } from '@/components/ui'
 import { AdjuntoChip, SubirArchivo } from '@/components/dominio'
-import { totalOC } from '@/lib/calc'
+import { normal } from '@/lib/buscar'
+import { totalFactura, totalOC } from '@/lib/calc'
 import { HOY, money, sumarDias, uid } from '@/lib/format'
 import { nombreProveedor, useStore } from '@/store/useStore'
 import type { FacturaProveedor, FormaPago, Proyecto } from '@/types'
@@ -40,7 +41,7 @@ export function AsociarModal({ facturaId, onClose, onDone }: { facturaId: string
       onClose={onClose}
       size="lg"
       title={`Asociar factura ${f.numero}`}
-      description={`${nombreProveedor(proveedores, f.proveedorId, 'Sin proveedor')} · subtotal ${money(f.subtotal)}`}
+      description={`${nombreProveedor(proveedores, f.proveedorId, 'Sin proveedor')} · total ${money(totalFactura(f))}`}
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>
@@ -94,6 +95,13 @@ export function AsociarModal({ facturaId, onClose, onDone }: { facturaId: string
 const FORMAS: FormaPago[] = ['Contado', 'Crédito 30 días', 'Crédito 45 días', 'Crédito 60 días']
 const diasForma = (fp: FormaPago) => (fp === 'Contado' ? 0 : parseInt(fp.replace(/\D/g, ''), 10))
 const etiquetaProyecto = (p: Proyecto) => `${p.codigo} · ${p.nombre}`
+/** Proyecto cuyo código, nombre o etiqueta coincide con lo escrito, solo si es uno. */
+const proyectoEscrito = (proyectos: Proyecto[], texto: string) => {
+  const t = normal(texto)
+  if (!t) return null
+  const coinciden = proyectos.filter((p) => [etiquetaProyecto(p), p.codigo, p.nombre].some((x) => normal(x) === t))
+  return coinciden.length === 1 ? coinciden[0] : null
+}
 
 export function VincularFacturaModal({ onClose, onVinculada }: { onClose: () => void; onVinculada: () => void }) {
   const proveedores = useStore((s) => s.proveedores)
@@ -126,12 +134,19 @@ export function VincularFacturaModal({ onClose, onVinculada }: { onClose: () => 
   }))
   const set = (cambios: Partial<FacturaProveedor>) => setF((x) => ({ ...x, ...cambios }))
   const [busquedaProyecto, setBusquedaProyecto] = useState('')
-  // Solo se digita el total emitido; no se discrimina IVA.
+  // Los precios de la OC ya incluyen el IVA: se guarda el total tal cual, sin discriminar IVA, para compararlo con la OC.
   const total = f.subtotal
 
   const pendientes = ocsPendientes(f.proveedorId, f.proyectoId)
   const ocElegida = ordenes.find((o) => o.id === f.ocId)
   const proyecto = proyectos.find((p) => p.id === f.proyectoId)
+  const hintOC = !proyecto
+    ? 'Elige primero el proyecto.'
+    : !f.proveedorId
+      ? 'Sin proveedor no se asocia una OC.'
+      : pendientes.length === 0
+        ? 'Este proyecto no tiene OC pendientes de este proveedor.'
+        : 'Permite comparar la factura contra la OC.'
 
   const guardar = () => {
     if (!proyecto) return
@@ -162,7 +177,7 @@ export function VincularFacturaModal({ onClose, onVinculada }: { onClose: () => 
       }
     >
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Proyecto" htmlFor="rf-proy" hint={busquedaProyecto && !proyecto ? 'Elige un proyecto de la lista.' : undefined}>
+        <Field label="Proyecto" htmlFor="rf-proy" hint={busquedaProyecto && !proyecto ? 'Escribe el código o el nombre completo, o elígelo de la lista.' : undefined}>
           <Input
             id="rf-proy"
             list="rf-proy-lista"
@@ -171,7 +186,7 @@ export function VincularFacturaModal({ onClose, onVinculada }: { onClose: () => 
             value={busquedaProyecto}
             onChange={(e) => {
               setBusquedaProyecto(e.target.value)
-              const proyectoId = proyectos.find((p) => etiquetaProyecto(p) === e.target.value)?.id ?? null
+              const proyectoId = proyectoEscrito(proyectos, e.target.value)?.id ?? null
               set({ proyectoId, ocId: ocUnica(f.proveedorId, proyectoId) })
             }}
           />
@@ -198,20 +213,7 @@ export function VincularFacturaModal({ onClose, onVinculada }: { onClose: () => 
             ))}
           </Select>
         </Field>
-        <Field
-          label="Orden de compra"
-          htmlFor="rf-oc"
-          optional
-          hint={
-            !proyecto
-              ? 'Elige primero el proyecto.'
-              : !f.proveedorId
-                ? 'Sin proveedor no se asocia una OC.'
-                : pendientes.length === 0
-                ? 'Este proyecto no tiene OC pendientes de este proveedor.'
-                : 'Permite comparar la factura contra la OC.'
-          }
-        >
+        <Field label="Orden de compra" htmlFor="rf-oc" optional hint={hintOC}>
           <Select id="rf-oc" value={f.ocId ?? ''} disabled={pendientes.length === 0} onChange={(e) => set({ ocId: e.target.value || null })}>
             <option value="">Sin OC</option>
             {pendientes.map((o) => (
@@ -240,7 +242,7 @@ export function VincularFacturaModal({ onClose, onVinculada }: { onClose: () => 
         <Field label="Notas" htmlFor="rf-notas" optional>
           <Input id="rf-notas" value={f.notas ?? ''} onChange={(e) => set({ notas: e.target.value })} placeholder="Remisiones, OC de referencia…" />
         </Field>
-        <Field label="Total de la factura" htmlFor="rf-total" hint="Valor total emitido por el proveedor.">
+        <Field label="Total de la factura" htmlFor="rf-total" hint="Valor total emitido por el proveedor; se compara directo con el total de la OC.">
           <NumberInput id="rf-total" value={total || null} allowEmpty prefix="$" onChange={(n) => set({ subtotal: n ?? 0 })} />
         </Field>
       </div>
