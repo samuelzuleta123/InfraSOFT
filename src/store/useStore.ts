@@ -86,7 +86,7 @@ interface State {
   nuevaVersion: (proyectoId: string) => void
   /** Borra una versión de la cotización; si era la activa, queda activa la última que quede. */
   eliminarVersion: (proyectoId: string, versionId: string) => void
-  cambiarEstadoCotizacion: (proyectoId: string, versionId: string, estado: EstadoCotizacion, fecha?: string) => void
+  cambiarEstadoCotizacion: (proyectoId: string, versionId: string, estado: EstadoCotizacion, fecha?: string, rechazo?: { motivo: string; nota?: string }) => void
   generarOCs: (proyectoId: string) => number
   /** Crea el kit si su id no existe; si existe, lo reemplaza. */
   guardarKit: (kit: Kit) => void
@@ -323,7 +323,7 @@ export const useStore = create<State>()(
         if (p.cotizacion.versionActivaId === versionId) p.cotizacion.versionActivaId = p.cotizacion.versiones.at(-1)!.id
       }),
 
-    cambiarEstadoCotizacion: (proyectoId, versionId, estado, fecha = HOY) =>
+    cambiarEstadoCotizacion: (proyectoId, versionId, estado, fecha = HOY, rechazo) =>
       set((s) => {
         const p = s.proyectos.find((x) => x.id === proyectoId)
         const v = p?.cotizacion.versiones.find((x) => x.id === versionId)
@@ -335,7 +335,7 @@ export const useStore = create<State>()(
               otra.historial.push({ estado: 'enviada', fecha })
             }
         v.estado = estado
-        v.historial.push({ estado, fecha })
+        v.historial.push(estado === 'rechazada' && rechazo ? { estado, fecha, ...rechazo } : { estado, fecha })
         if (estado === 'aprobada' && p.etapa < 2) p.etapa = 2
       }),
 

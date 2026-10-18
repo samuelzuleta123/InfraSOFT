@@ -1,9 +1,9 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
-import { Check, FileText, Pencil, RefreshCw, Send, ShoppingCart, X } from 'lucide-react'
-import { Alert, Badge, Button, Card, CardHeader, DL, EmptyState, Field, Input, Modal, NumberInput } from '@/components/ui'
+import { Link, useNavigate } from 'react-router-dom'
+import { Check, CopyPlus, FileText, Pencil, RefreshCw, Send, ShoppingCart, X } from 'lucide-react'
+import { Alert, Badge, Button, Card, CardHeader, DL, EmptyState, Field, Input, Modal, NumberInput, Select, Textarea } from '@/components/ui'
 import { AdjuntoChip, EstadoCotBadge, FechaTexto, SubirArchivo, nombreEstadoCot } from '@/components/dominio'
-import { resumen, totalCotizadoOC, totalLineaOC, totalOC, versionVigente } from '@/lib/calc'
+import { resumen, siguienteNombreVersion, totalCotizadoOC, totalLineaOC, totalOC, versionVigente } from '@/lib/calc'
 import { generarOrdenes, itemsSinProveedor } from '@/lib/compras'
 import { cn } from '@/lib/cn'
 import { HOY, money, moneySigned } from '@/lib/format'
@@ -25,12 +25,24 @@ export function ComprasTab({ proyecto }: { proyecto: Proyecto }) {
 
 // ── Estados de la cotización ──────────────────────────────────────────
 
+/** Motivos frecuentes de rechazo; "Otro" pide escribirlo. */
+const MOTIVOS_RECHAZO = ['Precio alto', 'Eligió otro proveedor', 'Sin presupuesto', 'Proyecto aplazado o cancelado', 'Cambio de alcance', 'Tiempo de entrega'] as const
+const OTRO = 'Otro'
+
 function EstadoCotizacionCard({ proyecto }: { proyecto: Proyecto }) {
   const cambiar = useStore((s) => s.cambiarEstadoCotizacion)
   const editarProyecto = useStore((s) => s.editarProyecto)
   const notificar = useStore((s) => s.notificar)
+  const nuevaVersion = useStore((s) => s.nuevaVersion)
+  const nav = useNavigate()
   const [fechaCambio, setFechaCambio] = useState(HOY)
   const [confirmar, setConfirmar] = useState<EstadoCotizacion | null>(null)
+  const [motivo, setMotivo] = useState('')
+  const [otroTexto, setOtroTexto] = useState('')
+  const [nota, setNota] = useState('')
+  const motivoFinal = motivo === OTRO ? otroTexto.trim() : motivo
+  // El rechazo no se registra sin un motivo: es lo que se revisa después para ajustar las propuestas.
+  const faltaMotivo = confirmar === 'rechazada' && !motivoFinal
   const activa = proyecto.cotizacion.versiones.find((v) => v.id === proyecto.cotizacion.versionActivaId)!
   const abierta = proyecto.etapa < 4 && (activa.estado === 'borrador' || activa.estado === 'enviada')
 
@@ -45,14 +57,20 @@ function EstadoCotizacionCard({ proyecto }: { proyecto: Proyecto }) {
 
   const registrar = (estado: EstadoCotizacion) => {
     const antes = { versiones: JSON.parse(JSON.stringify(proyecto.cotizacion.versiones)), etapa: proyecto.etapa }
-    cambiar(proyecto.id, activa.id, estado, fechaCambio)
+    cambiar(proyecto.id, activa.id, estado, fechaCambio, estado === 'rechazada' ? { motivo: motivoFinal, nota: nota.trim() || undefined } : undefined)
     notificar(`Cotización ${activa.nombre} marcada como ${nombreEstadoCot(estado).toLowerCase()}`, 'ok', () =>
       editarProyecto(proyecto.id, (p) => {
         p.cotizacion.versiones = antes.versiones
         p.etapa = antes.etapa
       }),
     )
+    cerrarConfirmar()
+  }
+  const cerrarConfirmar = () => {
     setConfirmar(null)
+    setMotivo('')
+    setOtroTexto('')
+    setNota('')
   }
 
   return (
@@ -68,7 +86,17 @@ function EstadoCotizacionCard({ proyecto }: { proyecto: Proyecto }) {
                   <EstadoCotBadge estado={v.estado} />
                   {v.id === activa.id && (v.estado === 'borrador' || v.estado === 'enviada') && <span className="text-xs text-slate-500">versión actual</span>}
                 </div>
-                <span className="num text-sm font-medium text-slate-900">{money(resumen(v).precioVigente)}</span>
+                <div className="flex items-center gap-3">
+                  <Link
+                    to={`/proyectos/${proyecto.id}/cotizacion/pdf?version=${v.id}`}
+                    state={{ volver: `/proyectos/${proyecto.id}/compras`, volverTexto: 'Volver a Compras' }}
+                    className="inline-flex items-center gap-1 text-xs font-medium text-brand-800 underline-offset-2 hover:underline"
+                  >
+                    <FileText className="size-3.5" aria-hidden />
+                    Ver PDF
+                  </Link>
+                  <span className="num text-sm font-medium text-slate-900">{money(resumen(v).precioVigente)}</span>
+                </div>
               </div>
               <ol className="mt-2.5 flex flex-wrap gap-x-5 gap-y-1 text-xs text-slate-500">
                 {v.historial.map((h, i) => (
@@ -78,6 +106,15 @@ function EstadoCotizacionCard({ proyecto }: { proyecto: Proyecto }) {
                   </li>
                 ))}
               </ol>
+              {v.historial.map(
+                (h, i) =>
+                  h.motivo && (
+                    <p key={i} className="mt-2 rounded bg-red-50/70 px-2.5 py-1.5 text-xs text-red-900">
+                      <span className="font-medium">Motivo del rechazo:</span> {h.motivo}
+                      {h.nota && <span className="text-red-800/80"> · {h.nota}</span>}
+                    </p>
+                  ),
+              )}
             </li>
           ))}
         </ol>
@@ -98,26 +135,50 @@ function EstadoCotizacionCard({ proyecto }: { proyecto: Proyecto }) {
             </div>
           </div>
         ) : (
-          <p className="mt-5 border-t border-slate-200 pt-4 text-[13px] text-slate-500">
-            {activa.estado === 'aprobada'
-              ? `${activa.nombre} está aprobada. Si el cliente pide cambios, crea una nueva versión desde el cotizador.`
-              : activa.estado === 'rechazada'
-                ? `${activa.nombre} fue rechazada. Crea una nueva versión desde el cotizador para volver a enviarla.`
-                : 'El proyecto ya está en entrega o cierre.'}
-          </p>
+          <div className="mt-5 flex flex-col items-center gap-3 border-t border-slate-200 pt-4 text-center">
+            <p className="text-[13px] text-slate-500">
+              {activa.estado === 'aprobada'
+                ? `${activa.nombre} está aprobada. Si el cliente pide cambios, crea una nueva versión desde el cotizador.`
+                : activa.estado === 'rechazada'
+                  ? `${activa.nombre} fue rechazada. Crea una nueva versión para ajustarla y volver a enviarla.`
+                  : 'El proyecto ya está en entrega o cierre.'}
+            </p>
+            {/* Una versión rechazada ya no se edita: se sigue negociando en una nueva, que se abre de una vez. */}
+            {activa.estado === 'rechazada' && proyecto.etapa < 4 ? (
+              <Button
+                icon={<CopyPlus />}
+                onClick={() => {
+                  const nombre = siguienteNombreVersion(proyecto)
+                  nuevaVersion(proyecto.id)
+                  notificar(`Se creó la versión ${nombre} a partir de ${activa.nombre}`)
+                  nav(`/proyectos/${proyecto.id}/cotizacion`)
+                }}
+              >
+                Crear {siguienteNombreVersion(proyecto)} en el cotizador
+              </Button>
+            ) : (
+              <Link
+                to={`/proyectos/${proyecto.id}/cotizacion`}
+                className="inline-flex h-9 shrink-0 items-center gap-2 rounded-md border border-slate-300 bg-white px-3.5 text-sm font-medium text-slate-700 shadow-sm transition-colors hover:bg-slate-50"
+              >
+                <FileText className="size-4" aria-hidden />
+                Ir al cotizador
+              </Link>
+            )}
+          </div>
         )}
       </div>
       <Modal
         open={confirmar !== null}
-        onClose={() => setConfirmar(null)}
+        onClose={cerrarConfirmar}
         size="sm"
         title={confirmar === 'aprobada' ? `¿El cliente aprobó la ${activa.nombre}?` : `¿El cliente rechazó la ${activa.nombre}?`}
         footer={
           <>
-            <Button variant="ghost" onClick={() => setConfirmar(null)}>
+            <Button variant="ghost" onClick={cerrarConfirmar}>
               Cancelar
             </Button>
-            <Button variant={confirmar === 'rechazada' ? 'danger' : 'primary'} onClick={() => confirmar && registrar(confirmar)}>
+            <Button variant={confirmar === 'rechazada' ? 'danger' : 'primary'} disabled={faltaMotivo} onClick={() => confirmar && registrar(confirmar)}>
               {confirmar === 'aprobada' ? 'Sí, registrar aprobación' : 'Sí, registrar rechazo'}
             </Button>
           </>
@@ -128,6 +189,31 @@ function EstadoCotizacionCard({ proyecto }: { proyecto: Proyecto }) {
             ? `La ${activa.nombre} por ${money(resumen(activa).precioVigente)} queda aprobada con fecha ${fechaCambio.split('-').reverse().join('/')}, el proyecto pasa a compras y la cotización queda en solo lectura.`
             : `La ${activa.nombre} queda como rechazada con fecha ${fechaCambio.split('-').reverse().join('/')}. Para seguir negociando crea una nueva versión desde el cotizador.`}
         </p>
+        {confirmar === 'rechazada' && (
+          <div className="mt-4 space-y-3">
+            <Field label="¿Por qué la rechazó?" htmlFor="motivo-rechazo">
+              <Select id="motivo-rechazo" value={motivo} onChange={(e) => setMotivo(e.target.value)}>
+                <option value="" disabled>
+                  Elige un motivo
+                </option>
+                {MOTIVOS_RECHAZO.map((m) => (
+                  <option key={m} value={m}>
+                    {m}
+                  </option>
+                ))}
+                <option value={OTRO}>Otro…</option>
+              </Select>
+            </Field>
+            {motivo === OTRO && (
+              <Field label="Escribe el motivo" htmlFor="motivo-otro">
+                <Input id="motivo-otro" autoFocus value={otroTexto} onChange={(e) => setOtroTexto(e.target.value)} placeholder="Ej. El cliente decidió hacerlo con personal propio" />
+              </Field>
+            )}
+            <Field label="Comentario (opcional)" htmlFor="nota-rechazo">
+              <Textarea id="nota-rechazo" value={nota} onChange={(e) => setNota(e.target.value)} placeholder="Ej. La competencia ofreció 10 % menos" className="min-h-16" />
+            </Field>
+          </div>
+        )}
       </Modal>
     </Card>
   )

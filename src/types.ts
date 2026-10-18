@@ -88,6 +88,10 @@ export type EstadoCotizacion = 'borrador' | 'enviada' | 'aprobada' | 'rechazada'
 export interface CambioEstado {
   estado: EstadoCotizacion
   fecha: ISODate
+  /** Por qué el cliente rechazó: uno de MOTIVOS_RECHAZO o el texto escrito en "Otro". */
+  motivo?: string
+  /** Comentario opcional sobre el rechazo. */
+  nota?: string
 }
 
 export interface VersionCotizacion {

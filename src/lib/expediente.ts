@@ -31,7 +31,7 @@ export function documentosProyecto(p: Proyecto, ordenes: OrdenCompra[], facturas
       fecha: v.creada,
       detalle: v.estado[0].toUpperCase() + v.estado.slice(1),
       valor: resumen(v).precioVigente,
-      ruta: `/proyectos/${p.id}/cotizacion/pdf`,
+      ruta: `/proyectos/${p.id}/cotizacion/pdf?version=${v.id}`,
     })
   if (p.ocCliente)
     docs.push({
@@ -121,6 +121,7 @@ export function historialProyecto(p: Proyecto, ordenes: OrdenCompra[], facturas:
         fecha: h.fecha,
         tipo: h.estado === 'aprobada' ? 'aprobada' : h.estado === 'rechazada' ? 'rechazada' : 'cotizacion',
         titulo,
+        detalle: h.motivo ? `Motivo: ${h.motivo}${h.nota ? ` · ${h.nota}` : ''}` : undefined,
         valor: h.estado === 'borrador' ? undefined : resumen(v).precioVigente,
         doc: doc(`cot-${v.id}`),
       })

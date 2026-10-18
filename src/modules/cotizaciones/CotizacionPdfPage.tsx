@@ -25,7 +25,10 @@ export function CotizacionPdfPage() {
   const { state } = useLocation()
   if (!proyecto || !cliente) return <Navigate to="/proyectos" replace />
 
-  const v = versionActiva(proyecto)
+  // Desde el expediente o desde Compras se abre una versión concreta; si no, la del cotizador.
+  const v = proyecto.cotizacion.versiones.find((x) => x.id === params.get('version')) ?? versionActiva(proyecto)
+  // Una versión ya respondida queda como registro: el PDF dice si el cliente la aprobó o la rechazó y cuándo.
+  const respuesta = v.estado === 'aprobada' || v.estado === 'rechazada' ? v.historial.find((h) => h.estado === v.estado) : undefined
   const pc = preciosCliente(v)
   // Vista interna con ítems: unitarios a costo (material + instalación), sin inflar, y las líneas que llevan al total.
   const r = resumen(v)
@@ -71,12 +74,20 @@ export function CotizacionPdfPage() {
       <HojaCarta>
         <header className="flex flex-wrap items-start justify-between gap-6 border-b-2 border-brand-500 pb-5">
           <MembreteInfrasoft />
-          {interna && (
-            <div className="flex-1 self-center text-center">
-              <div className="inline-block rounded border-2 border-red-700 px-4 py-1.5 text-red-700">
-                <div className="text-base leading-tight font-bold tracking-[0.2em] uppercase">Interna</div>
-                <div className="text-[9px] font-semibold tracking-wider uppercase">No entregar al cliente</div>
-              </div>
+          {(interna || respuesta) && (
+            <div className="flex flex-1 flex-col items-center gap-2 self-center text-center">
+              {respuesta && (
+                <div className={`inline-block rounded border-2 px-4 py-1.5 ${respuesta.estado === 'aprobada' ? 'border-emerald-700 text-emerald-700' : 'border-red-700 text-red-700'}`}>
+                  <div className="text-base leading-tight font-bold tracking-[0.2em] uppercase">{respuesta.estado === 'aprobada' ? 'Aprobada' : 'Rechazada'}</div>
+                  <div className="num text-[9px] font-semibold tracking-wider uppercase">Por el cliente · {fecha(respuesta.fecha)}</div>
+                </div>
+              )}
+              {interna && (
+                <div className="inline-block rounded border-2 border-red-700 px-4 py-1.5 text-red-700">
+                  <div className="text-base leading-tight font-bold tracking-[0.2em] uppercase">Interna</div>
+                  <div className="text-[9px] font-semibold tracking-wider uppercase">No entregar al cliente</div>
+                </div>
+              )}
             </div>
           )}
           <div className="text-right">
