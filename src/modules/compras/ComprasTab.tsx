@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Check, CopyPlus, FileText, Pencil, RefreshCw, Send, ShoppingCart, X } from 'lucide-react'
+import { Check, CopyPlus, FileText, Lock, Pencil, RefreshCw, Send, ShoppingCart, X } from 'lucide-react'
 import { Alert, Badge, Button, Card, CardHeader, DL, EmptyState, Field, Input, Modal, NumberInput, Select, Textarea } from '@/components/ui'
 import { AdjuntoChip, EstadoCotBadge, FechaTexto, SubirArchivo, nombreEstadoCot } from '@/components/dominio'
 import { resumen, siguienteNombreVersion, totalCotizadoOC, totalLineaOC, totalOC, versionVigente } from '@/lib/calc'
@@ -232,6 +232,9 @@ function OCClienteCard({ proyecto }: { proyecto: Proyecto }) {
   const valorActual = editando ? form.valor : (oc?.valor ?? 0)
   const diferencia = valorActual - cotizado
   const hayValor = editando ? form.valor > 0 : !!oc
+  // La OC llega después de que el cliente aprueba: antes no hay valor comprometido que registrar.
+  const aprobada = proyecto.cotizacion.versiones.some((v) => v.estado === 'aprobada')
+  const bloqueada = !aprobada && !oc
 
   const guardar = () => {
     editarProyecto(proyecto.id, (p) => {
@@ -255,61 +258,70 @@ function OCClienteCard({ proyecto }: { proyecto: Proyecto }) {
           ) : undefined
         }
       />
-      <div className="space-y-4 p-5">
-        {editando ? (
-          <>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Número de OC" htmlFor="oc-num">
-                <Input id="oc-num" value={form.numero} onChange={(e) => setForm({ ...form, numero: e.target.value })} placeholder="Ej. LOC-0081930" />
-              </Field>
-              <Field label="Fecha" htmlFor="oc-fecha">
-                <Input id="oc-fecha" type="date" value={form.fecha} onChange={(e) => setForm({ ...form, fecha: e.target.value })} />
-              </Field>
-              <Field label="Valor" htmlFor="oc-valor">
-                <NumberInput id="oc-valor" value={form.valor || null} allowEmpty decimals={0} prefix="$" onChange={(n) => setForm({ ...form, valor: n ?? 0 })} />
-              </Field>
-              <Field label="Adjunto">
-                <div className="flex min-h-9 flex-wrap items-center gap-2">
-                  {form.adjunto ? <AdjuntoChip adjunto={form.adjunto} onRemove={() => setForm({ ...form, adjunto: null })} /> : <SubirArchivo accept=".pdf,image/*" onFile={(a) => setForm({ ...form, adjunto: a })} />}
-                </div>
-              </Field>
-            </div>
-          </>
-        ) : (
-          oc && (
-            <DL
-              items={[
-                ['Número', <span className="font-semibold">{oc.numero}</span>],
-                ['Fecha', <FechaTexto iso={oc.fecha} />],
-                ['Valor', <span className="num font-semibold">{money(oc.valor)}</span>],
-                ['Adjunto', oc.adjunto ? <AdjuntoChip adjunto={oc.adjunto} contexto={{ tipo: 'ocCliente', proyectoId: proyecto.id }} /> : <span className="text-slate-500">Sin adjunto</span>],
-              ]}
-            />
-          )
-        )}
-
-        {hayValor &&
-          (diferencia === 0 ? (
-            <Alert tone="ok" title="El valor coincide con lo cotizado" />
+      {bloqueada ? (
+        <EmptyState
+          icon={<Lock />}
+          title="Se habilita cuando el cliente apruebe"
+          description="La orden de compra del cliente llega después de la aprobación. Registra primero la aprobación en Estado de la cotización."
+          className="py-10"
+        />
+      ) : (
+        <div className="space-y-4 p-5">
+          {editando ? (
+            <>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field label="Número de OC" htmlFor="oc-num">
+                  <Input id="oc-num" value={form.numero} onChange={(e) => setForm({ ...form, numero: e.target.value })} placeholder="Ej. LOC-0081930" />
+                </Field>
+                <Field label="Fecha" htmlFor="oc-fecha">
+                  <Input id="oc-fecha" type="date" value={form.fecha} onChange={(e) => setForm({ ...form, fecha: e.target.value })} />
+                </Field>
+                <Field label="Valor" htmlFor="oc-valor">
+                  <NumberInput id="oc-valor" value={form.valor || null} allowEmpty decimals={0} prefix="$" onChange={(n) => setForm({ ...form, valor: n ?? 0 })} />
+                </Field>
+                <Field label="Adjunto">
+                  <div className="flex min-h-9 flex-wrap items-center gap-2">
+                    {form.adjunto ? <AdjuntoChip adjunto={form.adjunto} onRemove={() => setForm({ ...form, adjunto: null })} /> : <SubirArchivo accept=".pdf,image/*" onFile={(a) => setForm({ ...form, adjunto: a })} />}
+                  </div>
+                </Field>
+              </div>
+            </>
           ) : (
-            <Alert tone="warn" title="El valor de la OC no coincide con el cotizado">
-              OC {money(valorActual)} frente a cotizado {money(cotizado)}: diferencia de <strong className="num">{moneySigned(diferencia)}</strong>. Verifica con el cliente antes de comprar.
-            </Alert>
-          ))}
+            oc && (
+              <DL
+                items={[
+                  ['Número', <span className="font-semibold">{oc.numero}</span>],
+                  ['Fecha', <FechaTexto iso={oc.fecha} />],
+                  ['Valor', <span className="num font-semibold">{money(oc.valor)}</span>],
+                  ['Adjunto', oc.adjunto ? <AdjuntoChip adjunto={oc.adjunto} contexto={{ tipo: 'ocCliente', proyectoId: proyecto.id }} /> : <span className="text-slate-500">Sin adjunto</span>],
+                ]}
+              />
+            )
+          )}
 
-        {editando && (
-          <div className="flex justify-end gap-2">
-            {oc && (
-              <Button variant="ghost" onClick={() => setEditando(false)}>
-                Cancelar
+          {hayValor &&
+            (diferencia === 0 ? (
+              <Alert tone="ok" title="El valor coincide con lo cotizado" />
+            ) : (
+              <Alert tone="warn" title="El valor de la OC no coincide con el cotizado">
+                OC {money(valorActual)} frente a cotizado {money(cotizado)}: diferencia de <strong className="num">{moneySigned(diferencia)}</strong>. Verifica con el cliente antes de comprar.
+              </Alert>
+            ))}
+
+          {editando && (
+            <div className="flex justify-end gap-2">
+              {oc && (
+                <Button variant="ghost" onClick={() => setEditando(false)}>
+                  Cancelar
+                </Button>
+              )}
+              <Button variant="primary" onClick={guardar} disabled={!form.numero.trim() || !form.valor}>
+                Registrar OC
               </Button>
-            )}
-            <Button variant="primary" onClick={guardar} disabled={!form.numero.trim() || !form.valor}>
-              Registrar OC
-            </Button>
-          </div>
-        )}
-      </div>
+            </div>
+          )}
+        </div>
+      )}
     </Card>
   )
 }
