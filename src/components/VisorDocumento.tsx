@@ -121,7 +121,7 @@ ${f.lineas
             <div>NIT {prov.nit} · {prov.ciudad}</div>
           </div>
           <div className="rounded border border-slate-400 px-4 py-2 text-right">
-            <div className="text-[10px] font-semibold tracking-wider uppercase">Factura electrónica de venta</div>
+            <div className="text-[10px] font-semibold tracking-wider uppercase">Factura de venta</div>
             <div className="text-base font-bold">{f.numero}</div>
           </div>
         </header>
@@ -252,7 +252,7 @@ ${f.lineas
           </div>
           <div className="text-right">
             <Logotipo tamano="md" />
-            <div className="mt-2 text-base font-bold">Factura electrónica de venta</div>
+            <div className="mt-2 text-base font-bold">Factura de venta</div>
             <div className="text-base font-bold">N°. {fc.numero}</div>
           </div>
         </header>

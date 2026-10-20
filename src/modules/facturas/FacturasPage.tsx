@@ -5,12 +5,20 @@ import { Badge, Button, Card, CardHeader, DL, EmptyState, Modal, PageHeader, Tab
 import { AdjuntoChip, FechaTexto } from '@/components/dominio'
 import { totalFactura } from '@/lib/calc'
 import { cn } from '@/lib/cn'
-import { money } from '@/lib/format'
+import { HOY, money } from '@/lib/format'
 import { nombreProveedor, useStore } from '@/store/useStore'
 import type { FacturaProveedor } from '@/types'
 import { VencimientosWidget } from './VencimientosWidget'
 import { ComparacionOC } from './ComparacionOC'
 import { AsociarModal, VincularFacturaModal } from './FacturaModales'
+
+/** Las de contado se pagan al recibirlas; las de crédito se marcan a mano. */
+function EstadoPago({ f }: { f: FacturaProveedor }) {
+  if (f.formaPago === 'Contado') return <Badge tone="ok">Pagada (contado)</Badge>
+  if (f.pagada) return <Badge tone="ok">Pagada</Badge>
+  if (f.vencimiento < HOY) return <Badge tone="danger">Vencida</Badge>
+  return <Badge tone="warn">Pendiente</Badge>
+}
 
 export function FacturasPage() {
   const facturas = useStore((s) => s.facturas)
@@ -34,7 +42,7 @@ export function FacturasPage() {
     <>
       <PageHeader
         title="Facturas de proveedores"
-        description="Facturas recibidas de los proveedores (PDF y XML como adjuntos), vinculadas a su proyecto y, si aplica, a su orden de compra para comparar valores."
+        description="Lo que Infrasoft debe o ya pagó a sus proveedores, por proyecto y comparado contra la OC. El PDF y el XML se guardan como adjuntos."
         actions={
           <Button variant="primary" icon={<Link2 />} onClick={() => setVincular(true)}>
             Vincular factura
@@ -95,13 +103,14 @@ function TablaFacturas({ facturas, onAbrir, onAsociar }: { facturas: FacturaProv
   const ordenes = useStore((s) => s.ordenes)
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[960px] text-sm">
+      <table className="w-full min-w-[1040px] text-sm">
         <thead className="border-b border-slate-200">
           <tr>
             <th className={th}>Proveedor / N.°</th>
             <th className={th}>Fecha</th>
             <th className={th}>Vence</th>
             <th className={th}>Forma de pago</th>
+            <th className={th}>Estado</th>
             <th className={cn(th, 'text-right')}>Subtotal</th>
             <th className={cn(th, 'text-right')}>IVA</th>
             <th className={cn(th, 'text-right')}>Total</th>
@@ -128,13 +137,11 @@ function TablaFacturas({ facturas, onAbrir, onAsociar }: { facturas: FacturaProv
                 </td>
                 <td className={cn(td, 'text-slate-600')}>
                   <FechaTexto iso={f.vencimiento} />
-                  {f.pagada && (
-                    <Badge tone="ok" className="ml-2">
-                      Pagada
-                    </Badge>
-                  )}
                 </td>
                 <td className={cn(td, 'text-slate-600')}>{f.formaPago}</td>
+                <td className={td}>
+                  <EstadoPago f={f} />
+                </td>
                 <td className={cn(td, 'num text-right')}>{money(f.subtotal)}</td>
                 <td className={cn(td, 'num text-right text-slate-600')}>{money(f.iva)}</td>
                 <td className={cn(td, 'num text-right font-semibold text-slate-900')}>{money(totalFactura(f))}</td>
@@ -145,10 +152,10 @@ function TablaFacturas({ facturas, onAbrir, onAsociar }: { facturas: FacturaProv
                     ))}
                   </div>
                 </td>
-                <td className={td}>{oc ? <span className="num text-slate-700">{oc.consecutivo}</span> : <span className="text-slate-500">—</span>}</td>
+                <td className={td}>{oc ? <span className="num whitespace-nowrap text-slate-700">{oc.consecutivo}</span> : <span className="whitespace-nowrap text-slate-500">Sin OC</span>}</td>
                 <td className={cn(td, 'text-right')}>
                   <Button size="sm" variant={f.proyectoId ? 'ghost' : 'subtle'} icon={<Link2 />} onClick={() => onAsociar(f.id)}>
-                    {f.proyectoId ? 'Cambiar' : 'Asociar a proyecto / OC'}
+                    {f.proyectoId ? 'Editar' : 'Asociar a proyecto / OC'}
                   </Button>
                 </td>
               </tr>
@@ -176,23 +183,25 @@ function DetalleFactura({ id, onClose, onAsociar }: { id: string; onClose: () =>
       description={nombreProveedor(proveedores, f.proveedorId, 'Sin proveedor')}
       footer={
         <>
-          <Button
-            variant="ghost"
-            className="mr-auto"
-            onClick={() =>
-              mutar((s) => {
-                const x = s.facturas.find((y) => y.id === f.id)
-                if (x) x.pagada = !x.pagada
-              })
-            }
-          >
-            {f.pagada ? 'Marcar como pendiente' : 'Marcar como pagada'}
-          </Button>
-          <Button variant="ghost" onClick={onClose}>
+          {f.formaPago !== 'Contado' && (
+            <Button
+              variant="ghost"
+              className="mr-auto"
+              onClick={() =>
+                mutar((s) => {
+                  const x = s.facturas.find((y) => y.id === f.id)
+                  if (x) x.pagada = !x.pagada
+                })
+              }
+            >
+              {f.pagada ? 'Marcar como pendiente' : 'Marcar como pagada'}
+            </Button>
+          )}
+          <Button variant="ghost" className={cn(f.formaPago === 'Contado' && 'mr-auto')} onClick={onClose}>
             Cerrar
           </Button>
           <Button variant="primary" icon={<Link2 />} onClick={() => onAsociar(f.id)}>
-            {f.proyectoId ? 'Cambiar asociación' : 'Asociar a proyecto / OC'}
+            {f.proyectoId ? 'Editar asociación' : 'Asociar a proyecto / OC'}
           </Button>
         </>
       }
@@ -203,7 +212,7 @@ function DetalleFactura({ id, onClose, onAsociar }: { id: string; onClose: () =>
             ['Fecha', <FechaTexto iso={f.fecha} />],
             ['Vencimiento', <FechaTexto iso={f.vencimiento} />],
             ['Forma de pago', f.formaPago],
-            ['Estado de pago', f.pagada ? <Badge tone="ok">Pagada</Badge> : <Badge tone="warn">Pendiente</Badge>],
+            ['Estado de pago', <EstadoPago f={f} />],
             ...(f.notas ? ([['Notas', f.notas]] as [string, string][]) : []),
           ]}
         />
