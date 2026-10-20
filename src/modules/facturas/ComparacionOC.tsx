@@ -19,21 +19,23 @@ function filas(f: FacturaProveedor, oc: OrdenCompra) {
 export function ComparacionOC({ factura, oc }: { factura: FacturaProveedor; oc: OrdenCompra }) {
   const totalOrden = totalOC(oc)
   const difTotal = factura.subtotal - totalOrden
+  // Las facturas nuevas guardan el total con IVA en `subtotal`; las anteriores lo discriminan y se comparan sin IVA.
+  const base = factura.iva ? 'subtotal' : 'total'
 
   return (
     <div className="space-y-3">
       {Math.abs(difTotal) < 1 ? (
-        <Alert tone="ok" title="El subtotal de la factura coincide con la OC">
+        <Alert tone="ok" title={`El ${base} de la factura coincide con la OC`}>
           {money(factura.subtotal)} facturado frente a {money(totalOrden)} en la OC {oc.consecutivo}.
         </Alert>
       ) : (
         <Alert tone="warn" title={`Diferencia de ${moneySigned(difTotal)} contra la OC ${oc.consecutivo}`}>
-          Subtotal facturado {money(factura.subtotal)} frente a {money(totalOrden)} ordenado.
+          {base === 'total' ? 'Total' : 'Subtotal'} facturado {money(factura.subtotal)} frente a {money(totalOrden)} ordenado.
         </Alert>
       )}
 
       {factura.lineas.length === 0 ? (
-        <p className="text-[13px] text-slate-500">La factura no tiene detalle de ítems registrado; se compara solo el subtotal.</p>
+        <p className="text-[13px] text-slate-500">La factura no tiene detalle de ítems registrado; se compara solo el {base}.</p>
       ) : (
         <div className="overflow-x-auto rounded-md border border-slate-200">
           <table className="w-full min-w-[640px] text-[13px]">

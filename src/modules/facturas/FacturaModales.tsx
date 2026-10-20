@@ -16,9 +16,18 @@ export function AsociarModal({ facturaId, onClose, onDone }: { facturaId: string
   const mutar = useStore((s) => s.mutar)
   const notificar = useStore((s) => s.notificar)
   const [proyectoId, setProyectoId] = useState(f?.proyectoId ?? '')
+  // Solo se cargan facturas a proyectos aprobados; se conserva el actual para no perderlo al editar.
+  const opciones = proyectos.filter((p) => cotizacionAprobada(p) || p.id === f?.proyectoId)
+  const facturas = useStore((s) => s.facturas)
   const ocsProyecto = ordenes.filter((o) => o.proyectoId === proyectoId)
-  const sugerida = ocsProyecto.find((o) => o.proveedorId === f?.proveedorId)
-  const [ocId, setOcId] = useState(f?.ocId ?? sugerida?.id ?? '')
+  const facturada = (ocId: string) => facturas.some((x) => x.id !== facturaId && x.ocId === ocId)
+  // Igual que al vincular: se propone la OC del proveedor solo si es la única.
+  const unicaDelProveedor = (pid: string) => {
+    const ocs = ordenes.filter((o) => o.proyectoId === pid && o.proveedorId === f?.proveedorId)
+    return ocs.length === 1 ? ocs[0].id : ''
+  }
+  const sugerida = unicaDelProveedor(proyectoId)
+  const [ocId, setOcId] = useState(f?.ocId ?? sugerida)
   if (!f) return null
   const oc = ordenes.find((o) => o.id === ocId)
 
@@ -30,7 +39,7 @@ export function AsociarModal({ facturaId, onClose, onDone }: { facturaId: string
         x.ocId = ocId || null
       }
     })
-    notificar(`Factura ${f.numero} asociada${oc ? ` a la OC ${oc.consecutivo}` : ''}`)
+    notificar(`Factura ${f.numero} ${f.proyectoId ? 'actualizada' : 'asociada'}${oc ? ` · OC ${oc.consecutivo}` : ''}`)
     onDone()
     onClose()
   }
@@ -40,7 +49,7 @@ export function AsociarModal({ facturaId, onClose, onDone }: { facturaId: string
       open
       onClose={onClose}
       size="lg"
-      title={`Asociar factura ${f.numero}`}
+      title={`${f.proyectoId ? 'Editar asociación de la factura' : 'Asociar factura'} ${f.numero}`}
       description={`${nombreProveedor(proveedores, f.proveedorId, 'Sin proveedor')} · total ${money(totalFactura(f))}`}
       footer={
         <>
@@ -54,29 +63,30 @@ export function AsociarModal({ facturaId, onClose, onDone }: { facturaId: string
       }
     >
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Proyecto" htmlFor="as-proy">
+        <Field label="Proyecto" htmlFor="as-proy" hint="Solo aparecen proyectos con la cotización aprobada.">
           <Select
             id="as-proy"
             value={proyectoId}
             onChange={(e) => {
               setProyectoId(e.target.value)
-              setOcId(ordenes.find((o) => o.proyectoId === e.target.value && o.proveedorId === f.proveedorId)?.id ?? '')
+              setOcId(unicaDelProveedor(e.target.value))
             }}
           >
             <option value="">Selecciona un proyecto…</option>
-            {proyectos.map((p) => (
+            {opciones.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.codigo} · {p.nombre}
               </option>
             ))}
           </Select>
         </Field>
-        <Field label="Orden de compra" htmlFor="as-oc" hint={proyectoId && ocsProyecto.length === 0 ? 'Este proyecto aún no tiene órdenes de compra.' : 'Se sugiere la OC del mismo proveedor.'}>
+        <Field label="Orden de compra" htmlFor="as-oc" hint={proyectoId && ocsProyecto.length === 0 ? 'Este proyecto aún no tiene órdenes de compra.' : 'Se toma la OC del proveedor si es la única.'}>
           <Select id="as-oc" value={ocId} onChange={(e) => setOcId(e.target.value)} disabled={!proyectoId}>
             <option value="">Sin OC</option>
             {ocsProyecto.map((o) => (
               <option key={o.id} value={o.id}>
                 OC {o.consecutivo} · {nombreProveedor(proveedores, o.proveedorId)} · {money(totalOC(o))}
+                {facturada(o.id) ? ' · ya facturada' : ''}
               </option>
             ))}
           </Select>
@@ -94,6 +104,7 @@ export function AsociarModal({ facturaId, onClose, onDone }: { facturaId: string
 
 const FORMAS: FormaPago[] = ['Contado', 'Crédito 30 días', 'Crédito 45 días', 'Crédito 60 días']
 const diasForma = (fp: FormaPago) => (fp === 'Contado' ? 0 : parseInt(fp.replace(/\D/g, ''), 10))
+const cotizacionAprobada = (p: Proyecto) => p.cotizacion.versiones.some((v) => v.estado === 'aprobada')
 const etiquetaProyecto = (p: Proyecto) => `${p.codigo} · ${p.nombre}`
 /** Proyecto cuyo código, nombre o etiqueta coincide con lo escrito, solo si es uno. */
 const proyectoEscrito = (proyectos: Proyecto[], texto: string) => {
@@ -110,12 +121,12 @@ export function VincularFacturaModal({ onClose, onVinculada }: { onClose: () => 
   const facturas = useStore((s) => s.facturas)
   const mutar = useStore((s) => s.mutar)
   const notificar = useStore((s) => s.notificar)
-  // OC del proyecto y del proveedor que aún no tienen factura.
-  const ocsPendientes = (proveedorId: string | null, proyectoId: string | null) =>
-    ordenes.filter((o) => o.proyectoId === proyectoId && o.proveedorId === proveedorId && !facturas.some((x) => x.ocId === o.id))
-  // Si solo hay una OC pendiente, se propone de entrada.
+  // Las OC ya facturadas también se listan (facturas parciales).
+  const facturada = (ocId: string) => facturas.some((x) => x.ocId === ocId)
+  const ocsDe = (proveedorId: string | null, proyectoId: string | null) => ordenes.filter((o) => o.proyectoId === proyectoId && o.proveedorId === proveedorId)
+  // Si el proveedor tiene una sola OC en el proyecto, se toma de entrada; con dos o más se deja elegir.
   const ocUnica = (proveedorId: string | null, proyectoId: string | null) => {
-    const ocs = ocsPendientes(proveedorId, proyectoId)
+    const ocs = ocsDe(proveedorId, proyectoId)
     return ocs.length === 1 ? ocs[0].id : null
   }
   const [f, setF] = useState<FacturaProveedor>(() => ({
@@ -137,16 +148,33 @@ export function VincularFacturaModal({ onClose, onVinculada }: { onClose: () => 
   // Los precios de la OC ya incluyen el IVA: se guarda el total tal cual, sin discriminar IVA, para compararlo con la OC.
   const total = f.subtotal
 
-  const pendientes = ocsPendientes(f.proveedorId, f.proyectoId)
+  const ocs = ocsDe(f.proveedorId, f.proyectoId)
+  const pendientes = ocs.filter((o) => !facturada(o.id))
   const ocElegida = ordenes.find((o) => o.id === f.ocId)
   const proyecto = proyectos.find((p) => p.id === f.proyectoId)
+  const aprobados = proyectos.filter(cotizacionAprobada)
+  const escrito = proyectoEscrito(proyectos, busquedaProyecto)
+  const hintProyecto =
+    escrito && !cotizacionAprobada(escrito)
+      ? 'La cotización de este proyecto aún no está aprobada; registra la aprobación en Compras antes de cargar facturas.'
+      : busquedaProyecto && !proyecto
+        ? 'Escribe el código o el nombre completo, o elígelo de la lista.'
+        : undefined
   const hintOC = !proyecto
     ? 'Elige primero el proyecto.'
     : !f.proveedorId
       ? 'Sin proveedor no se asocia una OC.'
-      : pendientes.length === 0
-        ? 'Este proyecto no tiene OC pendientes de este proveedor.'
-        : 'Permite comparar la factura contra la OC.'
+      : ocs.length === 0
+        ? 'Este proyecto no tiene OC de este proveedor.'
+        : ocElegida && facturada(ocElegida.id)
+          ? 'Esta OC ya tiene factura; déjala si es una factura parcial o cambia a «Sin OC».'
+          : f.ocId
+            ? 'Permite comparar la factura contra la OC.'
+            : pendientes.length > 0
+              ? `Hay ${pendientes.length === 1 ? '1 OC pendiente' : `${pendientes.length} OC pendientes`} de este proveedor; asóciala para comparar la factura.`
+              : ocs.length === 1
+                ? `La OC ${ocs[0].consecutivo} de este proveedor ya tiene factura; elígela si es una factura parcial.`
+                : 'Las OC de este proveedor ya tienen factura; elige una si es una factura parcial.'
 
   const guardar = () => {
     if (!proyecto) return
@@ -177,7 +205,7 @@ export function VincularFacturaModal({ onClose, onVinculada }: { onClose: () => 
       }
     >
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Proyecto" htmlFor="rf-proy" hint={busquedaProyecto && !proyecto ? 'Escribe el código o el nombre completo, o elígelo de la lista.' : undefined}>
+        <Field label="Proyecto" htmlFor="rf-proy" hint={hintProyecto}>
           <Input
             id="rf-proy"
             list="rf-proy-lista"
@@ -186,12 +214,13 @@ export function VincularFacturaModal({ onClose, onVinculada }: { onClose: () => 
             value={busquedaProyecto}
             onChange={(e) => {
               setBusquedaProyecto(e.target.value)
-              const proyectoId = proyectoEscrito(proyectos, e.target.value)?.id ?? null
+              const p = proyectoEscrito(proyectos, e.target.value)
+              const proyectoId = p && cotizacionAprobada(p) ? p.id : null
               set({ proyectoId, ocId: ocUnica(f.proveedorId, proyectoId) })
             }}
           />
           <datalist id="rf-proy-lista">
-            {proyectos.map((p) => (
+            {aprobados.map((p) => (
               <option key={p.id} value={etiquetaProyecto(p)} />
             ))}
           </datalist>
@@ -214,11 +243,12 @@ export function VincularFacturaModal({ onClose, onVinculada }: { onClose: () => 
           </Select>
         </Field>
         <Field label="Orden de compra" htmlFor="rf-oc" optional hint={hintOC}>
-          <Select id="rf-oc" value={f.ocId ?? ''} disabled={pendientes.length === 0} onChange={(e) => set({ ocId: e.target.value || null })}>
+          <Select id="rf-oc" value={f.ocId ?? ''} disabled={ocs.length === 0} onChange={(e) => set({ ocId: e.target.value || null })}>
             <option value="">Sin OC</option>
-            {pendientes.map((o) => (
+            {ocs.map((o) => (
               <option key={o.id} value={o.id}>
                 OC {o.consecutivo} · {money(totalOC(o))}
+                {facturada(o.id) ? ' · ya facturada' : ''}
               </option>
             ))}
           </Select>
